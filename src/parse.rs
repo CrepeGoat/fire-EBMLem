@@ -1,11 +1,71 @@
+use nom::multi::count;
+use nom::Err;
+use nom::Needed;
+use nom::error::ParseError;
+use nom::ToUsize;
 use std::mem::size_of;
 use std::ops::RangeFrom;
-use std::vec::Vec;
+
 
 use nom::{
-    Err::Error,
-    Err, IResult, InputIter, InputLength, Slice,
+    IResult, InputIter, InputLength, Slice,
 };
+
+
+pub fn take_zeros<I, C, E: ParseError<(I, usize)>>(
+    max_count: C,
+) -> impl Fn((I, usize)) -> IResult<(I, usize), usize, E>
+where
+    I: Slice<RangeFrom<usize>> + InputIter<Item = u8> + InputLength,
+    C: ToUsize,
+{
+    let max_count = max_count.to_usize();
+    move |(input, bit_offset): (I, usize)| {
+        if max_count == 0 {
+            Ok(((input, bit_offset), 0usize))
+        } else {
+            let cnt = (count + bit_offset).div(8);
+            if input.input_len() * 8 < count + bit_offset {
+                Err(Err::Incomplete(Needed::new(count as usize)))
+            } else {
+                let mut acc: O = (0 as u8).into();
+                let mut offset: usize = bit_offset;
+                let mut remaining: usize = count;
+                let mut end_offset: usize = 0;
+
+                for byte in input.iter_elements().take(cnt + 1) {
+                    if remaining == 0 {
+                        break;
+                    }
+                    let val: O = if offset == 0 {
+                        byte.into()
+                    } else {
+                        ((byte << offset) as u8 >> offset).into()
+                    };
+
+                    if remaining < 8 - offset {
+                        acc += val >> (8 - offset - remaining);
+                        end_offset = remaining + offset;
+                        break;
+                    } else {
+                        acc += val << (remaining - (8 - offset));
+                        remaining -= 8 - offset;
+                        offset = 0;
+                    }
+                }
+                Ok(((input.slice(cnt..), end_offset), acc))
+            }
+        }
+    }
+}
+
+
+
+
+
+
+
+
 
 
 const RESERVED_ELEMENT_ID: u32 = 0x1F_FF_FF_FF_u32;
