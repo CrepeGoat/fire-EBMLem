@@ -53,8 +53,9 @@ where
         item &= 0xFF >> bit_offset;  // mask out first `bit_offset` bits
 
         streak_len += (item.leading_zeros() as usize) - bit_offset;
-        while item.leading_zeros() == 8 && streak_len < max_count {
+        while item.leading_zeros() == 8 && streak_len <= max_count {
             input = input.slice(1..);
+            if streak_len == max_count {break};
             item = input.iter_elements().next().ok_or_else(|| Err::Incomplete(Needed::new(1)))?;
             streak_len += item.leading_zeros() as usize;
         }
@@ -233,22 +234,52 @@ pub fn date(input: &[u8], length: usize) -> IResult<&[u8], i64, ()>
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::*;
 
-    #[test]
-    fn test_take_rem() {
-        let source = [0b_0000_0000, 0b_0100_1010, 0b_1010_0101];
+    #[rstest(source, bit_offset, expt_result,
+        case(
+            &[0b_0100_1010, 0b_1010_0101], 3,
+            ((&[0b_1010_0101][..], 0), (0b0_1010_u8, 5)),
+        ),
+        case(
+            &[0b_0100_1010, 0b_1010_0101], 0,
+            ((&[0b_0100_1010, 0b_1010_0101][..], 0), (0u8, 0)),
+        ),
+    )]
+    fn test_take_rem(
+        source: &'static [u8],
+        bit_offset: usize,
+        expt_result: ((&'static [u8], usize), (u8, usize)),
+    ) {
         assert_eq!(
-            take_rem::<_, ()>()((&source[..], 3)),
-            Ok(((&source[1..], 0), (0u8, 5))),
+            take_rem::<_, ()>()((source, bit_offset)),
+            Ok(expt_result),
         );
     }
 
-    #[test]
-    fn test_take_zeros() {
-        let source = [0b_0000_0000, 0b_0100_1010, 0b_1010_0101];
+    #[rstest(source, bit_offset, max_count, expt_result,
+        case(
+            &[0b_0000_0000, 0b_0100_1010], 3, usize::MAX,
+            ((&[0b_0100_1010][..], 1), 6),
+        ),
+        case(
+            &[0b_1110_0000, 0b_0100_1010], 3, usize::MAX,
+            ((&[0b_0100_1010][..], 1), 6),
+        ),
+        case(
+            &[0b_0000_0000, 0b_0100_1010], 3, 5,
+            ((&[0b_0100_1010][..], 0), 5),
+        ),
+    )]
+    fn test_take_zeros(
+        source: &'static [u8],
+        bit_offset: usize,
+        max_count: usize,
+        expt_result: ((&'static [u8], usize), usize),
+    ) {
         assert_eq!(
-            take_zeros::<_, _, ()>(usize::MAX)((&source[..], 3)),
-            Ok(((&source[1..], 1), 6)),
+            take_zeros::<_, _, ()>(max_count)((source, bit_offset)),
+            Ok(expt_result),
         );
     }
 
