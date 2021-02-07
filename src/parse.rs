@@ -198,7 +198,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn element_id() {
-        
+    fn test_element_id() {
+        let source = [0x40, 0x01, 0xFF];
+        assert_eq!(element_id(&source[..]), Ok((&source[2..], 1)));
+    }
+
+    #[test]
+    fn test_element_len() {
+        let source = [0x40, 0x01, 0xFF];
+        assert_eq!(element_id(&source[..]), Ok((&source[2..], 1)));
+    }
+
+    #[test]
+    fn test_() {
+        let source = [0x40, 0x01, 0xFF];
+        assert_eq!(element_id(&source[..]), Ok((&source[2..], 1)));
     }
 }
