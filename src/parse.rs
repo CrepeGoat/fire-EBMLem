@@ -1,5 +1,7 @@
 use std::mem::size_of;
 use std::ops::RangeFrom;
+use std::vec::Vec;
+
 use nom::{
     Err::Error,
     Err, IResult, InputIter, InputLength, Slice,
@@ -83,7 +85,10 @@ where
     I: Slice<RangeFrom<usize>> + InputIter<Item = u8> + InputLength,
 {
     assert!(1 <= length);
-    assert!(length <= size_of::<u64>());
+    assert!(length <= size_of::<u64>(), format!(
+        "invalid length for UInt (expected n<{:?}, found {:?})",
+        size_of::<u64>(), length,
+    ));
 
     let mut buffer = [0u8; size_of::<u64>()];
     let (input, _) = parse_length(input, &mut buffer[(size_of::<u64>()-length)..])?;
@@ -97,7 +102,10 @@ where
     I: Slice<RangeFrom<usize>> + InputIter<Item = u8> + InputLength,
 {
     assert!(1 <= length);
-    assert!(length <= size_of::<i64>());
+    assert!(length <= size_of::<i64>(), format!(
+        "invalid length for Int (expected n<{:?}, found {:?})",
+        size_of::<i64>(), length,
+    ));
 
     let mut buffer = [0u8; size_of::<i64>()];
     let i0 = buffer.len() - length;
@@ -115,7 +123,10 @@ pub fn float32<I>(input: I, length: usize) -> IResult<I, f32, ()>
 where
     I: Slice<RangeFrom<usize>> + InputIter<Item = u8> + InputLength,
 {
-    assert!(length == size_of::<f32>());
+    assert!(length <= size_of::<f32>(), format!(
+        "invalid length for f32 (expected {:?}, found {:?})",
+        size_of::<f32>(), length,
+    ));
 
     let mut buffer = [0u8; size_of::<f32>()];
     let (input, _) = parse_length(input, &mut buffer)?;
@@ -128,12 +139,57 @@ pub fn float64<I>(input: I, length: usize) -> IResult<I, f64, ()>
 where
     I: Slice<RangeFrom<usize>> + InputIter<Item = u8> + InputLength,
 {
-    assert!(length == size_of::<f64>());
+    assert!(length <= size_of::<f64>(), format!(
+        "invalid length for f64 (expected {:?}, found {:?})",
+        size_of::<f64>(), length,
+    ));
 
     let mut buffer = [0u8; size_of::<f64>()];
     let (input, _) = parse_length(input, &mut buffer)?;
 
     Ok((input, f64::from_be_bytes(buffer)))
+}
+
+
+pub fn ascii_str<I>(input: I, length: usize) -> IResult<I, String, ()>
+where
+    I: Slice<RangeFrom<usize>> + InputIter<Item = u8> + InputLength,
+{
+    let (input, result) = unicode_str(input, length)?;
+    if !result[..].is_ascii() {
+        return Err(nom::Err::Failure(()));
+    }
+
+    Ok((input, result))
+}
+
+
+pub fn unicode_str<I>(input: I, length: usize) -> IResult<I, String, ()>
+where
+    I: Slice<RangeFrom<usize>> + InputIter<Item = u8> + InputLength,
+{
+    let mut buffer = vec![0u8; length];
+    let (input, _) = parse_length(input, &mut buffer[..])?;
+
+    let result = String::from_utf8(buffer).or(Err(nom::Err::Failure(())))?;
+
+    Ok((input, result))
+}
+
+
+pub fn date<I>(input: I, length: usize) -> IResult<I, i64, ()>
+where
+    I: Slice<RangeFrom<usize>> + InputIter<Item = u8> + InputLength,
+{
+    assert!(length <= size_of::<u64>(), format!(
+        "invalid length for timestamp (expected {:?}, found {:?})",
+        size_of::<u64>(), length,
+    ));
+
+    let mut buffer = [0u8; size_of::<i64>()];
+    let (input, _) = parse_length(input, &mut buffer)?;
+
+    Ok((input, i64::from_be_bytes(buffer)))
 }
 
 
