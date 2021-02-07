@@ -1,10 +1,11 @@
-use nom::multi::count;
+use std::cmp::min;
+use std::mem::size_of;
+use std::ops::RangeFrom;
+
 use nom::Err;
 use nom::Needed;
 use nom::error::ParseError;
 use nom::ToUsize;
-use std::mem::size_of;
-use std::ops::RangeFrom;
 
 
 use nom::{
@@ -12,7 +13,29 @@ use nom::{
 };
 
 
-pub fn take_zeros<I, C, E: ParseError<(I, usize)>>(
+fn take_rem<I, E: ParseError<(I, usize)>>(
+) -> impl Fn((I, usize)) -> IResult<(I, usize), (u8, usize), E>
+where
+    I: Slice<RangeFrom<usize>> + InputIter<Item = u8> + InputLength,
+{
+    move |(input, bit_offset): (I, usize)| {
+        if bit_offset == 0 {
+            Ok(((input, 0), (0u8, 0usize)))
+        } else {
+            let len = 8 - bit_offset;
+            let mut item = match input.iter_elements().next() {
+                Some(i) => i,
+                None => unreachable!(),  // <- bit-offset != 0 (i.e., they've already pulled 1+ bits from this byte)
+            };
+            item &= 0xFF >> bit_offset;  // mask out first `bit_offset` bits
+
+            Ok(((input.slice(1..), 0), (item, len as usize)))
+        }
+    }
+}
+
+
+fn take_zeros<I, C, E: ParseError<(I, usize)>>(
     max_count: C,
 ) -> impl Fn((I, usize)) -> IResult<(I, usize), usize, E>
 where
@@ -20,52 +43,26 @@ where
     C: ToUsize,
 {
     let max_count = max_count.to_usize();
-    move |(input, bit_offset): (I, usize)| {
+    move |(mut input, bit_offset): (I, usize)| {
         if max_count == 0 {
-            Ok(((input, bit_offset), 0usize))
-        } else {
-            let cnt = (count + bit_offset).div(8);
-            if input.input_len() * 8 < count + bit_offset {
-                Err(Err::Incomplete(Needed::new(count as usize)))
-            } else {
-                let mut acc: O = (0 as u8).into();
-                let mut offset: usize = bit_offset;
-                let mut remaining: usize = count;
-                let mut end_offset: usize = 0;
-
-                for byte in input.iter_elements().take(cnt + 1) {
-                    if remaining == 0 {
-                        break;
-                    }
-                    let val: O = if offset == 0 {
-                        byte.into()
-                    } else {
-                        ((byte << offset) as u8 >> offset).into()
-                    };
-
-                    if remaining < 8 - offset {
-                        acc += val >> (8 - offset - remaining);
-                        end_offset = remaining + offset;
-                        break;
-                    } else {
-                        acc += val << (remaining - (8 - offset));
-                        remaining -= 8 - offset;
-                        offset = 0;
-                    }
-                }
-                Ok(((input.slice(cnt..), end_offset), acc))
-            }
+            return Ok(((input, bit_offset), 0usize));
         }
+
+        let mut streak_len: usize = 0;
+        let mut item = input.iter_elements().next().ok_or_else(|| Err::Incomplete(Needed::new(1)))?;
+        item &= 0xFF >> bit_offset;  // mask out first `bit_offset` bits
+
+        streak_len += (item.leading_zeros() as usize) - bit_offset;
+        while item.leading_zeros() == 8 && streak_len < max_count {
+            input = input.slice(1..);
+            item = input.iter_elements().next().ok_or_else(|| Err::Incomplete(Needed::new(1)))?;
+            streak_len += item.leading_zeros() as usize;
+        }
+        streak_len = min(streak_len, max_count);
+
+        Ok(((input, (streak_len + bit_offset) % 8), streak_len))
     }
 }
-
-
-
-
-
-
-
-
 
 
 const RESERVED_ELEMENT_ID: u32 = 0x1F_FF_FF_FF_u32;
@@ -236,6 +233,25 @@ pub fn date(input: &[u8], length: usize) -> IResult<&[u8], i64, ()>
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_take_rem() {
+        let source = [0b_0000_0000, 0b_0100_1010, 0b_1010_0101];
+        assert_eq!(
+            take_rem::<_, ()>()((&source[..], 3)),
+            Ok(((&source[1..], 0), (0u8, 5))),
+        );
+    }
+
+    #[test]
+    fn test_take_zeros() {
+        let source = [0b_0000_0000, 0b_0100_1010, 0b_1010_0101];
+        assert_eq!(
+            take_zeros::<_, _, ()>(usize::MAX)((&source[..], 3)),
+            Ok(((&source[1..], 1), 6)),
+        );
+    }
+
 
     #[test]
     fn test_element_id() {
