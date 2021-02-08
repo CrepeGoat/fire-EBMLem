@@ -161,9 +161,8 @@ fn parse_length<'a>(input: &'a[u8], buffer: &mut [u8]) -> IResult<&'a[u8], (), (
 
 pub fn uint(input: &[u8], length: usize) -> IResult<&[u8], u64, ()>
 {
-    assert!(1 <= length);
     assert!(length <= size_of::<u64>(), format!(
-        "invalid length for UInt (expected n<{:?}, found {:?})",
+        "invalid length for uint (expected n<{:?}, found {:?})",
         size_of::<u64>(), length,
     ));
 
@@ -176,9 +175,8 @@ pub fn uint(input: &[u8], length: usize) -> IResult<&[u8], u64, ()>
 
 pub fn int(input: &[u8], length: usize) -> IResult<&[u8], i64, ()>
 {
-    assert!(1 <= length);
     assert!(length <= size_of::<i64>(), format!(
-        "invalid length for Int (expected n<{:?}, found {:?})",
+        "invalid length for int (expected n<{:?}, found {:?})",
         size_of::<i64>(), length,
     ));
 
@@ -196,7 +194,7 @@ pub fn int(input: &[u8], length: usize) -> IResult<&[u8], i64, ()>
 
 pub fn float32(input: &[u8], length: usize) -> IResult<&[u8], f32, ()>
 {
-    assert!(length <= size_of::<f32>(), format!(
+    assert!(length == size_of::<f32>(), format!(
         "invalid length for f32 (expected {:?}, found {:?})",
         size_of::<f32>(), length,
     ));
@@ -210,7 +208,7 @@ pub fn float32(input: &[u8], length: usize) -> IResult<&[u8], f32, ()>
 
 pub fn float64(input: &[u8], length: usize) -> IResult<&[u8], f64, ()>
 {
-    assert!(length <= size_of::<f64>(), format!(
+    assert!(length == size_of::<f64>(), format!(
         "invalid length for f64 (expected {:?}, found {:?})",
         size_of::<f64>(), length,
     ));
@@ -246,7 +244,7 @@ pub fn unicode_str(input: &[u8], length: usize) -> IResult<&[u8], &str, ()>
 
 pub fn date(input: &[u8], length: usize) -> IResult<&[u8], i64, ()>
 {
-    assert!(length <= size_of::<i64>(), format!(
+    assert!(length == size_of::<i64>(), format!(
         "invalid length for timestamp (expected {:?}, found {:?})",
         size_of::<i64>(), length,
     ));
@@ -366,7 +364,7 @@ mod tests {
     fn test_date() {
         let source = [0x40, 0x01, 0xFF, 0x00, 0x40, 0x01, 0xFF, 0x00, 0xFF, 0xFF];
         assert_eq!(
-            date(&source[..], 1),
+            date(&source[..], 8),
             Ok((&source[8..], i64::from_be_bytes(
                 [0x40, 0x01, 0xFF, 0x00, 0x40, 0x01, 0xFF, 0x00],
             ))),
