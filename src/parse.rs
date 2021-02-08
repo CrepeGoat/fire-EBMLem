@@ -2,10 +2,12 @@ use std::cmp::min;
 use std::mem::size_of;
 use std::ops::RangeFrom;
 
+
 use nom::Err;
 use nom::Needed;
 use nom::error::ParseError;
 use nom::ToUsize;
+use nom::bits::streaming::{take};
 
 
 use nom::{
@@ -66,30 +68,43 @@ where
 }
 
 
-const RESERVED_ELEMENT_ID: u32 = 0x1F_FF_FF_FF_u32;
-
-pub fn element_id(input: &[u8]) -> IResult<&[u8], u32, ()>
+fn vlen_to_u32(input: &[u8]) -> IResult<&[u8], u32, ()>
 {
-    let mut iter = input.iter_elements();
-    let first_byte = iter.next().ok_or(nom::Err::Failure(()))?;
-    
     // Parse length from stream    
-    let len = first_byte.leading_zeros();
-    if len >= 4 {
+    let ((input, bit_offset), len) = take_zeros(size_of::<u32>())((input, 0))?;
+    if len >= size_of::<u32>() {
+        return Err(nom::Err::Failure(()));
+    }
+    let ((input, bit_offset), _) = take::<_, usize, _, ()>(1u8)((input, bit_offset))?;
+
+    let ((input, _), (leftover_bits, _)) = take_rem()((input, bit_offset))?;
+    if input.len() < len {
         return Err(nom::Err::Failure(()));
     }
 
-    // Parse value from stream
-    let mut result = u32::from(first_byte ^ (1 << (7 - len)));
-    for _i in 0..len {
-        result = (result << 8) | u32::from(iter.next().ok_or(nom::Err::Failure(()))?);
-    }
-    // corner-case: reserved ID's
-    if (result & !(result+1)) == 0 {  // if all non-length bits are 1's
-        result = RESERVED_ELEMENT_ID;
-    } 
+    let mut buffer = [0u8; size_of::<u32>()];
+    buffer[size_of::<u32>() - len - 1] = leftover_bits;
+    buffer[(size_of::<u32>() - len)..].copy_from_slice(&input[..len as usize]);
 
-    Ok((&input[((len+1) as usize)..], result))
+    Ok((&input[(len as usize)..], u32::from_be_bytes(buffer)))
+}
+
+
+const RESERVED_ELEMENT_ID: u32 = u32::MAX;
+
+pub fn element_id(input: &[u8]) -> IResult<&[u8], u32, ()>
+{
+    let (new_input, result) = vlen_to_u32(input)?;
+    
+    let len = unsafe {new_input.as_ptr().offset_from(input.as_ptr())};
+    Ok(
+        if result.count_ones() == 7*(len as u32) {  // if all non-length bits are 1's
+            // corner-case: reserved ID's
+            (new_input, RESERVED_ELEMENT_ID)
+        } else {
+            (new_input, result)
+        }
+    )
 }
 
 
