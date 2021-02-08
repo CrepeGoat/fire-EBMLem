@@ -108,31 +108,43 @@ pub fn element_id(input: &[u8]) -> IResult<&[u8], u32, ()>
 }
 
 
+fn vlen_to_u64(input: &[u8]) -> IResult<&[u8], u64, ()>
+{
+    // Parse length from stream    
+    let ((input, bit_offset), len) = take_zeros(size_of::<u64>())((input, 0))?;
+    if len >= size_of::<u64>() {
+        return Err(nom::Err::Failure(()));
+    }
+    let ((input, bit_offset), _) = take::<_, usize, _, ()>(1u8)((input, bit_offset))?;
+
+    let ((input, _), (leftover_bits, _)) = take_rem()((input, bit_offset))?;
+    if input.len() < len {
+        return Err(nom::Err::Failure(()));
+    }
+
+    let mut buffer = [0u8; size_of::<u64>()];
+    buffer[size_of::<u64>() - len - 1] = leftover_bits;
+    buffer[(size_of::<u64>() - len)..].copy_from_slice(&input[..len as usize]);
+
+    Ok((&input[(len as usize)..], u64::from_be_bytes(buffer)))
+}
+
+
 const UNKNOWN_ELEMENT_LEN: u64 = u64::MAX;
 
 pub fn element_len(input: &[u8]) -> IResult<&[u8], u64, ()>
 {
-    let mut iter = input.iter_elements();
-    let first_byte = iter.next().ok_or(nom::Err::Failure(()))?;
+    let (new_input, result) = vlen_to_u64(input)?;
     
-    // Parse length from stream    
-    let len = first_byte.leading_zeros();
-    if len == 8 {
-        return Err(nom::Err::Failure(()));
-    }
-
-    // Parse value from stream
-    let mut result = u64::from(first_byte ^ (1 << (7 - len)));
-    for _i in 0..len {
-        let item = iter.next().ok_or(nom::Err::Failure(()))?;
-        result = (result << 8) | u64::from(item);
-    }
-    // corner-case: unknown data sizes
-    if (result & !(result+1)) == 0 {  // if all non-length bits are 1's
-        result = UNKNOWN_ELEMENT_LEN;
-    } 
-
-    Ok((&input[((len+1) as usize)..], result))
+    let len = unsafe {new_input.as_ptr().offset_from(input.as_ptr())};
+    Ok(
+        if result == 0xFF && len == 1 {  // if all non-length bits are 1's
+            // corner-case: reserved ID's
+            (new_input, UNKNOWN_ELEMENT_LEN)
+        } else {
+            (new_input, result)
+        }
+    )
 }
 
 
