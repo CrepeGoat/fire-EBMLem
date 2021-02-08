@@ -150,12 +150,12 @@ pub fn element_len(input: &[u8]) -> IResult<&[u8], u64, ()>
 
 fn parse_length<'a>(input: &'a[u8], buffer: &mut [u8]) -> IResult<&'a[u8], (), ()>
 {
-    let mut item_iter = input.iter_elements();
-    for buffer_item in buffer.iter_mut() {
-        *buffer_item = item_iter.next().ok_or(nom::Err::Failure(()))?;
+    if input.len() < buffer.len() {
+        Err(nom::Err::Failure(()))
+    } else {
+        buffer.copy_from_slice(&input[..buffer.len()]);
+        Ok((&input[buffer.len()..], ()))
     }
-
-    Ok((&input[buffer.len()..], ()))
 }
 
 
