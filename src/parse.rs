@@ -69,23 +69,30 @@ where
 }
 
 
-fn vlen_to_u32(input: &[u8]) -> IResult<&[u8], u32, ()>
-{
-    // Parse length from stream
-    let ((input, bit_offset), len) = take_zeros(size_of::<u32>())((input, 0))?;
-    if len >= size_of::<u32>() {
-        return Err(nom::Err::Failure(()));
-    }
-    let ((input, bit_offset), _) = take_bits::<_, usize, _, ()>(1u8)((input, bit_offset))?;
-    let ((input, _), (leftover_bits, _)) = take_rem()((input, bit_offset))?;
-    let (input, bytes) = take_bytes(len)(input)?;
+macro_rules! make_vlen_parser {
+    ($func_name:ident, $uint:ty) => {
+        fn $func_name(input: &[u8]) -> IResult<&[u8], $uint, ()>
+        {
+            // Parse length from stream
+            let ((input, bit_offset), len) = take_zeros(size_of::<$uint>())((input, 0))?;
+            if len >= size_of::<$uint>() {
+                return Err(nom::Err::Failure(()));
+            }
+            let ((input, bit_offset), _) = take_bits::<_, usize, _, ()>(1u8)((input, bit_offset))?;
+            let ((input, _), (leftover_bits, _)) = take_rem()((input, bit_offset))?;
+            let (input, bytes) = take_bytes(len)(input)?;
 
-    let mut buffer = [0u8; size_of::<u32>()];
-    buffer[size_of::<u32>() - len - 1] = leftover_bits;
-    buffer[(size_of::<u32>() - len)..].copy_from_slice(bytes);
+            let mut buffer = [0u8; size_of::<$uint>()];
+            buffer[size_of::<$uint>() - len - 1] = leftover_bits;
+            buffer[(size_of::<$uint>() - len)..].copy_from_slice(bytes);
 
-    Ok((input, u32::from_be_bytes(buffer)))
+            Ok((input, <$uint>::from_be_bytes(buffer)))
+        }
+    };
 }
+
+make_vlen_parser!(vlen_to_u32, u32);
+make_vlen_parser!(vlen_to_u64, u64);
 
 
 const RESERVED_ELEMENT_ID: u32 = u32::MAX;
@@ -103,25 +110,6 @@ pub fn element_id(input: &[u8]) -> IResult<&[u8], u32, ()>
             (new_input, result)
         }
     )
-}
-
-
-fn vlen_to_u64(input: &[u8]) -> IResult<&[u8], u64, ()>
-{
-    // Parse length from stream
-    let ((input, bit_offset), len) = take_zeros(size_of::<u64>())((input, 0))?;
-    if len >= size_of::<u64>() {
-        return Err(nom::Err::Failure(()));
-    }
-    let ((input, bit_offset), _) = take_bits::<_, usize, _, ()>(1u8)((input, bit_offset))?;
-    let ((input, _), (leftover_bits, _)) = take_rem()((input, bit_offset))?;
-    let (input, bytes) = take_bytes(len)(input)?;
-
-    let mut buffer = [0u8; size_of::<u64>()];
-    buffer[size_of::<u64>() - len - 1] = leftover_bits;
-    buffer[(size_of::<u64>() - len)..].copy_from_slice(bytes);
-
-    Ok((input, u64::from_be_bytes(buffer)))
 }
 
 
