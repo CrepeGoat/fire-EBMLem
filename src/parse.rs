@@ -7,7 +7,8 @@ use nom::Err;
 use nom::Needed;
 use nom::error::ParseError;
 use nom::ToUsize;
-use nom::bits::streaming::{take};
+use nom::bits::streaming::{take as take_bits};
+use nom::bytes::streaming::{take as take_bytes};
 
 
 use nom::{
@@ -70,23 +71,20 @@ where
 
 fn vlen_to_u32(input: &[u8]) -> IResult<&[u8], u32, ()>
 {
-    // Parse length from stream    
+    // Parse length from stream
     let ((input, bit_offset), len) = take_zeros(size_of::<u32>())((input, 0))?;
     if len >= size_of::<u32>() {
         return Err(nom::Err::Failure(()));
     }
-    let ((input, bit_offset), _) = take::<_, usize, _, ()>(1u8)((input, bit_offset))?;
-
+    let ((input, bit_offset), _) = take_bits::<_, usize, _, ()>(1u8)((input, bit_offset))?;
     let ((input, _), (leftover_bits, _)) = take_rem()((input, bit_offset))?;
-    if input.len() < len {
-        return Err(nom::Err::Failure(()));
-    }
+    let (input, bytes) = take_bytes(len)(input)?;
 
     let mut buffer = [0u8; size_of::<u32>()];
     buffer[size_of::<u32>() - len - 1] = leftover_bits;
-    buffer[(size_of::<u32>() - len)..].copy_from_slice(&input[..len as usize]);
+    buffer[(size_of::<u32>() - len)..].copy_from_slice(bytes);
 
-    Ok((&input[(len as usize)..], u32::from_be_bytes(buffer)))
+    Ok((input, u32::from_be_bytes(buffer)))
 }
 
 
@@ -96,7 +94,7 @@ pub fn element_id(input: &[u8]) -> IResult<&[u8], u32, ()>
 {
     let (new_input, result) = vlen_to_u32(input)?;
     
-    let len = unsafe {new_input.as_ptr().offset_from(input.as_ptr())};
+    let len = unsafe {new_input.as_ptr().offset_from(input.as_ptr())} as u32;
     Ok(
         if result.count_ones() == 7*(len as u32) {  // if all non-length bits are 1's
             // corner-case: reserved ID's
@@ -110,23 +108,20 @@ pub fn element_id(input: &[u8]) -> IResult<&[u8], u32, ()>
 
 fn vlen_to_u64(input: &[u8]) -> IResult<&[u8], u64, ()>
 {
-    // Parse length from stream    
+    // Parse length from stream
     let ((input, bit_offset), len) = take_zeros(size_of::<u64>())((input, 0))?;
     if len >= size_of::<u64>() {
         return Err(nom::Err::Failure(()));
     }
-    let ((input, bit_offset), _) = take::<_, usize, _, ()>(1u8)((input, bit_offset))?;
-
+    let ((input, bit_offset), _) = take_bits::<_, usize, _, ()>(1u8)((input, bit_offset))?;
     let ((input, _), (leftover_bits, _)) = take_rem()((input, bit_offset))?;
-    if input.len() < len {
-        return Err(nom::Err::Failure(()));
-    }
+    let (input, bytes) = take_bytes(len)(input)?;
 
     let mut buffer = [0u8; size_of::<u64>()];
     buffer[size_of::<u64>() - len - 1] = leftover_bits;
-    buffer[(size_of::<u64>() - len)..].copy_from_slice(&input[..len as usize]);
+    buffer[(size_of::<u64>() - len)..].copy_from_slice(bytes);
 
-    Ok((&input[(len as usize)..], u64::from_be_bytes(buffer)))
+    Ok((input, u64::from_be_bytes(buffer)))
 }
 
 
@@ -150,12 +145,10 @@ pub fn element_len(input: &[u8]) -> IResult<&[u8], u64, ()>
 
 fn parse_length<'a>(input: &'a[u8], buffer: &mut [u8]) -> IResult<&'a[u8], (), ()>
 {
-    if input.len() < buffer.len() {
-        Err(nom::Err::Failure(()))
-    } else {
-        buffer.copy_from_slice(&input[..buffer.len()]);
-        Ok((&input[buffer.len()..], ()))
-    }
+    let (input, bytes) = take_bytes(buffer.len())(input)?;
+    buffer.copy_from_slice(bytes);
+    
+    Ok((input, ()))
 }
 
 
@@ -233,12 +226,10 @@ pub fn ascii_str(input: &[u8], length: usize) -> IResult<&[u8], &str, ()>
 
 pub fn unicode_str(input: &[u8], length: usize) -> IResult<&[u8], &str, ()>
 {
-    if input.len() < length {
-        return Err(nom::Err::Failure(()));
-    }
-    let result = std::str::from_utf8(&input[..length]).or(Err(nom::Err::Failure(())))?;
+    let (input, bytes) = take_bytes(length)(input)?;
+    let result = std::str::from_utf8(bytes).or(Err(nom::Err::Failure(())))?;
 
-    Ok((&input[length..], result))
+    Ok((input, result))
 }
 
 
