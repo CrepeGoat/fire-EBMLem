@@ -76,7 +76,7 @@ macro_rules! make_vlen_parser {
             // Parse length from stream
             let ((input, bit_offset), len) = take_zeros(size_of::<$uint>())((input, 0))?;
             if len >= size_of::<$uint>() {
-                return Err(nom::Err::Failure(()));
+                return Err(nom::Err::Error(()));
             }
             let ((input, bit_offset), _) = take_bits::<_, usize, _, ()>(1u8)((input, bit_offset))?;
             let ((input, _), (leftover_bits, _)) = take_rem()((input, bit_offset))?;
@@ -205,7 +205,7 @@ pub fn ascii_str(input: &[u8], length: usize) -> IResult<&[u8], &str, ()>
 {
     let (input, result) = unicode_str(input, length)?;
     if !result[..].is_ascii() {
-        return Err(nom::Err::Failure(()));
+        return Err(nom::Err::Error(()));
     }
 
     Ok((input, result))
@@ -215,7 +215,7 @@ pub fn ascii_str(input: &[u8], length: usize) -> IResult<&[u8], &str, ()>
 pub fn unicode_str(input: &[u8], length: usize) -> IResult<&[u8], &str, ()>
 {
     let (input, bytes) = take_bytes(length)(input)?;
-    let result = std::str::from_utf8(bytes).or(Err(nom::Err::Failure(())))?;
+    let result = std::str::from_utf8(bytes).or(Err(nom::Err::Error(())))?;
 
     Ok((input, result))
 }
@@ -232,6 +232,12 @@ pub fn date(input: &[u8], length: usize) -> IResult<&[u8], i64, ()>
     let (input, _) = parse_length(input, &mut buffer)?;
 
     Ok((input, i64::from_be_bytes(buffer)))
+}
+
+
+pub fn binary(input: &[u8], length: usize) -> IResult<&[u8], &[u8], ()>
+{
+    take_bytes(length)(input)
 }
 
 
