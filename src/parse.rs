@@ -340,9 +340,9 @@ mod tests {
 
     #[test]
     fn test_unicode_str() {
-        let s = "You do say the strangest of things, mein Fräulein.";
+        let s = "知ら ない の か ？ 死神 の 霊 絡 は 色 が 違う って こと ｡";
         let source = s.as_bytes();
-        assert_eq!(unicode_str(&source[36..], 11), Ok((&source[47..], "mein Fräul")));
+        assert_eq!(unicode_str(&source[..], 25), Ok((&source[25..], "知ら ない の か ？")));
     }
 
     #[test]
