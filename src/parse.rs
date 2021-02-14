@@ -101,15 +101,17 @@ pub fn element_id(input: &[u8]) -> IResult<&[u8], u32, ()>
 {
     let (new_input, result) = vlen_to_u32(input)?;
     
-    let len = unsafe {new_input.as_ptr().offset_from(input.as_ptr())} as u32;
-    Ok(
-        if result.count_ones() == 7*(len as u32) {  // if all non-length bits are 1's
-            // corner-case: reserved ID's
-            (new_input, RESERVED_ELEMENT_ID)
-        } else {
-            (new_input, result)
-        }
-    )
+    let len = unsafe {new_input.as_ptr().offset_from(input.as_ptr())} as usize;
+    if result == 0 || result.count_ones() == 7*(len as u32) {  // if all non-length bits are 0's or 1's
+        // corner-case: reserved ID's
+        return Ok((new_input, RESERVED_ELEMENT_ID));
+    }
+    if (8*size_of::<u32>() - (result.leading_zeros() as usize)) >= 7*(len-1) {
+        // element ID's must use the smallest representation possible
+        return Err(nom::Err::Error(()));
+    }
+
+    Ok((new_input, result))
 }
 
 
@@ -121,7 +123,7 @@ pub fn element_len(input: &[u8]) -> IResult<&[u8], u64, ()>
     
     let len = unsafe {new_input.as_ptr().offset_from(input.as_ptr())};
     Ok(
-        if result == 0xFF && len == 1 {  // if all non-length bits are 1's
+        if result.count_ones() == 7*(len as u32) {  // if all non-length bits are 1's
             // corner-case: reserved ID's
             (new_input, UNKNOWN_ELEMENT_LEN)
         } else {
