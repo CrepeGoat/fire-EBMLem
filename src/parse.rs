@@ -230,10 +230,7 @@ pub fn date(input: &[u8], length: usize) -> IResult<&[u8], i64, ()>
         size_of::<i64>(), length,
     ));
 
-    let mut buffer = [0u8; size_of::<i64>()];
-    let (input, _) = parse_length(input, &mut buffer)?;
-
-    Ok((input, i64::from_be_bytes(buffer)))
+    int(input, length)
 }
 
 
