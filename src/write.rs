@@ -1,4 +1,4 @@
-use std::cmp::min;
+use std::cmp::{max, min};
 use std::mem::size_of;
 
 use nom::{Err, IResult, Needed};
@@ -58,12 +58,13 @@ fn vlen_int(
     let ((output, bit_offset), _) = give_bits((output, bit_offset), (1, 1))?;
 
     let source = value.to_be_bytes();
+    let byte_offset = size_of::<u64>() - vint_len;
     let ((output, bit_offset), _) = give_bits(
         (output, bit_offset),
-        (source[size_of::<u64>() - vint_len], 8 - bit_offset),
+        (source[byte_offset], 8 - bit_offset),
     )?;
     assert_eq!(bit_offset, 0); // -> safe to operate on the byte-level
-    let (output, _) = give_bytes(output, &source[size_of::<u64>() - (vint_len - 1)..])?;
+    let (output, _) = give_bytes(output, &source[byte_offset+1..])?;
 
     Ok((output, vint_len))
 }
@@ -87,4 +88,57 @@ fn element_len(
     bytelen: Option<usize>,
 ) -> IResult<&mut [u8], usize, ()> {
     vlen_int(output, value, bytelen, Some(8))
+}
+
+
+fn uint(output: &mut [u8], value: u64, length: usize) -> IResult<&mut [u8], (), ()> {
+    let byte_offset = size_of::<u64>().checked_sub(length).ok_or(nom::Err::Error(()))?;
+    if 8 * byte_offset > (value.leading_zeros() as usize) {
+        return Err(nom::Err::Error(()));
+    }
+
+    let source = value.to_be_bytes();
+    give_bytes(output, &source[byte_offset..])
+}
+
+fn int(output: &mut [u8], value: i64, length: usize) -> IResult<&mut [u8], (), ()> {
+    let byte_offset = size_of::<u64>().checked_sub(length).ok_or(nom::Err::Error(()))?;
+    let value_spare_bits = max(value.leading_zeros(), value.leading_ones()) - 1; // need leading bit for sign
+    if 8 * byte_offset > (value_spare_bits as usize) {
+        return Err(nom::Err::Error(()));
+    }
+
+    let source = value.to_be_bytes();
+    give_bytes(output, &source[byte_offset..])
+}
+
+fn float32(output: &mut [u8], value: f32, length: usize) -> IResult<&mut [u8], (), ()> {
+    if length != size_of::<f32>() {
+        return Err(nom::Err::Error(()));
+    }
+    let source = value.to_be_bytes();
+    give_bytes(output, &source[..])
+}
+
+fn float64(output: &mut [u8], value: f64, length: usize) -> IResult<&mut [u8], (), ()> {
+    if length != size_of::<f64>() {
+        return Err(nom::Err::Error(()));
+    }
+    let source = value.to_be_bytes();
+    give_bytes(output, &source[..])
+}
+
+fn string<'a>(output: &'a mut [u8], value: &str) -> IResult<&'a mut [u8], (), ()> {
+    give_bytes(output, value.as_bytes())
+}
+
+fn date<'a>(output: &'a mut [u8], value: i64, length: usize) -> IResult<&'a mut [u8], (), ()> {
+    if length != size_of::<i64>() {
+        return Err(nom::Err::Error(()));
+    }
+    int(output, value, length)
+}
+
+fn binary<'a>(output: &'a mut [u8], value: &[u8]) -> IResult<&'a mut [u8], (), ()> {
+    give_bytes(output, value)
 }
