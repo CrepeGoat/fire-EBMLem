@@ -133,7 +133,7 @@ fn string<'a>(output: &'a mut [u8], value: &str) -> IResult<&'a mut [u8], (), ()
     give_bytes(output, value.as_bytes())
 }
 
-fn date<'a>(output: &'a mut [u8], value: i64, length: usize) -> IResult<&'a mut [u8], (), ()> {
+fn date(output: &mut [u8], value: i64, length: usize) -> IResult<&mut [u8], (), ()> {
     if length != size_of::<i64>() {
         return Err(nom::Err::Error(()));
     }
