@@ -40,27 +40,9 @@ fn vlen_int(
     max_length: Option<usize>,
 ) -> IResult<&mut [u8], usize, ()> {
     //let bitlen = 8*size_of::<u64>() - (value.leading_zeros() as usize);
-    let mut vint_len = {
-        if value < 0x0000_0000_0000_0080 {
-            1usize
-        } else if value < 0x0000_0000_0000_4000 {
-            2
-        } else if value < 0x0000_0000_0020_0000 {
-            3
-        } else if value < 0x0000_0000_1000_0000 {
-            4
-        } else if value < 0x0000_0008_0000_0000 {
-            5
-        } else if value < 0x0000_0400_0000_0000 {
-            6
-        } else if value < 0x0002_0000_0000_0000 {
-            7
-        } else if value < 0x0100_0000_0000_0000 {
-            8
-        } else {
-            return Err(nom::Err::Error(()));
-        }
-    };
+    let bitlen = 8*size_of::<u64>() - value.leading_zeros() as usize;
+    let mut vint_len = bitlen.saturating_sub(1) / 7 + 1;
+
     if let Some(length) = min_length {
         if vint_len < length {
             vint_len = length;
