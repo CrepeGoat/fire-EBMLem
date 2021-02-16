@@ -143,3 +143,119 @@ fn date(output: &mut [u8], value: i64, length: usize) -> IResult<&mut [u8], (), 
 fn binary<'a>(output: &'a mut [u8], value: &[u8]) -> IResult<&'a mut [u8], (), ()> {
     give_bytes(output, value)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::*;
+
+    #[rstest(output, bit_offset, source, bitlen, expt_output,
+        case([0x00, 0x00], 4, 0xFF, 2, &[0x0C, 0x00]),
+    )]
+    fn test_give_bits(
+        mut output: [u8; 2],
+        bit_offset: usize,
+        source: u8,
+        bitlen: usize,
+        expt_output: &[u8],
+    ) {
+        let result = give_bits((&mut output, bit_offset), (source, bitlen));
+        assert!(result.is_ok());
+        assert_eq!(output, expt_output);
+    }
+
+    #[rstest(output, source, expt_output,
+        case([0x00, 0x00], &[0xFF][..], &[0xFF, 0x00]),
+    )]
+    fn test_give_bytes(mut output: [u8; 2], source: &'static [u8], expt_output: &[u8]) {
+        let result = give_bytes(&mut output, source);
+        assert!(result.is_ok());
+        assert_eq!(output, expt_output);
+    }
+
+    #[rstest(value, expt_output,
+        case(0x2345, &[0x63, 0x45, 0x00, 0x00, 0x00]),
+        case(0x7F, &[0x40, 0x7F, 0x00, 0x00, 0x00]),
+    )]
+    fn test_element_id(value: u64, expt_output: &[u8]) {
+        let mut output = [0x00u8; 5];
+        let result = element_id(&mut output[..], value);
+        assert!(result.is_ok());
+        assert_eq!(output, expt_output);
+    }
+
+    #[rstest(value, length, expt_output,
+        case(0x2345, None, &[0x63, 0x45, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+        case(0x7F, None, &[0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+        case(0x7F, Some(2), &[0x40, 0x7F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+    )]
+    fn test_element_len(value: u64, length: Option<usize>, expt_output: &[u8]) {
+        let mut output = [0x00u8; 9];
+        let result = element_len(&mut output[..], value, length);
+        assert!(result.is_ok());
+        assert_eq!(output, expt_output);
+    }
+
+    #[rstest(value, length, expt_output,
+        case(0x01, 1, &[0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+        case(0x01, 2, &[0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+    )]
+    fn test_uint(value: u64, length: usize, expt_output: &[u8]) {
+        let mut output = [0x00u8; 9];
+        let result = uint(&mut output[..], value, length);
+        assert!(result.is_ok());
+        assert_eq!(output, expt_output);
+    }
+
+    #[rstest(value, length, expt_output,
+        case(-1, 1, &[0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+        case(-1, 2, &[0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+    )]
+    fn test_int(value: i64, length: usize, expt_output: &[u8]) {
+        let mut output = [0x00u8; 9];
+        let result = int(&mut output[..], value, length);
+        assert!(result.is_ok());
+        assert_eq!(output, expt_output);
+    }
+
+    #[rstest(value, length, expt_output,
+        case(1.0, 4, &[0x3F, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+    )]
+    fn test_float32(value: f32, length: usize, expt_output: &[u8]) {
+        let mut output = [0x00u8; 9];
+        let result = float32(&mut output[..], value, length);
+        assert!(result.is_ok());
+        assert_eq!(output, expt_output);
+    }
+
+    #[rstest(value, length, expt_output,
+        case(1.0, 8, &[0x3F, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+    )]
+    fn test_float64(value: f64, length: usize, expt_output: &[u8]) {
+        let mut output = [0x00u8; 9];
+        let result = float64(&mut output[..], value, length);
+        assert!(result.is_ok());
+        assert_eq!(output, expt_output);
+    }
+
+    #[rstest(value, expt_output,
+        case(&"hello", &[0x68, 0x65, 0x6C, 0x6C, 0x6F, 0x00, 0x00, 0x00, 0x00]),
+        case(&"え？", &[0xE3, 0x81, 0x88, 0xEF, 0xBC, 0x9F, 0x00, 0x00, 0x00]),
+    )]
+    fn test_string(value: &str, expt_output: &[u8]) {
+        let mut output = [0x00u8; 9];
+        let result = string(&mut output[..], value);
+        assert!(result.is_ok());
+        assert_eq!(output, expt_output);
+    }
+
+    #[rstest(value, length, expt_output,
+        case(-1, 8, &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00]),
+    )]
+    fn test_date(value: i64, length: usize, expt_output: &[u8]) {
+        let mut output = [0x00u8; 9];
+        let result = date(&mut output[..], value, length);
+        assert!(result.is_ok());
+        assert_eq!(output, expt_output);
+    }
+}
