@@ -4,8 +4,8 @@ pub mod parse {
     use std::ops::RangeFrom;
 
     use nom::{
-        bits::streaming::take as take_bits, bytes::streaming::take as take_bytes, error::ParseError,
-        Err, IResult, InputIter, InputLength, Needed, Slice, ToUsize,
+        bits::streaming::take as take_bits, bytes::streaming::take as take_bytes,
+        error::ParseError, Err, IResult, InputIter, InputLength, Needed, Slice, ToUsize,
     };
 
     fn take_rem<I, E: ParseError<(I, usize)>>(
@@ -66,7 +66,8 @@ pub mod parse {
                 if len >= size_of::<$uint>() {
                     return Err(nom::Err::Error(()));
                 }
-                let ((input, bit_offset), _) = take_bits::<_, usize, _, ()>(1u8)((input, bit_offset))?;
+                let ((input, bit_offset), _) =
+                    take_bits::<_, usize, _, ()>(1u8)((input, bit_offset))?;
                 let ((input, _), (leftover_bits, _)) = take_rem()((input, bit_offset))?;
                 let (input, bytes) = take_bytes(len)(input)?;
 
@@ -346,7 +347,6 @@ pub mod parse {
         }
     }
 }
-
 
 pub mod serialize {
     use std::cmp::{max, min};
