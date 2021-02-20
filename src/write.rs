@@ -39,7 +39,6 @@ fn vlen_int(
     min_length: Option<usize>,
     max_length: Option<usize>,
 ) -> IResult<&mut [u8], usize, ()> {
-    //let bitlen = 8*size_of::<u64>() - (value.leading_zeros() as usize);
     let bitlen = 8 * size_of::<u64>() - value.leading_zeros() as usize;
     let mut vint_len = bitlen.saturating_sub(1) / 7 + 1;
 
@@ -67,7 +66,7 @@ fn vlen_int(
     Ok((output, vint_len))
 }
 
-fn element_id(output: &mut [u8], value: u64) -> IResult<&mut [u8], usize, ()> {
+pub fn element_id(output: &mut [u8], value: u64) -> IResult<&mut [u8], usize, ()> {
     if value == 0 {
         return Err(nom::Err::Error(()));
     }
@@ -80,7 +79,7 @@ fn element_id(output: &mut [u8], value: u64) -> IResult<&mut [u8], usize, ()> {
     )
 }
 
-fn element_len(
+pub fn element_len(
     output: &mut [u8],
     value: u64,
     bytelen: Option<usize>,
@@ -88,7 +87,7 @@ fn element_len(
     vlen_int(output, value, bytelen, Some(8))
 }
 
-fn uint(output: &mut [u8], value: u64, length: usize) -> IResult<&mut [u8], (), ()> {
+pub fn uint(output: &mut [u8], value: u64, length: usize) -> IResult<&mut [u8], (), ()> {
     let byte_offset = size_of::<u64>()
         .checked_sub(length)
         .ok_or(nom::Err::Error(()))?;
@@ -100,7 +99,7 @@ fn uint(output: &mut [u8], value: u64, length: usize) -> IResult<&mut [u8], (), 
     give_bytes(output, &source[byte_offset..])
 }
 
-fn int(output: &mut [u8], value: i64, length: usize) -> IResult<&mut [u8], (), ()> {
+pub fn int(output: &mut [u8], value: i64, length: usize) -> IResult<&mut [u8], (), ()> {
     let byte_offset = size_of::<u64>()
         .checked_sub(length)
         .ok_or(nom::Err::Error(()))?;
@@ -113,7 +112,7 @@ fn int(output: &mut [u8], value: i64, length: usize) -> IResult<&mut [u8], (), (
     give_bytes(output, &source[byte_offset..])
 }
 
-fn float32(output: &mut [u8], value: f32, length: usize) -> IResult<&mut [u8], (), ()> {
+pub fn float32(output: &mut [u8], value: f32, length: usize) -> IResult<&mut [u8], (), ()> {
     if length != size_of::<f32>() {
         return Err(nom::Err::Error(()));
     }
@@ -121,7 +120,7 @@ fn float32(output: &mut [u8], value: f32, length: usize) -> IResult<&mut [u8], (
     give_bytes(output, &source[..])
 }
 
-fn float64(output: &mut [u8], value: f64, length: usize) -> IResult<&mut [u8], (), ()> {
+pub fn float64(output: &mut [u8], value: f64, length: usize) -> IResult<&mut [u8], (), ()> {
     if length != size_of::<f64>() {
         return Err(nom::Err::Error(()));
     }
@@ -129,18 +128,18 @@ fn float64(output: &mut [u8], value: f64, length: usize) -> IResult<&mut [u8], (
     give_bytes(output, &source[..])
 }
 
-fn string<'a>(output: &'a mut [u8], value: &str) -> IResult<&'a mut [u8], (), ()> {
+pub fn string<'a>(output: &'a mut [u8], value: &str) -> IResult<&'a mut [u8], (), ()> {
     give_bytes(output, value.as_bytes())
 }
 
-fn date(output: &mut [u8], value: i64, length: usize) -> IResult<&mut [u8], (), ()> {
+pub fn date(output: &mut [u8], value: i64, length: usize) -> IResult<&mut [u8], (), ()> {
     if length != size_of::<i64>() {
         return Err(nom::Err::Error(()));
     }
     int(output, value, length)
 }
 
-fn binary<'a>(output: &'a mut [u8], value: &[u8]) -> IResult<&'a mut [u8], (), ()> {
+pub fn binary<'a>(output: &'a mut [u8], value: &[u8]) -> IResult<&'a mut [u8], (), ()> {
     give_bytes(output, value)
 }
 
