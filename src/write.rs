@@ -1,5 +1,6 @@
 use std::cmp::{max, min};
 use std::mem::size_of;
+use std::num::NonZeroU32;
 
 use nom::{Err, IResult, Needed};
 
@@ -66,14 +67,11 @@ fn vlen_int(
     Ok((output, vint_len))
 }
 
-pub fn element_id(output: &mut [u8], value: u64) -> IResult<&mut [u8], usize, ()> {
-    if value == 0 {
-        return Err(nom::Err::Error(()));
-    }
-
+pub fn element_id(output: &mut [u8], value: NonZeroU32) -> IResult<&mut [u8], usize, ()> {
+    let value = value.get();
     vlen_int(
         output,
-        value,
+        value.into(),
         Some(((value.count_ones() / 7) + 1) as usize), // ensures that VINT_DATA of id's are not all 1's
         Some(4),
     )
@@ -176,9 +174,9 @@ mod tests {
         case(0x2345, &[0x63, 0x45, 0x00, 0x00, 0x00]),
         case(0x7F, &[0x40, 0x7F, 0x00, 0x00, 0x00]),
     )]
-    fn test_element_id(value: u64, expt_output: &[u8]) {
+    fn test_element_id(value: u32, expt_output: &[u8]) {
         let mut output = [0x00u8; 5];
-        let result = element_id(&mut output[..], value);
+        let result = element_id(&mut output[..], NonZeroU32::new(value).unwrap());
         assert!(result.is_ok());
         assert_eq!(output, expt_output);
     }
