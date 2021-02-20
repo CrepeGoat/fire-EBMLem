@@ -11,3 +11,4 @@ nom = "6.1.0"
 
 [dev-dependencies]
 rstest = "0.6.4"
+proptest = "0.10.1"

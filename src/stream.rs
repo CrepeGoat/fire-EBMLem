@@ -522,6 +522,7 @@ pub mod serialize {
         }
 
         #[rstest(value, expt_output,
+            case(0x01, &[0x81, 0x00, 0x00, 0x00, 0x00]),
             case(0x2345, &[0x63, 0x45, 0x00, 0x00, 0x00]),
             case(0x7F, &[0x40, 0x7F, 0x00, 0x00, 0x00]),
         )]
@@ -609,4 +610,34 @@ pub mod serialize {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use proptest::prelude::*;
+    use std::num::NonZeroU32;
 
+    proptest! {
+        #[test]
+        fn write_read_eq_element_id(value in 1u32..((1u32 << 28)-1)) {
+            let mut buffer = [0x00u8; 5];
+
+            let (_output, _bytelen) = serialize::element_id(
+                &mut buffer[..],
+                NonZeroU32::new(value).expect("`NonZeroU32::new` failed"),
+            ).expect("failed to write value");
+            let (_input, result) = parse::element_id(&buffer[..]).expect("failed to read value");
+
+            prop_assert_eq!(result, value);
+        }
+
+        #[test]
+        fn write_read_eq_element_len(value in 1u64..((1u64 << 56)-1)) {
+            let mut buffer = [0x00u8; 9];
+
+            let (_output, _bytelen) = serialize::element_len(&mut buffer[..], value, None).expect("failed to write value");
+            let (_input, result) = parse::element_len(&buffer[..]).expect("failed to read value");
+
+            prop_assert_eq!(result, value);
+        }
+    }
+}
