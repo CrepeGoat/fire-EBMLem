@@ -1,4 +1,4 @@
-use std::cmp::{max, min};
+use std::cmp::{max, min, Ordering};
 use std::mem::size_of;
 use std::num::NonZeroU32;
 
@@ -32,6 +32,14 @@ fn give_bytes<'a>(output: &'a mut [u8], source: &[u8]) -> IResult<&'a mut [u8], 
     output[..source.len()].copy_from_slice(source);
 
     Ok((&mut output[source.len()..], ()))
+}
+
+fn skip_bytes<'a>(output: &'a mut [u8], length: usize) -> IResult<&'a mut [u8], (), ()> {
+    if output.len() < length {
+        return Err(Err::Incomplete(Needed::new(length - output.len())));
+    }
+
+    Ok((&mut output[length..], ()))
 }
 
 fn vlen_int(
@@ -126,8 +134,21 @@ pub fn float64(output: &mut [u8], value: f64, length: usize) -> IResult<&mut [u8
     give_bytes(output, &source[..])
 }
 
-pub fn string<'a>(output: &'a mut [u8], value: &str) -> IResult<&'a mut [u8], (), ()> {
-    give_bytes(output, value.as_bytes())
+pub fn string<'a>(
+    output: &'a mut [u8],
+    value: &str,
+    length: usize,
+) -> IResult<&'a mut [u8], (), ()> {
+    let value = value.as_bytes();
+    match length.cmp(&value.len()) {
+        Ordering::Less => Err(nom::Err::Error(())),
+        Ordering::Equal => give_bytes(output, value),
+        Ordering::Greater => {
+            let (output, _) = give_bytes(output, value)?;
+            let (output, _) = give_bytes(output, b"\0")?; // null-terminate the string
+            skip_bytes(output, length - (value.len() + 1))
+        }
+    }
 }
 
 pub fn date(output: &mut [u8], value: i64, length: usize) -> IResult<&mut [u8], (), ()> {
@@ -236,12 +257,12 @@ mod tests {
     }
 
     #[rstest(value, expt_output,
-        case(&"hello", &[0x68, 0x65, 0x6C, 0x6C, 0x6F, 0x00, 0x00, 0x00, 0x00]),
-        case(&"え？", &[0xE3, 0x81, 0x88, 0xEF, 0xBC, 0x9F, 0x00, 0x00, 0x00]),
+        case(&"hello", &[0x68, 0x65, 0x6C, 0x6C, 0x6F, 0x00, 0xFF, 0xFF, 0xFF]),
+        case(&"え？", &[0xE3, 0x81, 0x88, 0xEF, 0xBC, 0x9F, 0xFF, 0xFF, 0xFF]),
     )]
     fn test_string(value: &str, expt_output: &[u8]) {
-        let mut output = [0x00u8; 9];
-        let result = string(&mut output[..], value);
+        let mut output = [0xFFu8; 9];
+        let result = string(&mut output[..], value, 6);
         assert!(result.is_ok());
         assert_eq!(output, expt_output);
     }
