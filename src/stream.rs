@@ -714,10 +714,10 @@ mod tests {
         }
 
         #[test]
-        fn write_read_eq_ascii(value in "[ -~]{8}") {
-            let mut buffer = [0x00u8; 9];
+        fn write_read_eq_ascii(value in "[ -~]{0,8}") {
+            let mut buffer = [0xFFu8; 9];
 
-            let (_output, _bytelen) = serialize::string(&mut buffer[..], &value).expect("failed to write value");
+            let (_output, _bytelen) = serialize::string(&mut buffer[..], &value, 8).expect("failed to write value");
             let (_input, result) = parse::ascii_str(&buffer[..], 8).expect("failed to read value");
 
             prop_assert_eq!(result, value);
