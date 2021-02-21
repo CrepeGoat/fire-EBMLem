@@ -618,7 +618,7 @@ mod tests {
 
     proptest! {
         #[test]
-        fn write_read_eq_element_id(value in 1u32..((1u32 << 28)-1)) {
+        fn write_read_eq_element_id(value in 1u32..((u32::MAX >> 4)-1)) {
             let mut buffer = [0x00u8; 5];
 
             let (_output, _bytelen) = serialize::element_id(
@@ -631,7 +631,7 @@ mod tests {
         }
 
         #[test]
-        fn write_read_eq_element_len(value in 1u64..((1u64 << 56)-1)) {
+        fn write_read_eq_element_len(value in 0u64..((u64::MAX >> 8)-1)) {
             let mut buffer = [0x00u8; 9];
 
             let (_output, _bytelen) = serialize::element_len(&mut buffer[..], value, None).expect("failed to write value");
@@ -639,5 +639,70 @@ mod tests {
 
             prop_assert_eq!(result, value);
         }
+
+        #[test]
+        fn write_read_eq_uint(value: u64) {
+            let mut buffer = [0x00u8; 9];
+
+            let (_output, _bytelen) = serialize::uint(&mut buffer[..], value, 8).expect("failed to write value");
+            let (_input, result) = parse::uint(&buffer[..], 8).expect("failed to read value");
+
+            prop_assert_eq!(result, value);
+        }
+ 
+        #[test]
+        fn write_read_eq_int(value: i64) {
+            let mut buffer = [0x00u8; 9];
+
+            let (_output, _bytelen) = serialize::int(&mut buffer[..], value, 8).expect("failed to write value");
+            let (_input, result) = parse::int(&buffer[..], 8).expect("failed to read value");
+
+            prop_assert_eq!(result, value);
+        }
+
+        #[test]
+        #[allow(clippy::float_cmp)]
+        fn write_read_eq_float32(value: f32) {
+            let mut buffer = [0x00u8; 9];
+
+            let (_output, _bytelen) = serialize::float32(&mut buffer[..], value, 4).expect("failed to write value");
+            let (_input, result) = parse::float32(&buffer[..], 4).expect("failed to read value");
+
+            prop_assert_eq!(result, value);
+        }
+
+        #[test]
+        #[allow(clippy::float_cmp)]
+        fn write_read_eq_float64(value: f64) {
+            let mut buffer = [0x00u8; 9];
+
+            let (_output, _bytelen) = serialize::float64(&mut buffer[..], value, 8).expect("failed to write value");
+            let (_input, result) = parse::float64(&buffer[..], 8).expect("failed to read value");
+
+            prop_assert_eq!(result, value);
+        }
+
+        #[test]
+        fn write_read_eq_date(value: i64) {
+            let mut buffer = [0x00u8; 9];
+
+            let (_output, _bytelen) = serialize::date(&mut buffer[..], value, 8).expect("failed to write value");
+            let (_input, result) = parse::date(&buffer[..], 8).expect("failed to read value");
+
+            prop_assert_eq!(result, value);
+        }
+
+        #[test]
+        fn write_read_eq_ascii(value in "[ -~]{8}") {
+            let mut buffer = [0x00u8; 9];
+
+            let (_output, _bytelen) = serialize::string(&mut buffer[..], &value).expect("failed to write value");
+            let (_input, result) = parse::ascii_str(&buffer[..], 8).expect("failed to read value");
+
+            prop_assert_eq!(result, value);
+        }
+
+        //#[test] fn write_read_eq_unicode
+
     }
 }
