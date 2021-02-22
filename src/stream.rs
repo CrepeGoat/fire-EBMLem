@@ -384,7 +384,7 @@ pub mod serialize {
         Ok((&mut output[source.len()..], ()))
     }
 
-    fn skip_bytes<'a>(output: &'a mut [u8], length: usize) -> IResult<&'a mut [u8], (), ()> {
+    fn skip_bytes(output: &mut [u8], length: usize) -> IResult<&mut [u8], (), ()> {
         if output.len() < length {
             return Err(Err::Incomplete(Needed::new(length - output.len())));
         }
