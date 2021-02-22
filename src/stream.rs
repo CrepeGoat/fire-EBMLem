@@ -670,7 +670,7 @@ mod tests {
 
             prop_assert_eq!(result, value);
         }
- 
+
         #[test]
         fn write_read_eq_int(value: i64) {
             let mut buffer = [0x00u8; 9];
