@@ -93,7 +93,8 @@ pub mod parse {
             // corner-case: reserved ID's
             return Ok((new_input, RESERVED_ELEMENT_ID));
         }
-        if (8 * size_of::<u32>() - (result.leading_zeros() as usize)) >= 7 * (bytelen - 1) {
+        let sig_bits = 8 * size_of::<u32>() - ((result + 1).leading_zeros() as usize);
+        if sig_bits <= 7 * (bytelen - 1) {
             // element ID's must use the smallest representation possible
             return Err(nom::Err::Error(()));
         }
@@ -277,8 +278,8 @@ pub mod parse {
 
         #[test]
         fn test_element_id() {
-            let source = [0x40, 0x01, 0xFF];
-            assert_eq!(element_id(&source[..]), Ok((&source[2..], 1)));
+            let source = [0x40, 0x7F, 0xFF];
+            assert_eq!(element_id(&source[..]), Ok((&source[2..], 0x7F)));
         }
 
         #[test]
