@@ -60,7 +60,7 @@ pub mod parse {
 
     macro_rules! make_vlen_parser {
         ($func_name:ident, $uint:ty) => {
-            fn $func_name(input: &[u8]) -> IResult<&[u8], $uint, ()> {
+            fn $func_name(input: &[u8]) -> IResult<&[u8], ($uint, usize), ()> {
                 // Parse length from stream
                 let ((input, bit_offset), len) = take_zeros(size_of::<$uint>())((input, 0))?;
                 if len >= size_of::<$uint>() {
@@ -75,7 +75,7 @@ pub mod parse {
                 buffer[size_of::<$uint>() - len - 1] = leftover_bits;
                 buffer[(size_of::<$uint>() - len)..].copy_from_slice(bytes);
 
-                Ok((input, <$uint>::from_be_bytes(buffer)))
+                Ok((input, (<$uint>::from_be_bytes(buffer), len + 1)))
             }
         };
     }
@@ -86,15 +86,14 @@ pub mod parse {
     const RESERVED_ELEMENT_ID: u32 = u32::MAX;
 
     pub fn element_id(input: &[u8]) -> IResult<&[u8], u32, ()> {
-        let (new_input, result) = vlen_to_u32(input)?;
+        let (new_input, (result, bytelen)) = vlen_to_u32(input)?;
 
-        let len = unsafe { new_input.as_ptr().offset_from(input.as_ptr()) } as usize;
-        if result == 0 || result.count_ones() == 7 * (len as u32) {
+        if result == 0 || result.count_ones() == 7 * (bytelen as u32) {
             // if all non-length bits are 0's or 1's
             // corner-case: reserved ID's
             return Ok((new_input, RESERVED_ELEMENT_ID));
         }
-        if (8 * size_of::<u32>() - (result.leading_zeros() as usize)) >= 7 * (len - 1) {
+        if (8 * size_of::<u32>() - (result.leading_zeros() as usize)) >= 7 * (bytelen - 1) {
             // element ID's must use the smallest representation possible
             return Err(nom::Err::Error(()));
         }
@@ -105,10 +104,9 @@ pub mod parse {
     const UNKNOWN_ELEMENT_LEN: u64 = u64::MAX;
 
     pub fn element_len(input: &[u8]) -> IResult<&[u8], u64, ()> {
-        let (new_input, result) = vlen_to_u64(input)?;
+        let (new_input, (result, bytelen)) = vlen_to_u64(input)?;
 
-        let len = unsafe { new_input.as_ptr().offset_from(input.as_ptr()) };
-        Ok(if result.count_ones() == 7 * (len as u32) {
+        Ok(if result.count_ones() == 7 * (bytelen as u32) {
             // if all non-length bits are 1's
             // corner-case: reserved ID's
             (new_input, UNKNOWN_ELEMENT_LEN)
