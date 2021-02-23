@@ -365,7 +365,7 @@ pub mod serialize {
         let size_rem = 8 - bit_offset;
         let right_offset = size_rem.checked_sub(length).ok_or(nom::Err::Error(()))?;
 
-        let bitmask = (!(0xFFu8 >> length)) >> bit_offset;
+        let bitmask = (0xFFu8 << (8 - length)) >> bit_offset;
         output[0] = (output[0] & !bitmask) | ((source << right_offset) & bitmask);
 
         Ok(if right_offset == 0 {
