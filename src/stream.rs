@@ -1,3 +1,9 @@
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ElementLength {
+    Known(u64),
+    Unknown,
+}
+
 pub mod parse {
     use std::cmp::min;
     use std::mem::size_of;
@@ -7,6 +13,8 @@ pub mod parse {
         bits::streaming::take as take_bits, bytes::streaming::take as take_bytes,
         error::ParseError, Err, IResult, InputIter, InputLength, Needed, Slice, ToUsize,
     };
+
+    use super::ElementLength;
 
     fn take_rem<I, E: ParseError<(I, usize)>>(
     ) -> impl Fn((I, usize)) -> IResult<(I, usize), (u8, usize), E>
@@ -102,17 +110,16 @@ pub mod parse {
         Ok((new_input, result))
     }
 
-    const UNKNOWN_ELEMENT_LEN: u64 = u64::MAX;
-
-    pub fn element_len(input: &[u8]) -> IResult<&[u8], u64, ()> {
+    pub fn element_len(input: &[u8]) -> IResult<&[u8], ElementLength, ()> {
+        use ElementLength::*;
         let (new_input, (result, bytelen)) = vlen_to_u64(input)?;
 
         Ok(if result.count_ones() == 7 * (bytelen as u32) {
             // if all non-length bits are 1's
             // corner-case: reserved ID's
-            (new_input, UNKNOWN_ELEMENT_LEN)
+            (new_input, Unknown)
         } else {
-            (new_input, result)
+            (new_input, Known(result))
         })
     }
 
@@ -285,7 +292,7 @@ pub mod parse {
         #[test]
         fn test_element_len() {
             let source = [0x40, 0x01, 0xFF];
-            assert_eq!(element_len(&source[..]), Ok((&source[2..], 1)));
+            assert_eq!(element_len(&source[..]), Ok((&source[2..], ElementLength::Known(1))));
         }
 
         #[test]
@@ -354,6 +361,8 @@ pub mod serialize {
 
     use nom::{Err, IResult, Needed};
 
+    use super::ElementLength;
+
     fn give_bits(
         (output, bit_offset): (&mut [u8], usize),
         (source, length): (u8, usize),
@@ -418,7 +427,7 @@ pub mod serialize {
         let source = value.to_be_bytes();
         let byte_offset = size_of::<u64>() - vint_len;
         let ((output, bit_offset), _) =
-            give_bits((output, bit_offset), (source[byte_offset], bit_offset.wrapping_neg() % 8))?;
+            give_bits((output, bit_offset), (source[byte_offset], bit_offset.wrapping_neg() % 8))?; // write nothing for bit_offset = 0
         assert_eq!(bit_offset, 0); // -> safe to operate on the byte-level
         let (output, _) = give_bytes(output, &source[byte_offset + 1..])?;
 
@@ -427,22 +436,31 @@ pub mod serialize {
 
     pub fn element_id(output: &mut [u8], value: NonZeroU32) -> IResult<&mut [u8], usize, ()> {
         let value = value.get();
-        vlen_int(
-            output,
-            value.into(),
-            Some(((value.count_ones() / 7) + 1) as usize), // ensures that VINT_DATA of id's are not all 1's
-            Some(4),
-        )
+        let min_bytelen = (value.count_ones() / 7 + 1) as usize; // ensures that VINT_DATA of id's are not all 1's
+
+        vlen_int(output, value.into(), Some(min_bytelen), Some(4))
     }
 
     pub fn element_len(
         output: &mut [u8],
-        value: u64,
+        value: ElementLength,
         bytelen: Option<usize>,
     ) -> IResult<&mut [u8], usize, ()> {
-        let min_bytelen = (value.count_ones() / 7 + 1) as usize;
+        use ElementLength::*;
+        
+        match value {
+            Unknown => {
+                let bytelen = bytelen.unwrap_or(1);
+                let value = !(u64::MAX << (7 * bytelen));
 
-        vlen_int(output, value, Some(bytelen.map_or(min_bytelen, |x| max(x, min_bytelen))), Some(8))
+                vlen_int(output, value, Some(bytelen), Some(8))
+            },
+            Known(value) => {
+                let min_bytelen = (value.count_ones() / 7 + 1) as usize; // ensures that VINT_DATA of len's are not all 1's
+
+                vlen_int(output, value, Some(bytelen.map_or(min_bytelen, |x| max(x, min_bytelen))), Some(8))
+            },
+        }
     }
 
     pub fn uint(output: &mut [u8], value: u64, length: usize) -> IResult<&mut [u8], (), ()> {
@@ -556,12 +574,17 @@ pub mod serialize {
         }
 
         #[rstest(value, length, expt_output,
-            case(0x2345, None, &[0x63, 0x45, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
-            case(0x7F, None, &[0x40, 0x7F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
-            case(0x7F, Some(3), &[0x20, 0x00, 0x7F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
-            case(0x0001_FFFF_FFFF_FFFF, None, &[0x01, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00]),
+            case(ElementLength::Known(0x2345), None, &[0x63, 0x45, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+            case(ElementLength::Known(0x7F), None, &[0x40, 0x7F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+            case(ElementLength::Known(0x7F), Some(3), &[0x20, 0x00, 0x7F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+            case(ElementLength::Known(0x0001_FFFF_FFFF_FFFF), None, &[0x01, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00]),
+            
+            case(ElementLength::Unknown, None, &[0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+            case(ElementLength::Unknown, Some(1), &[0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+            case(ElementLength::Unknown, Some(2), &[0x7F, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+            case(ElementLength::Unknown, Some(8), &[0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00]),
         )]
-        fn test_element_len(value: u64, length: Option<usize>, expt_output: &[u8]) {
+        fn test_element_len(value: ElementLength, length: Option<usize>, expt_output: &[u8]) {
             let mut output = [0x00u8; 9];
             let result = element_len(&mut output[..], value, length);
             assert!(result.is_ok());
@@ -655,6 +678,7 @@ mod tests {
 
         #[test]
         fn write_read_eq_element_len(value in 0u64..((u64::MAX >> 8)-1)) {
+            let value = ElementLength::Known(value);
             let mut buffer = [0x00u8; 9];
 
             let (_output, _bytelen) = serialize::element_len(&mut buffer[..], value, None).expect("failed to write value");
