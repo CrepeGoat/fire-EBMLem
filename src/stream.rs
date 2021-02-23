@@ -91,15 +91,13 @@ pub mod parse {
     make_vlen_parser!(vlen_to_u32, u32);
     make_vlen_parser!(vlen_to_u64, u64);
 
-    const RESERVED_ELEMENT_ID: u32 = u32::MAX;
-
     pub fn element_id(input: &[u8]) -> IResult<&[u8], u32, ()> {
         let (new_input, (result, bytelen)) = vlen_to_u32(input)?;
 
         if result == 0 || result.count_ones() == 7 * (bytelen as u32) {
             // if all non-length bits are 0's or 1's
             // corner-case: reserved ID's
-            return Ok((new_input, RESERVED_ELEMENT_ID));
+            return Err(nom::Err::Error(()));
         }
         let sig_bits = 8 * size_of::<u32>() - ((result + 1).leading_zeros() as usize);
         if sig_bits <= 7 * (bytelen - 1) {
