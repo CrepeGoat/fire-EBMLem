@@ -418,7 +418,7 @@ pub mod serialize {
         let source = value.to_be_bytes();
         let byte_offset = size_of::<u64>() - vint_len;
         let ((output, bit_offset), _) =
-            give_bits((output, bit_offset), (source[byte_offset], 8 - bit_offset))?;
+            give_bits((output, bit_offset), (source[byte_offset], bit_offset.wrapping_neg() % 8))?;
         assert_eq!(bit_offset, 0); // -> safe to operate on the byte-level
         let (output, _) = give_bytes(output, &source[byte_offset + 1..])?;
 
@@ -440,7 +440,9 @@ pub mod serialize {
         value: u64,
         bytelen: Option<usize>,
     ) -> IResult<&mut [u8], usize, ()> {
-        vlen_int(output, value, bytelen, Some(8))
+        let min_bytelen = (value.count_ones() / 7 + 1) as usize;
+
+        vlen_int(output, value, Some(bytelen.map_or(min_bytelen, |x| max(x, min_bytelen))), Some(8))
     }
 
     pub fn uint(output: &mut [u8], value: u64, length: usize) -> IResult<&mut [u8], (), ()> {
@@ -555,8 +557,9 @@ pub mod serialize {
 
         #[rstest(value, length, expt_output,
             case(0x2345, None, &[0x63, 0x45, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
-            case(0x7F, None, &[0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
-            case(0x7F, Some(2), &[0x40, 0x7F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+            case(0x7F, None, &[0x40, 0x7F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+            case(0x7F, Some(3), &[0x20, 0x00, 0x7F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+            case(0x0001_FFFF_FFFF_FFFF, None, &[0x01, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00]),
         )]
         fn test_element_len(value: u64, length: Option<usize>, expt_output: &[u8]) {
             let mut output = [0x00u8; 9];
