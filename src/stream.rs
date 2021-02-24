@@ -207,18 +207,16 @@ pub mod parse {
             let mut iter = bytes.iter().enumerate();
 
             loop {
-                if let Some((i, byte)) = iter.next() {
-                    // Terminate on null-bytes outside of a character's byte sequence
-                    if *byte == 0u8 {
-                        break i;
-                    }
-                    // Validate byte
-                    if !byte.is_ascii() {
-                        return Err(nom::Err::Error(()));
-                    }
-                } else {
-                    break length;
-                }
+                match iter.next() {
+                    // Terminate on end of sequence
+                    None => break length,
+                    // Terminate on null-bytes
+                    Some((i, 0x00)) => break i,
+                    // Error on non-ASCII
+                    Some((_, byte)) if !byte.is_ascii() => Err(nom::Err::Error(())),
+                    // Ignore valid ASCII
+                    _ => Ok(())
+                }?;
             }
         };
         let result = std::str::from_utf8(&bytes[..valid_len]).unwrap(); // guaranteed to be valid in prior loop
