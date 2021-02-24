@@ -747,7 +747,15 @@ mod tests {
             prop_assert_eq!(result, value);
         }
 
-        //#[test] fn write_read_eq_unicode
+        #[test]
+        fn write_read_eq_unicode(value in "\\PC{0,5}") {
+            let mut buffer = [0xFFu8; 21];
+
+            let (_output, _bytelen) = serialize::string(&mut buffer[..], &value, 20).expect("failed to write value");
+            let (_input, result) = parse::unicode_str(&buffer[..], 20).expect("failed to read value");
+
+            prop_assert_eq!(result, value);
+        }
 
     }
 }
