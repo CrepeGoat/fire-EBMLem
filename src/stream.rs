@@ -200,10 +200,28 @@ pub mod parse {
     }
 
     pub fn ascii_str(input: &[u8], length: usize) -> IResult<&[u8], &str, ()> {
-        let (input, result) = unicode_str(input, length)?;
-        if !result[..].is_ascii() {
-            return Err(nom::Err::Error(()));
-        }
+        let (input, bytes) = take_bytes(length)(input)?;
+
+        // Need to step through each character to find any null-bytes
+        let valid_len = {
+            let mut iter = bytes.iter().enumerate();
+
+            loop {
+                if let Some((i, byte)) = iter.next() {
+                    // Terminate on null-bytes outside of a character's byte sequence
+                    if *byte == 0u8 {
+                        break i;
+                    }
+                    // Validate byte
+                    if !byte.is_ascii() {
+                        return Err(nom::Err::Error(()));
+                    }
+                } else {
+                    break length;
+                }
+            }
+        };
+        let result = std::str::from_utf8(&bytes[..valid_len]).unwrap(); // guaranteed to be valid in prior loop
 
         Ok((input, result))
     }
