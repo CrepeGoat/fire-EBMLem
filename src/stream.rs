@@ -210,7 +210,35 @@ pub mod parse {
 
     pub fn unicode_str(input: &[u8], length: usize) -> IResult<&[u8], &str, ()> {
         let (input, bytes) = take_bytes(length)(input)?;
-        let result = std::str::from_utf8(bytes).or(Err(nom::Err::Error(())))?;
+
+        // Need to step through each character to find any null-bytes
+        // cannot simply use `std::str::from_utf8` because:
+        // - trailing bytes may be invalid -> function would error on otherwise good string
+        // - null-bytes may exist mid-character -> would incorrectly split string in middle
+        let valid_len = {
+            let mut iter = bytes.iter().enumerate();
+
+            loop {
+                if let Some((i, first_byte)) = iter.next() {
+                    // Terminate on null-bytes outside of a character's byte sequence
+                    if *first_byte == 0u8 {
+                        break i;
+                    }
+                    // Check byte length of character
+                    let leading_1s = first_byte.leading_ones() as usize;
+                    if (leading_1s >= 5) || leading_1s == 1 {
+                        return Err(nom::Err::Error(()));
+                    }
+                    // Validate bytes in character width
+                    for _ in 0..leading_1s.saturating_sub(1) {
+                        iter.next().filter(|(_i, x)| x.leading_ones() == 1).ok_or(nom::Err::Error(()))?;
+                    }
+                } else {
+                    break length;
+                }
+            }
+        };
+        let result = std::str::from_utf8(&bytes[..valid_len]).unwrap(); // guaranteed to be valid in prior loop
 
         Ok((input, result))
     }
