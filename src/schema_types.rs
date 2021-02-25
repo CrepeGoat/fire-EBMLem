@@ -1,57 +1,57 @@
 use std::ops::Bound;
 
-enum RangeDef<T> {
+pub enum RangeDef<T> {
     IsExactly(T),
     Excludes(T),
     IsWithin(Bound<T>, Bound<T>),
 }
 
-trait Element {
+pub trait Element {
     // name
     // path
-    const id: u32;
+    const ID: u32;
 
-    const minOccurs: Option<usize>;
-    const maxOccurs: Option<usize>;
-    const length: Option<usize>;
-    const recurring: Option<bool>;
-    const min_version: Option<u64>;
-    const max_version: Option<u64>;
+    const MIN_OCCURS: Option<usize>;
+    const MAX_OCCURS: Option<usize>;
+    const LENGTH: Option<RangeDef<usize>>;
+    const RECURRING: Option<bool>;
+    const MIN_VERSION: Option<u64>;
+    const MAX_VERSION: Option<u64>;
 }
 
-trait MasterElement: Element {
-    const unknown_size_allowed: Option<bool>;
-    const recursive: Option<bool>;
+pub trait MasterElement: Element {
+    const UNKNOWN_SIZE_ALLOWED: Option<bool>;
+    const RECURSIVE: Option<bool>;
 }
 
-trait UIntElement: Element {
-    const range: Option<RangeDef<u64>>;
-    const default: Option<u64>;
+pub trait UIntElement: Element {
+    const RANGE: Option<RangeDef<u64>>;
+    const DEFAULT: Option<u64>;
 }
 
-trait IntElement: Element {
-    const range: Option<RangeDef<i64>>;
-    const default: Option<i64>;
+pub trait IntElement: Element {
+    const RANGE: Option<RangeDef<i64>>;
+    const DEFAULT: Option<i64>;
 }
 
-trait FloatElement: Element {
-    const range: Option<RangeDef<f64>>;
-    const default: Option<f64>;
+pub trait FloatElement: Element {
+    const RANGE: Option<RangeDef<f64>>;
+    const DEFAULT: Option<f64>;
 }
 
-trait DateElement: Element {
-    const range: Option<RangeDef<i64>>;
-    const default: Option<i64>;
+pub trait DateElement: Element {
+    const RANGE: Option<RangeDef<i64>>;
+    const DEFAULT: Option<i64>;
 }
 
-trait StringElement: Element {
-    const default: Option<&'static str>;
+pub trait StringElement: Element {
+    const DEFAULT: Option<&'static str>;
 }
 
-trait UTF8Element: Element {
-    const default: Option<&'static str>;
+pub trait UTF8Element: Element {
+    const DEFAULT: Option<&'static str>;
 }
 
-trait BinaryElement: Element {
-    const default: Option<&'static [u8]>;
+pub trait BinaryElement: Element {
+    const DEFAULT: Option<&'static [u8]>;
 }
