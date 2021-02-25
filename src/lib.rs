@@ -1,4 +1,5 @@
 mod eg_schema;
+mod schema_types;
 mod stream;
 
 #[cfg(test)]
