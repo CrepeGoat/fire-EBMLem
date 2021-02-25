@@ -1,3 +1,4 @@
+mod eg_schema;
 mod stream;
 
 #[cfg(test)]
