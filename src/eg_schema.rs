@@ -53,3 +53,302 @@ Example schema (https://github.com/ietf-wg-cellar/ebml-specification/blob/master
  </element>
 </EBMLSchema>
 */
+
+use crate::schema_types::{
+    BinaryElement, DateElement, Element, FloatElement, IntElement, MasterElement, RangeDef,
+    StringElement, UIntElement, UTF8Element,
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Implicit Items
+
+struct EBML {}
+
+impl Element for EBML {
+    const ID: u32 = 0x1A45DFA3;
+
+    const MIN_OCCURS: Option<usize> = Some(1);
+    const MAX_OCCURS: Option<usize> = Some(1);
+    const LENGTH: Option<RangeDef<usize>> = None;
+    const RECURRING: Option<bool> = None;
+    const MIN_VERSION: Option<u64> = None;
+    const MAX_VERSION: Option<u64> = None;
+}
+
+impl MasterElement for EBML {
+    const UNKNOWN_SIZE_ALLOWED: Option<bool> = None;
+    const RECURSIVE: Option<bool> = None;
+}
+
+struct EBMLVersion {}
+
+impl Element for EBMLVersion {
+    const ID: u32 = 0x4286;
+
+    const MIN_OCCURS: Option<usize> = Some(1);
+    const MAX_OCCURS: Option<usize> = Some(1);
+    const LENGTH: Option<RangeDef<usize>> = None;
+    const RECURRING: Option<bool> = None;
+    const MIN_VERSION: Option<u64> = None;
+    const MAX_VERSION: Option<u64> = None;
+}
+
+impl UIntElement for EBMLVersion {
+    const RANGE: Option<RangeDef<u64>> = Some(RangeDef::Excludes(0));
+    const DEFAULT: Option<u64> = Some(1);
+}
+
+/*
+struct EBMLReadVersion {}
+
+impl Element for EBMLReadVersion {
+    const ID: u32 = 0x42F7;
+
+    const MIN_OCCURS: Option<usize> = Some(1);
+    const MAX_OCCURS: Option<usize> = Some(1);
+    const LENGTH: Option<RangeDef<usize>> = None;
+    const RECURRING: Option<bool> = None;
+    const MIN_VERSION: Option<u64> = None;
+    const MAX_VERSION: Option<u64> = None;
+}
+
+impl UIntElement for EBMLReadVersion {
+    const RANGE: Option<RangeDef<u64>> = Some(RangeDef::IsExactly(1));
+    const DEFAULT: Option<u64> = Some(1);
+}
+*/
+
+struct EBMLMaxIDLength {}
+
+impl Element for EBMLMaxIDLength {
+    const ID: u32 = 0x42F2;
+
+    const MIN_OCCURS: Option<usize> = Some(1);
+    const MAX_OCCURS: Option<usize> = Some(1);
+    const LENGTH: Option<RangeDef<usize>> = None;
+    const RECURRING: Option<bool> = None;
+    const MIN_VERSION: Option<u64> = None;
+    const MAX_VERSION: Option<u64> = None;
+}
+
+impl UIntElement for EBMLMaxIDLength {
+    const RANGE: Option<RangeDef<u64>> = Some(RangeDef::IsWithin(Bound(4), Bound(None)));
+    const DEFAULT: Option<u64> = Some(4);
+}
+
+/*
+struct EBMLMaxSizeLength {}
+
+impl Element for EBMLMaxSizeLength {
+    const ID: u32 = 0x42F3;
+
+    const MIN_OCCURS: Option<usize> = Some(1);
+    const MAX_OCCURS: Option<usize> = Some(1);
+    const LENGTH: Option<RangeDef<usize>> = None;
+    const RECURRING: Option<bool> = None;
+    const MIN_VERSION: Option<u64> = None;
+    const MAX_VERSION: Option<u64> = None;
+}
+
+impl UIntElement for EBMLMaxSizeLength {
+    const RANGE: Option<RangeDef<u64>> = Some(RangeDef::Excludes(0));
+    const DEFAULT: Option<u64> = Some(8);
+}
+*/
+
+struct DocType {}
+
+impl Element for DocType {
+    const ID: u32 = 0x4282;
+
+    const MIN_OCCURS: Option<usize> = Some(1);
+    const MAX_OCCURS: Option<usize> = Some(1);
+    const LENGTH: Option<RangeDef<usize>> = Some(RangeDef::IsWithin(Bound(0), Bound(None)));
+    const RECURRING: Option<bool> = None;
+    const MIN_VERSION: Option<u64> = None;
+    const MAX_VERSION: Option<u64> = None;
+}
+
+impl StringElement for DocType {
+    const DEFAULT: Option<&'static str> = None;
+}
+
+struct DocTypeVersion {}
+
+impl Element for DocTypeVersion {
+    const ID: u32 = 0x4287;
+
+    const MIN_OCCURS: Option<usize> = Some(1);
+    const MAX_OCCURS: Option<usize> = Some(1);
+    const LENGTH: Option<RangeDef<usize>> = None;
+    const RECURRING: Option<bool> = None;
+    const MIN_VERSION: Option<u64> = None;
+    const MAX_VERSION: Option<u64> = None;
+}
+
+impl UIntElement for DocTypeVersion {
+    const RANGE: Option<RangeDef<u64>> = Some(RangeDef::Excludes(0));
+    const DEFAULT: Option<u64> = Some(1);
+}
+
+struct DocTypeReadVersion {}
+
+impl Element for DocTypeReadVersion {
+    const ID: u32 = 0x4285;
+
+    const MIN_OCCURS: Option<usize> = Some(1);
+    const MAX_OCCURS: Option<usize> = Some(1);
+    const LENGTH: Option<RangeDef<usize>> = None;
+    const RECURRING: Option<bool> = None;
+    const MIN_VERSION: Option<u64> = None;
+    const MAX_VERSION: Option<u64> = None;
+}
+
+impl UIntElement for DocTypeReadVersion {
+    const RANGE: Option<RangeDef<u64>> = Some(RangeDef::Excludes(0));
+    const DEFAULT: Option<u64> = Some(1);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Explicit Items
+
+struct EBMLReadVersion {}
+
+impl Element for EBMLReadVersion {
+    const ID: u32 = 0x42F7;
+
+    const MIN_OCCURS: Option<usize> = Some(1);
+    const MAX_OCCURS: Option<usize> = Some(1);
+    const LENGTH: Option<RangeDef<usize>> = None;
+    const RECURRING: Option<bool> = None;
+    const MIN_VERSION: Option<u64> = None;
+    const MAX_VERSION: Option<u64> = None;
+}
+
+impl UIntElement for EBMLReadVersion {
+    const RANGE: Option<RangeDef<u64>> = Some(RangeDef::IsExactly(1));
+    const DEFAULT: Option<u64> = Some(1);
+}
+
+struct EBMLMaxSizeLength {}
+
+impl Element for EBMLMaxSizeLength {
+    const ID: u32 = 0x42F3;
+
+    const MIN_OCCURS: Option<usize> = Some(1);
+    const MAX_OCCURS: Option<usize> = Some(1);
+    const LENGTH: Option<RangeDef<usize>> = None;
+    const RECURRING: Option<bool> = None;
+    const MIN_VERSION: Option<u64> = None;
+    const MAX_VERSION: Option<u64> = None;
+}
+
+impl UIntElement for EBMLMaxSizeLength {
+    const RANGE: Option<RangeDef<u64>> = Some(RangeDef::IsExactly(8));
+    const DEFAULT: Option<u64> = Some(8);
+}
+
+struct Files {}
+
+impl Element for Files {
+    const ID: u32 = 0x1946696C;
+
+    const MIN_OCCURS: Option<usize> = None;
+    const MAX_OCCURS: Option<usize> = None;
+    const LENGTH: Option<RangeDef<usize>> = None;
+    const RECURRING: Option<bool> = None;
+    const MIN_VERSION: Option<u64> = None;
+    const MAX_VERSION: Option<u64> = None;
+}
+
+impl MasterElement for Files {
+    const UNKNOWN_SIZE_ALLOWED: Option<bool> = None;
+    const RECURSIVE: Option<bool> = None;
+}
+
+struct File {}
+
+impl Element for File {
+    const ID: u32 = 0x6146;
+
+    const MIN_OCCURS: Option<usize> = Some(1);
+    const MAX_OCCURS: Option<usize> = None;
+    const LENGTH: Option<RangeDef<usize>> = None;
+    const RECURRING: Option<bool> = None;
+    const MIN_VERSION: Option<u64> = None;
+    const MAX_VERSION: Option<u64> = None;
+}
+
+impl MasterElement for File {
+    const UNKNOWN_SIZE_ALLOWED: Option<bool> = None;
+    const RECURSIVE: Option<bool> = None;
+}
+
+struct FileName {}
+
+impl Element for FileName {
+    const ID: u32 = 0x614E;
+
+    const MIN_OCCURS: Option<usize> = Some(1);
+    const MAX_OCCURS: Option<usize> = None;
+    const LENGTH: Option<RangeDef<usize>> = None;
+    const RECURRING: Option<bool> = None;
+    const MIN_VERSION: Option<u64> = None;
+    const MAX_VERSION: Option<u64> = None;
+}
+
+impl UTF8Element for FileName {
+    const DEFAULT: Option<&'static str> = None;
+}
+
+struct MimeType {}
+
+impl Element for MimeType {
+    const ID: u32 = 0x464D;
+
+    const MIN_OCCURS: Option<usize> = Some(1);
+    const MAX_OCCURS: Option<usize> = None;
+    const LENGTH: Option<RangeDef<usize>> = None;
+    const RECURRING: Option<bool> = None;
+    const MIN_VERSION: Option<u64> = None;
+    const MAX_VERSION: Option<u64> = None;
+}
+
+impl StringElement for MimeType {
+    const DEFAULT: Option<&'static str> = None;
+}
+
+struct ModificationTimestamp {}
+
+impl Element for ModificationTimestamp {
+    const ID: u32 = 0x4654;
+
+    const MIN_OCCURS: Option<usize> = Some(1);
+    const MAX_OCCURS: Option<usize> = None;
+    const LENGTH: Option<RangeDef<usize>> = None;
+    const RECURRING: Option<bool> = None;
+    const MIN_VERSION: Option<u64> = None;
+    const MAX_VERSION: Option<u64> = None;
+}
+
+impl DateElement for ModificationTimestamp {
+    const RANGE: Option<RangeDef<i64>> = None;
+    const DEFAULT: Option<i64> = None;
+}
+
+struct Data {}
+
+impl Element for Data {
+    const ID: u32 = 0x4664;
+
+    const MIN_OCCURS: Option<usize> = Some(1);
+    const MAX_OCCURS: Option<usize> = None;
+    const LENGTH: Option<RangeDef<usize>> = None;
+    const RECURRING: Option<bool> = None;
+    const MIN_VERSION: Option<u64> = None;
+    const MAX_VERSION: Option<u64> = None;
+}
+
+impl BinaryElement for Data {
+    const DEFAULT: Option<&'static [u8]> = None;
+}
