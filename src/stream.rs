@@ -1,3 +1,9 @@
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ElementLength {
+    Known(u64),
+    Unknown,
+}
+
 pub mod parse {
     use std::cmp::min;
     use std::mem::size_of;
@@ -7,6 +13,8 @@ pub mod parse {
         bits::streaming::take as take_bits, bytes::streaming::take as take_bytes,
         error::ParseError, Err, IResult, InputIter, InputLength, Needed, Slice, ToUsize,
     };
+
+    use super::ElementLength;
 
     fn take_rem<I, E: ParseError<(I, usize)>>(
     ) -> impl Fn((I, usize)) -> IResult<(I, usize), (u8, usize), E>
@@ -60,7 +68,7 @@ pub mod parse {
 
     macro_rules! make_vlen_parser {
         ($func_name:ident, $uint:ty) => {
-            fn $func_name(input: &[u8]) -> IResult<&[u8], $uint, ()> {
+            fn $func_name(input: &[u8]) -> IResult<&[u8], ($uint, usize), ()> {
                 // Parse length from stream
                 let ((input, bit_offset), len) = take_zeros(size_of::<$uint>())((input, 0))?;
                 if len >= size_of::<$uint>() {
@@ -75,7 +83,7 @@ pub mod parse {
                 buffer[size_of::<$uint>() - len - 1] = leftover_bits;
                 buffer[(size_of::<$uint>() - len)..].copy_from_slice(bytes);
 
-                Ok((input, <$uint>::from_be_bytes(buffer)))
+                Ok((input, (<$uint>::from_be_bytes(buffer), len + 1)))
             }
         };
     }
@@ -83,18 +91,16 @@ pub mod parse {
     make_vlen_parser!(vlen_to_u32, u32);
     make_vlen_parser!(vlen_to_u64, u64);
 
-    const RESERVED_ELEMENT_ID: u32 = u32::MAX;
-
     pub fn element_id(input: &[u8]) -> IResult<&[u8], u32, ()> {
-        let (new_input, result) = vlen_to_u32(input)?;
+        let (new_input, (result, bytelen)) = vlen_to_u32(input)?;
 
-        let len = unsafe { new_input.as_ptr().offset_from(input.as_ptr()) } as usize;
-        if result == 0 || result.count_ones() == 7 * (len as u32) {
+        if result == 0 || result.count_ones() == 7 * (bytelen as u32) {
             // if all non-length bits are 0's or 1's
             // corner-case: reserved ID's
-            return Ok((new_input, RESERVED_ELEMENT_ID));
+            return Err(nom::Err::Error(()));
         }
-        if (8 * size_of::<u32>() - (result.leading_zeros() as usize)) >= 7 * (len - 1) {
+        let sig_bits = 8 * size_of::<u32>() - ((result + 1).leading_zeros() as usize);
+        if sig_bits <= 7 * (bytelen - 1) {
             // element ID's must use the smallest representation possible
             return Err(nom::Err::Error(()));
         }
@@ -102,18 +108,16 @@ pub mod parse {
         Ok((new_input, result))
     }
 
-    const UNKNOWN_ELEMENT_LEN: u64 = u64::MAX;
+    pub fn element_len(input: &[u8]) -> IResult<&[u8], ElementLength, ()> {
+        use ElementLength::*;
+        let (new_input, (result, bytelen)) = vlen_to_u64(input)?;
 
-    pub fn element_len(input: &[u8]) -> IResult<&[u8], u64, ()> {
-        let (new_input, result) = vlen_to_u64(input)?;
-
-        let len = unsafe { new_input.as_ptr().offset_from(input.as_ptr()) };
-        Ok(if result.count_ones() == 7 * (len as u32) {
+        Ok(if result.count_ones() == 7 * (bytelen as u32) {
             // if all non-length bits are 1's
             // corner-case: reserved ID's
-            (new_input, UNKNOWN_ELEMENT_LEN)
+            (new_input, Unknown)
         } else {
-            (new_input, result)
+            (new_input, Known(result))
         })
     }
 
@@ -196,17 +200,61 @@ pub mod parse {
     }
 
     pub fn ascii_str(input: &[u8], length: usize) -> IResult<&[u8], &str, ()> {
-        let (input, result) = unicode_str(input, length)?;
-        if !result[..].is_ascii() {
-            return Err(nom::Err::Error(()));
-        }
+        let (input, bytes) = take_bytes(length)(input)?;
+
+        // Need to step through each character to find any null-bytes
+        let valid_len = {
+            let mut iter = bytes.iter().enumerate();
+
+            loop {
+                match iter.next() {
+                    // Terminate on end of sequence
+                    None => break length,
+                    // Terminate on null-bytes
+                    Some((i, 0x00)) => break i,
+                    // Error on non-ASCII
+                    Some((_, byte)) if !byte.is_ascii() => Err(nom::Err::Error(())),
+                    // Ignore valid ASCII
+                    _ => Ok(())
+                }?;
+            }
+        };
+        let result = std::str::from_utf8(&bytes[..valid_len]).unwrap(); // guaranteed to be valid in prior loop
 
         Ok((input, result))
     }
 
     pub fn unicode_str(input: &[u8], length: usize) -> IResult<&[u8], &str, ()> {
         let (input, bytes) = take_bytes(length)(input)?;
-        let result = std::str::from_utf8(bytes).or(Err(nom::Err::Error(())))?;
+
+        // Need to step through each character to find any null-bytes
+        // cannot simply use `std::str::from_utf8` because:
+        // - trailing bytes may be invalid -> function would error on otherwise good string
+        // - null-bytes may exist mid-character -> would incorrectly split string in middle
+        let valid_len = {
+            let mut iter = bytes.iter().enumerate();
+
+            loop {
+                if let Some((i, first_byte)) = iter.next() {
+                    // Terminate on null-bytes outside of a character's byte sequence
+                    if *first_byte == 0u8 {
+                        break i;
+                    }
+                    // Check byte length of character
+                    let leading_1s = first_byte.leading_ones() as usize;
+                    if (leading_1s >= 5) || leading_1s == 1 {
+                        return Err(nom::Err::Error(()));
+                    }
+                    // Validate bytes in character width
+                    for _ in 0..leading_1s.saturating_sub(1) {
+                        iter.next().filter(|(_i, x)| x.leading_ones() == 1).ok_or(nom::Err::Error(()))?;
+                    }
+                } else {
+                    break length;
+                }
+            }
+        };
+        let result = std::str::from_utf8(&bytes[..valid_len]).unwrap(); // guaranteed to be valid in prior loop
 
         Ok((input, result))
     }
@@ -279,14 +327,14 @@ pub mod parse {
 
         #[test]
         fn test_element_id() {
-            let source = [0x40, 0x01, 0xFF];
-            assert_eq!(element_id(&source[..]), Ok((&source[2..], 1)));
+            let source = [0x40, 0x7F, 0xFF];
+            assert_eq!(element_id(&source[..]), Ok((&source[2..], 0x7F)));
         }
 
         #[test]
         fn test_element_len() {
             let source = [0x40, 0x01, 0xFF];
-            assert_eq!(element_len(&source[..]), Ok((&source[2..], 1)));
+            assert_eq!(element_len(&source[..]), Ok((&source[2..], ElementLength::Known(1))));
         }
 
         #[test]
@@ -355,6 +403,8 @@ pub mod serialize {
 
     use nom::{Err, IResult, Needed};
 
+    use super::ElementLength;
+
     fn give_bits(
         (output, bit_offset): (&mut [u8], usize),
         (source, length): (u8, usize),
@@ -366,7 +416,7 @@ pub mod serialize {
         let size_rem = 8 - bit_offset;
         let right_offset = size_rem.checked_sub(length).ok_or(nom::Err::Error(()))?;
 
-        let bitmask = (!(0xFFu8 >> length)) >> bit_offset;
+        let bitmask = (0xFFu8 << (8 - length)) >> bit_offset;
         output[0] = (output[0] & !bitmask) | ((source << right_offset) & bitmask);
 
         Ok(if right_offset == 0 {
@@ -385,7 +435,7 @@ pub mod serialize {
         Ok((&mut output[source.len()..], ()))
     }
 
-    fn skip_bytes<'a>(output: &'a mut [u8], length: usize) -> IResult<&'a mut [u8], (), ()> {
+    fn skip_bytes(output: &mut [u8], length: usize) -> IResult<&mut [u8], (), ()> {
         if output.len() < length {
             return Err(Err::Incomplete(Needed::new(length - output.len())));
         }
@@ -419,7 +469,7 @@ pub mod serialize {
         let source = value.to_be_bytes();
         let byte_offset = size_of::<u64>() - vint_len;
         let ((output, bit_offset), _) =
-            give_bits((output, bit_offset), (source[byte_offset], 8 - bit_offset))?;
+            give_bits((output, bit_offset), (source[byte_offset], bit_offset.wrapping_neg() % 8))?; // write nothing for bit_offset = 0
         assert_eq!(bit_offset, 0); // -> safe to operate on the byte-level
         let (output, _) = give_bytes(output, &source[byte_offset + 1..])?;
 
@@ -428,20 +478,31 @@ pub mod serialize {
 
     pub fn element_id(output: &mut [u8], value: NonZeroU32) -> IResult<&mut [u8], usize, ()> {
         let value = value.get();
-        vlen_int(
-            output,
-            value.into(),
-            Some(((value.count_ones() / 7) + 1) as usize), // ensures that VINT_DATA of id's are not all 1's
-            Some(4),
-        )
+        let min_bytelen = (value.count_ones() / 7 + 1) as usize; // ensures that VINT_DATA of id's are not all 1's
+
+        vlen_int(output, value.into(), Some(min_bytelen), Some(4))
     }
 
     pub fn element_len(
         output: &mut [u8],
-        value: u64,
+        value: ElementLength,
         bytelen: Option<usize>,
     ) -> IResult<&mut [u8], usize, ()> {
-        vlen_int(output, value, bytelen, Some(8))
+        use ElementLength::*;
+        
+        match value {
+            Unknown => {
+                let bytelen = bytelen.unwrap_or(1);
+                let value = !(u64::MAX << (7 * bytelen));
+
+                vlen_int(output, value, Some(bytelen), Some(8))
+            },
+            Known(value) => {
+                let min_bytelen = (value.count_ones() / 7 + 1) as usize; // ensures that VINT_DATA of len's are not all 1's
+
+                vlen_int(output, value, Some(bytelen.map_or(min_bytelen, |x| max(x, min_bytelen))), Some(8))
+            },
+        }
     }
 
     pub fn uint(output: &mut [u8], value: u64, length: usize) -> IResult<&mut [u8], (), ()> {
@@ -543,6 +604,7 @@ pub mod serialize {
         }
 
         #[rstest(value, expt_output,
+            case(0x01, &[0x81, 0x00, 0x00, 0x00, 0x00]),
             case(0x2345, &[0x63, 0x45, 0x00, 0x00, 0x00]),
             case(0x7F, &[0x40, 0x7F, 0x00, 0x00, 0x00]),
         )]
@@ -554,11 +616,17 @@ pub mod serialize {
         }
 
         #[rstest(value, length, expt_output,
-            case(0x2345, None, &[0x63, 0x45, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
-            case(0x7F, None, &[0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
-            case(0x7F, Some(2), &[0x40, 0x7F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+            case(ElementLength::Known(0x2345), None, &[0x63, 0x45, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+            case(ElementLength::Known(0x7F), None, &[0x40, 0x7F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+            case(ElementLength::Known(0x7F), Some(3), &[0x20, 0x00, 0x7F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+            case(ElementLength::Known(0x0001_FFFF_FFFF_FFFF), None, &[0x01, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00]),
+            
+            case(ElementLength::Unknown, None, &[0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+            case(ElementLength::Unknown, Some(1), &[0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+            case(ElementLength::Unknown, Some(2), &[0x7F, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+            case(ElementLength::Unknown, Some(8), &[0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00]),
         )]
-        fn test_element_len(value: u64, length: Option<usize>, expt_output: &[u8]) {
+        fn test_element_len(value: ElementLength, length: Option<usize>, expt_output: &[u8]) {
             let mut output = [0x00u8; 9];
             let result = element_len(&mut output[..], value, length);
             assert!(result.is_ok());
@@ -627,5 +695,111 @@ pub mod serialize {
             assert!(result.is_ok());
             assert_eq!(output, expt_output);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use proptest::prelude::*;
+    use std::num::NonZeroU32;
+
+    proptest! {
+        #[test]
+        fn write_read_eq_element_id(value in 1u32..((u32::MAX >> 4)-1)) {
+            let mut buffer = [0x00u8; 5];
+
+            let (_output, _bytelen) = serialize::element_id(
+                &mut buffer[..],
+                NonZeroU32::new(value).expect("`NonZeroU32::new` failed"),
+            ).expect("failed to write value");
+            let (_input, result) = parse::element_id(&buffer[..]).expect("failed to read value");
+
+            prop_assert_eq!(result, value);
+        }
+
+        #[test]
+        fn write_read_eq_element_len(value in 0u64..((u64::MAX >> 8)-1)) {
+            let value = ElementLength::Known(value);
+            let mut buffer = [0x00u8; 9];
+
+            let (_output, _bytelen) = serialize::element_len(&mut buffer[..], value, None).expect("failed to write value");
+            let (_input, result) = parse::element_len(&buffer[..]).expect("failed to read value");
+
+            prop_assert_eq!(result, value);
+        }
+
+        #[test]
+        fn write_read_eq_uint(value: u64) {
+            let mut buffer = [0x00u8; 9];
+
+            let (_output, _bytelen) = serialize::uint(&mut buffer[..], value, 8).expect("failed to write value");
+            let (_input, result) = parse::uint(&buffer[..], 8).expect("failed to read value");
+
+            prop_assert_eq!(result, value);
+        }
+
+        #[test]
+        fn write_read_eq_int(value: i64) {
+            let mut buffer = [0x00u8; 9];
+
+            let (_output, _bytelen) = serialize::int(&mut buffer[..], value, 8).expect("failed to write value");
+            let (_input, result) = parse::int(&buffer[..], 8).expect("failed to read value");
+
+            prop_assert_eq!(result, value);
+        }
+
+        #[test]
+        #[allow(clippy::float_cmp)]
+        fn write_read_eq_float32(value: f32) {
+            let mut buffer = [0x00u8; 9];
+
+            let (_output, _bytelen) = serialize::float32(&mut buffer[..], value, 4).expect("failed to write value");
+            let (_input, result) = parse::float32(&buffer[..], 4).expect("failed to read value");
+
+            prop_assert_eq!(result, value);
+        }
+
+        #[test]
+        #[allow(clippy::float_cmp)]
+        fn write_read_eq_float64(value: f64) {
+            let mut buffer = [0x00u8; 9];
+
+            let (_output, _bytelen) = serialize::float64(&mut buffer[..], value, 8).expect("failed to write value");
+            let (_input, result) = parse::float64(&buffer[..], 8).expect("failed to read value");
+
+            prop_assert_eq!(result, value);
+        }
+
+        #[test]
+        fn write_read_eq_date(value: i64) {
+            let mut buffer = [0x00u8; 9];
+
+            let (_output, _bytelen) = serialize::date(&mut buffer[..], value, 8).expect("failed to write value");
+            let (_input, result) = parse::date(&buffer[..], 8).expect("failed to read value");
+
+            prop_assert_eq!(result, value);
+        }
+
+        #[test]
+        fn write_read_eq_ascii(value in "[ -~]{0,8}") {
+            let mut buffer = [0xFFu8; 9];
+
+            let (_output, _bytelen) = serialize::string(&mut buffer[..], &value, 8).expect("failed to write value");
+            let (_input, result) = parse::ascii_str(&buffer[..], 8).expect("failed to read value");
+
+            prop_assert_eq!(result, value);
+        }
+
+        #[test]
+        fn write_read_eq_unicode(value in "\\PC{0,5}") {
+            let mut buffer = [0xFFu8; 21];
+
+            let (_output, _bytelen) = serialize::string(&mut buffer[..], &value, 20).expect("failed to write value");
+            let (_input, result) = parse::unicode_str(&buffer[..], 20).expect("failed to read value");
+
+            prop_assert_eq!(result, value);
+        }
+
     }
 }
