@@ -54,6 +54,7 @@ Example schema (https://github.com/ietf-wg-cellar/ebml-specification/blob/master
 </EBMLSchema>
 */
 
+use crate::schema_types::Bound;
 use crate::schema_types::{
     BinaryElement, DateElement, Element, FloatElement, IntElement, MasterElement, RangeDef,
     StringElement, UIntElement, UTF8Element,
@@ -132,7 +133,8 @@ impl Element for EBMLMaxIDLength {
 }
 
 impl UIntElement for EBMLMaxIDLength {
-    const RANGE: Option<RangeDef<u64>> = Some(RangeDef::IsWithin(Bound(4), Bound(None)));
+    const RANGE: Option<RangeDef<u64>> =
+        Some(RangeDef::IsWithin(Bound::Included(4), Bound::Unbounded));
     const DEFAULT: Option<u64> = Some(4);
 }
 
@@ -163,7 +165,8 @@ impl Element for DocType {
 
     const MIN_OCCURS: Option<usize> = Some(1);
     const MAX_OCCURS: Option<usize> = Some(1);
-    const LENGTH: Option<RangeDef<usize>> = Some(RangeDef::IsWithin(Bound(0), Bound(None)));
+    const LENGTH: Option<RangeDef<usize>> =
+        Some(RangeDef::IsWithin(Bound::Excluded(0), Bound::Unbounded));
     const RECURRING: Option<bool> = None;
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
@@ -207,6 +210,60 @@ impl Element for DocTypeReadVersion {
 impl UIntElement for DocTypeReadVersion {
     const RANGE: Option<RangeDef<u64>> = Some(RangeDef::Excludes(0));
     const DEFAULT: Option<u64> = Some(1);
+}
+
+struct DocTypeExtension {}
+
+impl Element for DocTypeExtension {
+    const ID: u32 = 0x4281;
+
+    const MIN_OCCURS: Option<usize> = Some(0);
+    const MAX_OCCURS: Option<usize> = None;
+    const LENGTH: Option<RangeDef<usize>> = None;
+    const RECURRING: Option<bool> = None;
+    const MIN_VERSION: Option<u64> = None;
+    const MAX_VERSION: Option<u64> = None;
+}
+
+impl MasterElement for DocTypeExtension {
+    const UNKNOWN_SIZE_ALLOWED: Option<bool> = None;
+    const RECURSIVE: Option<bool> = None;
+}
+
+struct DocTypeExtensionName {}
+
+impl Element for DocTypeExtensionName {
+    const ID: u32 = 0x4283;
+
+    const MIN_OCCURS: Option<usize> = Some(1);
+    const MAX_OCCURS: Option<usize> = Some(1);
+    const LENGTH: Option<RangeDef<usize>> =
+        Some(RangeDef::IsWithin(Bound::Included(1), Bound::Unbounded));
+    const RECURRING: Option<bool> = None;
+    const MIN_VERSION: Option<u64> = None;
+    const MAX_VERSION: Option<u64> = None;
+}
+
+impl StringElement for DocTypeExtensionName {
+    const DEFAULT: Option<&'static str> = None;
+}
+
+struct DocTypeExtensionVersion {}
+
+impl Element for DocTypeExtensionVersion {
+    const ID: u32 = 0x4284;
+
+    const MIN_OCCURS: Option<usize> = Some(1);
+    const MAX_OCCURS: Option<usize> = Some(1);
+    const LENGTH: Option<RangeDef<usize>> = None;
+    const RECURRING: Option<bool> = None;
+    const MIN_VERSION: Option<u64> = None;
+    const MAX_VERSION: Option<u64> = None;
+}
+
+impl UIntElement for DocTypeExtensionVersion {
+    const RANGE: Option<RangeDef<u64>> = Some(RangeDef::Excludes(0));
+    const DEFAULT: Option<u64> = None;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

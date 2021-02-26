@@ -1,4 +1,4 @@
-use std::ops::Bound;
+pub use std::ops::Bound;
 
 pub enum RangeDef<T> {
     IsExactly(T),
