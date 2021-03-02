@@ -27,31 +27,80 @@ pub trait MasterElement: Element {
 pub trait UIntElement: Element {
     const RANGE: Option<RangeDef<u64>>;
     const DEFAULT: Option<u64>;
+
+    fn read(&self, input: &[u8]) -> u64 {
+        todo!()
+    }
+    fn overwrite(&self, output: &mut [u8], value: u64) {
+        todo!()
+    }
 }
 
 pub trait IntElement: Element {
     const RANGE: Option<RangeDef<i64>>;
     const DEFAULT: Option<i64>;
+
+    fn read(&self, input: &[u8]) -> i64 {
+        todo!()
+    }
+    fn overwrite(&self, output: &mut [u8], value: i64) {
+        todo!()
+    }
 }
 
 pub trait FloatElement: Element {
     const RANGE: Option<RangeDef<f64>>;
     const DEFAULT: Option<f64>;
+
+    fn read(&self, input: &[u8]) -> f64 {
+        todo!()
+    }
+    fn overwrite(&self, output: &mut [u8], value: f64) {
+        todo!()
+    }
 }
 
 pub trait DateElement: Element {
     const RANGE: Option<RangeDef<i64>>;
     const DEFAULT: Option<i64>;
+
+    fn read(&self, input: &[u8]) -> i64 {
+        todo!()
+    }
+    fn overwrite(&self, output: &mut [u8], value: i64) {
+        todo!()
+    }
 }
 
 pub trait StringElement: Element {
     const DEFAULT: Option<&'static str>;
+
+    fn read(&self, input: &[u8]) -> &'static str {
+        todo!()
+    }
+    fn overwrite(&self, output: &mut [u8], value: &'static str) {
+        todo!()
+    }
 }
 
 pub trait UTF8Element: Element {
     const DEFAULT: Option<&'static str>;
+
+    fn read(&self, input: &[u8]) -> &'static str {
+        todo!()
+    }
+    fn overwrite(&self, output: &mut [u8], value: &'static str) {
+        todo!()
+    }
 }
 
 pub trait BinaryElement: Element {
     const DEFAULT: Option<&'static [u8]>;
+
+    fn read(&self, input: &[u8]) -> &'static [u8] {
+        todo!()
+    }
+    fn overwrite(&self, output: &mut [u8], value: &'static [u8]) {
+        todo!()
+    }
 }
