@@ -8,11 +8,14 @@ pub enum RangeDef<T> {
 
 pub enum ElementParsingStage<T, G> {
     Start,
-    Child(T),
-    Global(T, G)
+    Interlude,
     Finish,
+    Child(T),
+    Global(T, G),
     EndOfStream,
 }
+
+pub enum EmptyEnum {}
 
 pub trait Element {
     // name
@@ -32,8 +35,7 @@ pub trait MasterElement: Element {
     const RECURSIVE: Option<bool>;
 
     type SubElements;
-    fn inner(&self) -> &ElementParsingStage<Self::SubElements>;
-    fn inner_mut(&mut self) -> &mut ElementParsingStage<Self::SubElements>;
+    type SubGlobals;
 }
 
 pub trait UIntElement: Element {

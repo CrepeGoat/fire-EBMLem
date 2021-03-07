@@ -59,11 +59,54 @@ use crate::schema_types::{
     BinaryElement, DateElement, Element, FloatElement, IntElement, MasterElement, RangeDef,
     StringElement, UIntElement, UTF8Element,
 };
+use crate::schema_types::{ElementParsingStage, EmptyEnum};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implicit Items
 
-struct EBML {}
+// parent: None
+#[derive(Debug, Clone)]
+struct Document {
+    len_rem: usize,
+    stage: ElementParsingStage<
+        <Self as MasterElement>::SubElements,
+        <Self as MasterElement>::SubGlobals,
+    >,
+}
+
+impl Element for Document {
+    const ID: u32 = 0; // no ID for this element
+
+    const MIN_OCCURS: Option<usize> = Some(1);
+    const MAX_OCCURS: Option<usize> = Some(1);
+    const LENGTH: Option<RangeDef<usize>> = None;
+    const RECURRING: Option<bool> = None;
+    const MIN_VERSION: Option<u64> = None;
+    const MAX_VERSION: Option<u64> = None;
+}
+
+impl MasterElement for Document {
+    const UNKNOWN_SIZE_ALLOWED: Option<bool> = Some(true);
+    const RECURSIVE: Option<bool> = None;
+
+    type SubElements = Document_SubElements;
+    type SubGlobals = EmptyEnum;
+}
+
+enum Document_SubElements {
+    EBML_Variant(EBML),
+    Files_Variant(Files),
+}
+
+// parent: None
+#[derive(Debug, Clone)]
+struct EBML {
+    len_rem: usize,
+    stage: ElementParsingStage<
+        <Self as MasterElement>::SubElements,
+        <Self as MasterElement>::SubGlobals,
+    >,
+}
 
 impl Element for EBML {
     const ID: u32 = 0x1A45DFA3;
@@ -79,8 +122,24 @@ impl Element for EBML {
 impl MasterElement for EBML {
     const UNKNOWN_SIZE_ALLOWED: Option<bool> = None;
     const RECURSIVE: Option<bool> = None;
+
+    type SubElements = EBML_SubElements;
+    type SubGlobals = EmptyEnum;
 }
 
+enum EBML_SubElements {
+    EBMLVersion_Variant(EBMLVersion),
+    EBMLReadVersion_Variant(EBMLReadVersion),
+    EBMLMaxIDLength_Variant(EBMLMaxIDLength),
+    EBMLMaxSizeLength_Variant(EBMLMaxSizeLength),
+    DocType_Variant(DocType),
+    DocTypeVersion_Variant(DocTypeVersion),
+    DocTypeReadVersion_Variant(DocTypeReadVersion),
+    DocTypeExtension_Variant(DocTypeExtension),
+}
+
+// parent: EBML
+#[derive(Debug, Clone)]
 struct EBMLVersion {}
 
 impl Element for EBMLVersion {
@@ -100,6 +159,8 @@ impl UIntElement for EBMLVersion {
 }
 
 /*
+// parent: EBML
+#[derive(Debug, Clone)]
 struct EBMLReadVersion {}
 
 impl Element for EBMLReadVersion {
@@ -119,6 +180,8 @@ impl UIntElement for EBMLReadVersion {
 }
 */
 
+// parent: EBML
+#[derive(Debug, Clone)]
 struct EBMLMaxIDLength {}
 
 impl Element for EBMLMaxIDLength {
@@ -139,6 +202,8 @@ impl UIntElement for EBMLMaxIDLength {
 }
 
 /*
+// parent: EBML
+#[derive(Debug, Clone)]
 struct EBMLMaxSizeLength {}
 
 impl Element for EBMLMaxSizeLength {
@@ -158,6 +223,8 @@ impl UIntElement for EBMLMaxSizeLength {
 }
 */
 
+// parent: EBML
+#[derive(Debug, Clone)]
 struct DocType {}
 
 impl Element for DocType {
@@ -176,6 +243,8 @@ impl StringElement for DocType {
     const DEFAULT: Option<&'static str> = None;
 }
 
+// parent: EBML
+#[derive(Debug, Clone)]
 struct DocTypeVersion {}
 
 impl Element for DocTypeVersion {
@@ -194,6 +263,8 @@ impl UIntElement for DocTypeVersion {
     const DEFAULT: Option<u64> = Some(1);
 }
 
+// parent: EBML
+#[derive(Debug, Clone)]
 struct DocTypeReadVersion {}
 
 impl Element for DocTypeReadVersion {
@@ -212,7 +283,15 @@ impl UIntElement for DocTypeReadVersion {
     const DEFAULT: Option<u64> = Some(1);
 }
 
-struct DocTypeExtension {}
+// parent: EBML
+#[derive(Debug, Clone)]
+struct DocTypeExtension {
+    len_rem: usize,
+    stage: ElementParsingStage<
+        <Self as MasterElement>::SubElements,
+        <Self as MasterElement>::SubGlobals,
+    >,
+}
 
 impl Element for DocTypeExtension {
     const ID: u32 = 0x4281;
@@ -228,8 +307,18 @@ impl Element for DocTypeExtension {
 impl MasterElement for DocTypeExtension {
     const UNKNOWN_SIZE_ALLOWED: Option<bool> = None;
     const RECURSIVE: Option<bool> = None;
+
+    type SubElements = DocTypeExtension_SubElements;
+    type SubGlobals = EmptyEnum;
 }
 
+enum DocTypeExtension_SubElements {
+    DocTypeExtensionName_Variant(DocTypeExtensionName),
+    DocTypeExtensionVersion_Variant(DocTypeExtensionVersion),
+}
+
+// parent: DocTypeExtension
+#[derive(Debug, Clone)]
 struct DocTypeExtensionName {}
 
 impl Element for DocTypeExtensionName {
@@ -248,6 +337,8 @@ impl StringElement for DocTypeExtensionName {
     const DEFAULT: Option<&'static str> = None;
 }
 
+// parent: DocTypeExtension
+#[derive(Debug, Clone)]
 struct DocTypeExtensionVersion {}
 
 impl Element for DocTypeExtensionVersion {
@@ -266,9 +357,46 @@ impl UIntElement for DocTypeExtensionVersion {
     const DEFAULT: Option<u64> = None;
 }
 
+#[derive(Debug, Clone)]
+struct CRC32 {}
+
+impl Element for CRC32 {
+    const ID: u32 = 0xBF;
+
+    const MIN_OCCURS: Option<usize> = Some(0);
+    const MAX_OCCURS: Option<usize> = Some(1);
+    const LENGTH: Option<RangeDef<usize>> = Some(RangeDef::IsExactly(4));
+    const RECURRING: Option<bool> = None;
+    const MIN_VERSION: Option<u64> = None;
+    const MAX_VERSION: Option<u64> = None;
+}
+
+impl BinaryElement for CRC32 {
+    const DEFAULT: Option<&'static [u8]> = None;
+}
+
+#[derive(Debug, Clone)]
+struct Void {}
+
+impl Element for Void {
+    const ID: u32 = 0xEC;
+
+    const MIN_OCCURS: Option<usize> = Some(0);
+    const MAX_OCCURS: Option<usize> = None;
+    const LENGTH: Option<RangeDef<usize>> = None;
+    const RECURRING: Option<bool> = None;
+    const MIN_VERSION: Option<u64> = None;
+    const MAX_VERSION: Option<u64> = None;
+}
+
+impl BinaryElement for Void {
+    const DEFAULT: Option<&'static [u8]> = None;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Explicit Items
 
+#[derive(Debug, Clone)]
 struct EBMLReadVersion {}
 
 impl Element for EBMLReadVersion {
@@ -287,6 +415,7 @@ impl UIntElement for EBMLReadVersion {
     const DEFAULT: Option<u64> = Some(1);
 }
 
+#[derive(Debug, Clone)]
 struct EBMLMaxSizeLength {}
 
 impl Element for EBMLMaxSizeLength {
@@ -305,7 +434,14 @@ impl UIntElement for EBMLMaxSizeLength {
     const DEFAULT: Option<u64> = Some(8);
 }
 
-struct Files {}
+#[derive(Debug, Clone)]
+struct Files {
+    len_rem: usize,
+    stage: ElementParsingStage<
+        <Self as MasterElement>::SubElements,
+        <Self as MasterElement>::SubGlobals,
+    >,
+}
 
 impl Element for Files {
     const ID: u32 = 0x1946696C;
@@ -321,9 +457,28 @@ impl Element for Files {
 impl MasterElement for Files {
     const UNKNOWN_SIZE_ALLOWED: Option<bool> = None;
     const RECURSIVE: Option<bool> = None;
+
+    type SubElements = Files_SubElements;
+    type SubGlobals = Files_SubGlobals;
 }
 
-struct File {}
+enum Files_SubElements {
+    File_Variant(File),
+}
+
+enum Files_SubGlobals {
+    CRC32_Variant(CRC32),
+    Void_Variant(Void),
+}
+
+#[derive(Debug, Clone)]
+struct File {
+    len_rem: usize,
+    stage: ElementParsingStage<
+        <Self as MasterElement>::SubElements,
+        <Self as MasterElement>::SubGlobals,
+    >,
+}
 
 impl Element for File {
     const ID: u32 = 0x6146;
@@ -339,8 +494,19 @@ impl Element for File {
 impl MasterElement for File {
     const UNKNOWN_SIZE_ALLOWED: Option<bool> = None;
     const RECURSIVE: Option<bool> = None;
+
+    type SubElements = File_SubElements;
+    type SubGlobals = EmptyEnum;
 }
 
+enum File_SubElements {
+    FileName_Variant(FileName),
+    MimeType_Variant(MimeType),
+    ModificationTimestamp_Variant(ModificationTimestamp),
+    Data_Variant(Data),
+}
+
+#[derive(Debug, Clone)]
 struct FileName {}
 
 impl Element for FileName {
@@ -358,6 +524,7 @@ impl UTF8Element for FileName {
     const DEFAULT: Option<&'static str> = None;
 }
 
+#[derive(Debug, Clone)]
 struct MimeType {}
 
 impl Element for MimeType {
@@ -375,6 +542,7 @@ impl StringElement for MimeType {
     const DEFAULT: Option<&'static str> = None;
 }
 
+#[derive(Debug, Clone)]
 struct ModificationTimestamp {}
 
 impl Element for ModificationTimestamp {
@@ -393,6 +561,7 @@ impl DateElement for ModificationTimestamp {
     const DEFAULT: Option<i64> = None;
 }
 
+#[derive(Debug, Clone)]
 struct Data {}
 
 impl Element for Data {
