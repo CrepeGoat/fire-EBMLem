@@ -6,6 +6,7 @@ pub enum RangeDef<T> {
     IsWithin(Bound<T>, Bound<T>),
 }
 
+#[derive(Debug, Clone)]
 pub enum ElementParsingStage<T, G> {
     Start,
     Interlude,
@@ -15,6 +16,7 @@ pub enum ElementParsingStage<T, G> {
     EndOfStream,
 }
 
+#[derive(Debug, Clone)]
 pub enum EmptyEnum {}
 
 pub trait Element {

@@ -66,13 +66,10 @@ use crate::schema_types::{ElementParsingStage, EmptyEnum};
 
 // parent: None
 #[derive(Debug, Clone)]
-struct Document {
-    len_rem: usize,
-    stage: ElementParsingStage<
-        <Self as MasterElement>::SubElements,
-        <Self as MasterElement>::SubGlobals,
-    >,
-}
+struct Document(
+    usize,
+    ElementParsingStage<<Self as MasterElement>::SubElements, <Self as MasterElement>::SubGlobals>,
+);
 
 impl Element for Document {
     const ID: u32 = 0; // no ID for this element
@@ -93,6 +90,7 @@ impl MasterElement for Document {
     type SubGlobals = EmptyEnum;
 }
 
+#[derive(Debug, Clone)]
 enum Document_SubElements {
     EBML_Variant(EBML),
     Files_Variant(Files),
@@ -100,13 +98,10 @@ enum Document_SubElements {
 
 // parent: None
 #[derive(Debug, Clone)]
-struct EBML {
-    len_rem: usize,
-    stage: ElementParsingStage<
-        <Self as MasterElement>::SubElements,
-        <Self as MasterElement>::SubGlobals,
-    >,
-}
+struct EBML(
+    usize,
+    ElementParsingStage<<Self as MasterElement>::SubElements, <Self as MasterElement>::SubGlobals>,
+);
 
 impl Element for EBML {
     const ID: u32 = 0x1A45DFA3;
@@ -127,6 +122,7 @@ impl MasterElement for EBML {
     type SubGlobals = EmptyEnum;
 }
 
+#[derive(Debug, Clone)]
 enum EBML_SubElements {
     EBMLVersion_Variant(EBMLVersion),
     EBMLReadVersion_Variant(EBMLReadVersion),
@@ -285,13 +281,10 @@ impl UIntElement for DocTypeReadVersion {
 
 // parent: EBML
 #[derive(Debug, Clone)]
-struct DocTypeExtension {
-    len_rem: usize,
-    stage: ElementParsingStage<
-        <Self as MasterElement>::SubElements,
-        <Self as MasterElement>::SubGlobals,
-    >,
-}
+struct DocTypeExtension(
+    usize,
+    ElementParsingStage<<Self as MasterElement>::SubElements, <Self as MasterElement>::SubGlobals>,
+);
 
 impl Element for DocTypeExtension {
     const ID: u32 = 0x4281;
@@ -312,6 +305,7 @@ impl MasterElement for DocTypeExtension {
     type SubGlobals = EmptyEnum;
 }
 
+#[derive(Debug, Clone)]
 enum DocTypeExtension_SubElements {
     DocTypeExtensionName_Variant(DocTypeExtensionName),
     DocTypeExtensionVersion_Variant(DocTypeExtensionVersion),
@@ -435,13 +429,10 @@ impl UIntElement for EBMLMaxSizeLength {
 }
 
 #[derive(Debug, Clone)]
-struct Files {
-    len_rem: usize,
-    stage: ElementParsingStage<
-        <Self as MasterElement>::SubElements,
-        <Self as MasterElement>::SubGlobals,
-    >,
-}
+struct Files(
+    usize,
+    ElementParsingStage<<Self as MasterElement>::SubElements, <Self as MasterElement>::SubGlobals>,
+);
 
 impl Element for Files {
     const ID: u32 = 0x1946696C;
@@ -462,23 +453,22 @@ impl MasterElement for Files {
     type SubGlobals = Files_SubGlobals;
 }
 
+#[derive(Debug, Clone)]
 enum Files_SubElements {
     File_Variant(File),
 }
 
+#[derive(Debug, Clone)]
 enum Files_SubGlobals {
     CRC32_Variant(CRC32),
     Void_Variant(Void),
 }
 
 #[derive(Debug, Clone)]
-struct File {
-    len_rem: usize,
-    stage: ElementParsingStage<
-        <Self as MasterElement>::SubElements,
-        <Self as MasterElement>::SubGlobals,
-    >,
-}
+struct File(
+    usize,
+    ElementParsingStage<<Self as MasterElement>::SubElements, <Self as MasterElement>::SubGlobals>,
+);
 
 impl Element for File {
     const ID: u32 = 0x6146;
@@ -499,6 +489,7 @@ impl MasterElement for File {
     type SubGlobals = EmptyEnum;
 }
 
+#[derive(Debug, Clone)]
 enum File_SubElements {
     FileName_Variant(FileName),
     MimeType_Variant(MimeType),
