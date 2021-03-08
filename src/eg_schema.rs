@@ -80,6 +80,24 @@ impl Element for Document {
     const RECURRING: Option<bool> = None;
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
+
+    fn next(&mut self) -> Option<Self> {
+        match self {
+            Self(_, ElementParsingStage::Start) | Self(_, ElementParsingStage::Interlude) => {
+                todo!()
+            }
+            Self(_, ElementParsingStage::Finish) | Self(_, ElementParsingStage::EndOfStream) => {
+                None
+            }
+            Self(length_rem, Child(variant)) => {
+                match variant
+                match e.next() {
+                    Some(e2) => Self(length_rem, e2),
+                    None => Self(length_rem, )
+                }
+            }
+        }
+    }
 }
 
 impl MasterElement for Document {

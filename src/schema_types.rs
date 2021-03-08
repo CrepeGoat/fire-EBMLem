@@ -30,6 +30,13 @@ pub trait Element {
     const RECURRING: Option<bool>;
     const MIN_VERSION: Option<u64>;
     const MAX_VERSION: Option<u64>;
+
+    fn next(&mut self)
+    where
+        Self: std::marker::Sized,
+    {
+        None
+    }
 }
 
 pub trait MasterElement: Element {
