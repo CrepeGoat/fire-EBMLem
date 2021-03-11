@@ -19,6 +19,11 @@ pub enum ElementParsingStage<T, G> {
 #[derive(Debug, Clone)]
 pub enum EmptyEnum {}
 
+pub enum ChangeElement {
+    Remove,
+    NoChange,
+}
+
 pub trait Element {
     // name
     // path
@@ -31,11 +36,14 @@ pub trait Element {
     const MIN_VERSION: Option<u64>;
     const MAX_VERSION: Option<u64>;
 
-    fn next(&mut self)
+    fn next(&mut self, stream: &[u8]) -> (ChangeElement, &[u8])
     where
         Self: std::marker::Sized,
     {
-        None
+        // Read VINT_LEN
+        // advance stream by VINT_LEN
+        // return Remove
+        todo!();
     }
 }
 

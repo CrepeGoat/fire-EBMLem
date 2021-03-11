@@ -56,10 +56,10 @@ Example schema (https://github.com/ietf-wg-cellar/ebml-specification/blob/master
 
 use crate::schema_types::Bound;
 use crate::schema_types::{
-    BinaryElement, DateElement, Element, FloatElement, IntElement, MasterElement, RangeDef,
-    StringElement, UIntElement, UTF8Element,
+    BinaryElement, DateElement, Element, MasterElement, RangeDef, StringElement, UIntElement,
+    UTF8Element,
 };
-use crate::schema_types::{ElementParsingStage, EmptyEnum};
+use crate::schema_types::{ChangeElement, ElementParsingStage, EmptyEnum};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implicit Items
@@ -81,21 +81,24 @@ impl Element for Document {
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
 
-    fn next(&mut self) -> Option<Self> {
+    fn next(&mut self, stream: &[u8]) -> ChangeElement {
         match self {
             Self(_, ElementParsingStage::Start) | Self(_, ElementParsingStage::Interlude) => {
                 todo!()
             }
             Self(_, ElementParsingStage::Finish) | Self(_, ElementParsingStage::EndOfStream) => {
-                None
+                ChangeElement::Remove
             }
-            Self(length_rem, Child(variant)) => {
-                match variant
-                match e.next() {
+            Self(length_rem, ElementParsingStage::Child(variant)) => match variant {
+                Document_SubElements::EBML_Variant(e) => match e.next(stream) {
                     Some(e2) => Self(length_rem, e2),
-                    None => Self(length_rem, )
-                }
-            }
+                    None => Self(length_rem),
+                },
+                Document_SubElements::Files_Variant(e) => match e.next(stream) {
+                    Some(e2) => Self(length_rem, e2),
+                    None => Self(length_rem),
+                },
+            },
         }
     }
 }
