@@ -1,5 +1,7 @@
 pub use std::ops::Bound;
 
+use crate::stream::{parse, ElementLength};
+
 pub enum RangeDef<T> {
     IsExactly(T),
     Excludes(T),
@@ -36,14 +38,22 @@ pub trait Element {
     const MIN_VERSION: Option<u64>;
     const MAX_VERSION: Option<u64>;
 
-    fn next(&mut self, stream: &[u8]) -> (ChangeElement, &[u8])
+    fn next<'a>(&mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], ChangeElement, ()>
     where
         Self: std::marker::Sized,
     {
         // Read VINT_LEN
         // advance stream by VINT_LEN
         // return Remove
-        todo!();
+        let (stream, len) = parse::element_len(stream)?;
+        match len {
+            ElementLength::Known(len) => {
+                let (stream, _) = nom::bytes::streaming::take(len)(stream)?;
+
+                Ok((stream, ChangeElement::Remove))
+            },
+            ElementLength::Unknown => Err(nom::Err::Failure(())),
+        }
     }
 }
 

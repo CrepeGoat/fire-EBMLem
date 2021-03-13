@@ -81,13 +81,13 @@ impl Element for Document {
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
 
-    fn next(&mut self, stream: &[u8]) -> ChangeElement {
+    fn next<'a>(&mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], ChangeElement, ()> {
         match self {
             Self(_, ElementParsingStage::Start) | Self(_, ElementParsingStage::Interlude) => {
                 todo!()
             }
             Self(_, ElementParsingStage::Finish) | Self(_, ElementParsingStage::EndOfStream) => {
-                ChangeElement::Remove
+                Ok((stream, ChangeElement::Remove))
             }
             Self(length_rem, ElementParsingStage::Child(variant)) => match variant {
                 Document_SubElements::EBML_Variant(e) => match e.next(stream) {
