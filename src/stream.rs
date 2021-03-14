@@ -215,7 +215,7 @@ pub mod parse {
                     // Error on non-ASCII
                     Some((_, byte)) if !byte.is_ascii() => Err(nom::Err::Error(())),
                     // Ignore valid ASCII
-                    _ => Ok(())
+                    _ => Ok(()),
                 }?;
             }
         };
@@ -247,7 +247,9 @@ pub mod parse {
                     }
                     // Validate bytes in character width
                     for _ in 0..leading_1s.saturating_sub(1) {
-                        iter.next().filter(|(_i, x)| x.leading_ones() == 1).ok_or(nom::Err::Error(()))?;
+                        iter.next()
+                            .filter(|(_i, x)| x.leading_ones() == 1)
+                            .ok_or(nom::Err::Error(()))?;
                     }
                 } else {
                     break length;
@@ -334,7 +336,10 @@ pub mod parse {
         #[test]
         fn test_element_len() {
             let source = [0x40, 0x01, 0xFF];
-            assert_eq!(element_len(&source[..]), Ok((&source[2..], ElementLength::Known(1))));
+            assert_eq!(
+                element_len(&source[..]),
+                Ok((&source[2..], ElementLength::Known(1)))
+            );
         }
 
         #[test]
@@ -468,8 +473,10 @@ pub mod serialize {
 
         let source = value.to_be_bytes();
         let byte_offset = size_of::<u64>() - vint_len;
-        let ((output, bit_offset), _) =
-            give_bits((output, bit_offset), (source[byte_offset], bit_offset.wrapping_neg() % 8))?; // write nothing for bit_offset = 0
+        let ((output, bit_offset), _) = give_bits(
+            (output, bit_offset),
+            (source[byte_offset], bit_offset.wrapping_neg() % 8),
+        )?; // write nothing for bit_offset = 0
         assert_eq!(bit_offset, 0); // -> safe to operate on the byte-level
         let (output, _) = give_bytes(output, &source[byte_offset + 1..])?;
 
@@ -489,19 +496,24 @@ pub mod serialize {
         bytelen: Option<usize>,
     ) -> IResult<&mut [u8], usize, ()> {
         use ElementLength::*;
-        
+
         match value {
             Unknown => {
                 let bytelen = bytelen.unwrap_or(1);
                 let value = !(u64::MAX << (7 * bytelen));
 
                 vlen_int(output, value, Some(bytelen), Some(8))
-            },
+            }
             Known(value) => {
                 let min_bytelen = (value.count_ones() / 7 + 1) as usize; // ensures that VINT_DATA of len's are not all 1's
 
-                vlen_int(output, value, Some(bytelen.map_or(min_bytelen, |x| max(x, min_bytelen))), Some(8))
-            },
+                vlen_int(
+                    output,
+                    value,
+                    Some(bytelen.map_or(min_bytelen, |x| max(x, min_bytelen))),
+                    Some(8),
+                )
+            }
         }
     }
 
@@ -620,7 +632,7 @@ pub mod serialize {
             case(ElementLength::Known(0x7F), None, &[0x40, 0x7F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
             case(ElementLength::Known(0x7F), Some(3), &[0x20, 0x00, 0x7F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
             case(ElementLength::Known(0x0001_FFFF_FFFF_FFFF), None, &[0x01, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00]),
-            
+
             case(ElementLength::Unknown, None, &[0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
             case(ElementLength::Unknown, Some(1), &[0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
             case(ElementLength::Unknown, Some(2), &[0x7F, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
