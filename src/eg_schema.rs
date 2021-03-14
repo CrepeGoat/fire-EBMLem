@@ -62,7 +62,7 @@ use crate::schema_types::{
     UIntElement, UTF8Element,
 };
 use crate::schema_types::{ElementParsingStage, EmptyEnum};
-use crate::stream::{parse, ElementLength};
+use crate::stream::{parse, stream_diff, ElementLength};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implicit Items
@@ -78,44 +78,31 @@ impl StreamState for Document {
     fn next<'a>(&mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], bool, ()> {
         match self {
             Self(_, ElementParsingStage::Start) | Self(_, ElementParsingStage::Interlude) => {
-                let (stream, id) = parse::element_id(stream)?;
-                match id {
-                    EBML::ID => {
-                        let (stream, len) = parse::element_len(stream)?;
-                        match len {
-                            ElementLength::Known(len) => {
-                                let len: usize = len.try_into().unwrap();
-                                self.0 -= len;
-                                self.1 =
-                                    ElementParsingStage::Child(Document_SubElements::EBML_Variant(
-                                        EBML(len, ElementParsingStage::Start),
-                                    ));
+                let orig_stream = stream;
 
-                                Ok((stream, false))
-                            }
-                            ElementLength::Unknown => Err(nom::Err::Failure(())),
-                        }
+                let (stream, id) = parse::element_id(stream)?;
+                let (stream, child_elem) = match id {
+                    EBML::ID => {
+                        let (stream, e) = EBML::init_from_stream(stream)?;
+                        Ok((
+                            stream,
+                            ElementParsingStage::Child(Document_SubElements::EBML_Variant(e)),
+                        ))
                     }
                     Files::ID => {
-                        let (stream, len) = parse::element_len(stream)?;
-                        match len {
-                            ElementLength::Known(len) => {
-                                let len: usize = len.try_into().unwrap();
-                                self.0 -= len;
-                                self.1 = ElementParsingStage::Child(
-                                    Document_SubElements::Files_Variant(Files(
-                                        len,
-                                        ElementParsingStage::Start,
-                                    )),
-                                );
-
-                                Ok((stream, false))
-                            }
-                            ElementLength::Unknown => Err(nom::Err::Failure(())),
-                        }
+                        let (stream, e) = Files::init_from_stream(stream)?;
+                        Ok((
+                            stream,
+                            ElementParsingStage::Child(Document_SubElements::Files_Variant(e)),
+                        ))
                     }
                     _ => Err(nom::Err::Failure(())),
-                }
+                }?;
+
+                self.0 -= stream_diff(orig_stream, stream);
+                self.1 = child_elem;
+
+                Ok((stream, false))
             }
             Self(_, ElementParsingStage::Finish) | Self(_, ElementParsingStage::EndOfStream) => {
                 Ok((stream, true))
@@ -172,6 +159,19 @@ struct EBML(
     usize,
     ElementParsingStage<<Self as MasterElement>::SubElements, <Self as MasterElement>::SubGlobals>,
 );
+
+impl EBML {
+    fn init_from_stream(stream: &[u8]) -> nom::IResult<&[u8], Self, ()> {
+        let (stream, len) = parse::element_len(stream)?;
+        match len {
+            ElementLength::Known(len) => {
+                let len: usize = len.try_into().unwrap();
+                Ok((stream, Self(len, ElementParsingStage::Start)))
+            }
+            ElementLength::Unknown => Err(nom::Err::Failure(())),
+        }
+    }
+}
 
 impl StreamState for EBML {}
 
@@ -535,6 +535,19 @@ struct Files(
     usize,
     ElementParsingStage<<Self as MasterElement>::SubElements, <Self as MasterElement>::SubGlobals>,
 );
+
+impl Files {
+    fn init_from_stream(stream: &[u8]) -> nom::IResult<&[u8], Self, ()> {
+        let (stream, len) = parse::element_len(stream)?;
+        match len {
+            ElementLength::Known(len) => {
+                let len: usize = len.try_into().unwrap();
+                Ok((stream, Self(len, ElementParsingStage::Start)))
+            }
+            ElementLength::Unknown => Err(nom::Err::Failure(())),
+        }
+    }
+}
 
 impl StreamState for Files {}
 
