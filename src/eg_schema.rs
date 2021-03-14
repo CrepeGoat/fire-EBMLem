@@ -58,8 +58,8 @@ use std::convert::TryInto;
 
 use crate::schema_types::Bound;
 use crate::schema_types::{
-    BinaryElement, DateElement, Element, MasterElement, RangeDef, StringElement, UIntElement,
-    UTF8Element,
+    BinaryElement, DateElement, Element, MasterElement, RangeDef, StreamState, StringElement,
+    UIntElement, UTF8Element,
 };
 use crate::schema_types::{ElementParsingStage, EmptyEnum};
 use crate::stream::{parse, ElementLength};
@@ -74,16 +74,7 @@ struct Document(
     ElementParsingStage<<Self as MasterElement>::SubElements, <Self as MasterElement>::SubGlobals>,
 );
 
-impl Element for Document {
-    const ID: u32 = 0; // no ID for this element
-
-    const MIN_OCCURS: Option<usize> = Some(1);
-    const MAX_OCCURS: Option<usize> = Some(1);
-    const LENGTH: Option<RangeDef<usize>> = None;
-    const RECURRING: Option<bool> = None;
-    const MIN_VERSION: Option<u64> = None;
-    const MAX_VERSION: Option<u64> = None;
-
+impl StreamState for Document {
     fn next<'a>(&mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], bool, ()> {
         match self {
             Self(_, ElementParsingStage::Start) | Self(_, ElementParsingStage::Interlude) => {
@@ -150,6 +141,17 @@ impl Element for Document {
     }
 }
 
+impl Element for Document {
+    const ID: u32 = 0; // no ID for this element
+
+    const MIN_OCCURS: Option<usize> = Some(1);
+    const MAX_OCCURS: Option<usize> = Some(1);
+    const LENGTH: Option<RangeDef<usize>> = None;
+    const RECURRING: Option<bool> = None;
+    const MIN_VERSION: Option<u64> = None;
+    const MAX_VERSION: Option<u64> = None;
+}
+
 impl MasterElement for Document {
     const UNKNOWN_SIZE_ALLOWED: Option<bool> = Some(true);
     const RECURSIVE: Option<bool> = None;
@@ -170,6 +172,8 @@ struct EBML(
     usize,
     ElementParsingStage<<Self as MasterElement>::SubElements, <Self as MasterElement>::SubGlobals>,
 );
+
+impl StreamState for EBML {}
 
 impl Element for EBML {
     const ID: u32 = 0x1A45DFA3;
@@ -206,6 +210,8 @@ enum EBML_SubElements {
 #[derive(Debug, Clone)]
 struct EBMLVersion {}
 
+impl StreamState for EBMLVersion {}
+
 impl Element for EBMLVersion {
     const ID: u32 = 0x4286;
 
@@ -227,6 +233,9 @@ impl UIntElement for EBMLVersion {
 #[derive(Debug, Clone)]
 struct EBMLReadVersion {}
 
+
+impl StreamState for EBMLReadVersion {}
+
 impl Element for EBMLReadVersion {
     const ID: u32 = 0x42F7;
 
@@ -247,6 +256,8 @@ impl UIntElement for EBMLReadVersion {
 // parent: EBML
 #[derive(Debug, Clone)]
 struct EBMLMaxIDLength {}
+
+impl StreamState for EBMLMaxIDLength {}
 
 impl Element for EBMLMaxIDLength {
     const ID: u32 = 0x42F2;
@@ -270,6 +281,9 @@ impl UIntElement for EBMLMaxIDLength {
 #[derive(Debug, Clone)]
 struct EBMLMaxSizeLength {}
 
+
+impl StreamState for EBMLMaxSizeLength {}
+
 impl Element for EBMLMaxSizeLength {
     const ID: u32 = 0x42F3;
 
@@ -291,6 +305,8 @@ impl UIntElement for EBMLMaxSizeLength {
 #[derive(Debug, Clone)]
 struct DocType {}
 
+impl StreamState for DocType {}
+
 impl Element for DocType {
     const ID: u32 = 0x4282;
 
@@ -311,6 +327,8 @@ impl StringElement for DocType {
 #[derive(Debug, Clone)]
 struct DocTypeVersion {}
 
+impl StreamState for DocTypeVersion {}
+
 impl Element for DocTypeVersion {
     const ID: u32 = 0x4287;
 
@@ -330,6 +348,8 @@ impl UIntElement for DocTypeVersion {
 // parent: EBML
 #[derive(Debug, Clone)]
 struct DocTypeReadVersion {}
+
+impl StreamState for DocTypeReadVersion {}
 
 impl Element for DocTypeReadVersion {
     const ID: u32 = 0x4285;
@@ -353,6 +373,8 @@ struct DocTypeExtension(
     usize,
     ElementParsingStage<<Self as MasterElement>::SubElements, <Self as MasterElement>::SubGlobals>,
 );
+
+impl StreamState for DocTypeExtension {}
 
 impl Element for DocTypeExtension {
     const ID: u32 = 0x4281;
@@ -383,6 +405,8 @@ enum DocTypeExtension_SubElements {
 #[derive(Debug, Clone)]
 struct DocTypeExtensionName {}
 
+impl StreamState for DocTypeExtensionName {}
+
 impl Element for DocTypeExtensionName {
     const ID: u32 = 0x4283;
 
@@ -403,6 +427,8 @@ impl StringElement for DocTypeExtensionName {
 #[derive(Debug, Clone)]
 struct DocTypeExtensionVersion {}
 
+impl StreamState for DocTypeExtensionVersion {}
+
 impl Element for DocTypeExtensionVersion {
     const ID: u32 = 0x4284;
 
@@ -422,6 +448,8 @@ impl UIntElement for DocTypeExtensionVersion {
 #[derive(Debug, Clone)]
 struct CRC32 {}
 
+impl StreamState for CRC32 {}
+
 impl Element for CRC32 {
     const ID: u32 = 0xBF;
 
@@ -439,6 +467,8 @@ impl BinaryElement for CRC32 {
 
 #[derive(Debug, Clone)]
 struct Void {}
+
+impl StreamState for Void {}
 
 impl Element for Void {
     const ID: u32 = 0xEC;
@@ -461,6 +491,8 @@ impl BinaryElement for Void {
 #[derive(Debug, Clone)]
 struct EBMLReadVersion {}
 
+impl StreamState for EBMLReadVersion {}
+
 impl Element for EBMLReadVersion {
     const ID: u32 = 0x42F7;
 
@@ -479,6 +511,8 @@ impl UIntElement for EBMLReadVersion {
 
 #[derive(Debug, Clone)]
 struct EBMLMaxSizeLength {}
+
+impl StreamState for EBMLMaxSizeLength {}
 
 impl Element for EBMLMaxSizeLength {
     const ID: u32 = 0x42F3;
@@ -501,6 +535,8 @@ struct Files(
     usize,
     ElementParsingStage<<Self as MasterElement>::SubElements, <Self as MasterElement>::SubGlobals>,
 );
+
+impl StreamState for Files {}
 
 impl Element for Files {
     const ID: u32 = 0x1946696C;
@@ -538,6 +574,8 @@ struct File(
     ElementParsingStage<<Self as MasterElement>::SubElements, <Self as MasterElement>::SubGlobals>,
 );
 
+impl StreamState for File {}
+
 impl Element for File {
     const ID: u32 = 0x6146;
 
@@ -568,6 +606,8 @@ enum File_SubElements {
 #[derive(Debug, Clone)]
 struct FileName {}
 
+impl StreamState for FileName {}
+
 impl Element for FileName {
     const ID: u32 = 0x614E;
 
@@ -585,6 +625,8 @@ impl UTF8Element for FileName {
 
 #[derive(Debug, Clone)]
 struct MimeType {}
+
+impl StreamState for MimeType {}
 
 impl Element for MimeType {
     const ID: u32 = 0x464D;
@@ -604,6 +646,8 @@ impl StringElement for MimeType {
 #[derive(Debug, Clone)]
 struct ModificationTimestamp {}
 
+impl StreamState for ModificationTimestamp {}
+
 impl Element for ModificationTimestamp {
     const ID: u32 = 0x4654;
 
@@ -622,6 +666,8 @@ impl DateElement for ModificationTimestamp {
 
 #[derive(Debug, Clone)]
 struct Data {}
+
+impl StreamState for Data {}
 
 impl Element for Data {
     const ID: u32 = 0x4664;

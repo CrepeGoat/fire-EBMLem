@@ -21,25 +21,11 @@ pub enum ElementParsingStage<T, G> {
 #[derive(Debug, Clone)]
 pub enum EmptyEnum {}
 
-pub trait Element {
-    // name
-    // path
-    const ID: u32;
-
-    const MIN_OCCURS: Option<usize>;
-    const MAX_OCCURS: Option<usize>;
-    const LENGTH: Option<RangeDef<usize>>;
-    const RECURRING: Option<bool>;
-    const MIN_VERSION: Option<u64>;
-    const MAX_VERSION: Option<u64>;
-
+pub trait StreamState {
     fn next<'a>(&mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], bool, ()>
     where
         Self: std::marker::Sized,
     {
-        // Read VINT_LEN
-        // advance stream by VINT_LEN
-        // return Remove
         let (stream, len) = parse::element_len(stream)?;
         match len {
             ElementLength::Known(len) => {
@@ -50,6 +36,19 @@ pub trait Element {
             ElementLength::Unknown => Err(nom::Err::Failure(())),
         }
     }
+}
+
+pub trait Element: StreamState {
+    // name
+    // path
+    const ID: u32;
+
+    const MIN_OCCURS: Option<usize>;
+    const MAX_OCCURS: Option<usize>;
+    const LENGTH: Option<RangeDef<usize>>;
+    const RECURRING: Option<bool>;
+    const MIN_VERSION: Option<u64>;
+    const MAX_VERSION: Option<u64>;
 }
 
 pub trait MasterElement: Element {
