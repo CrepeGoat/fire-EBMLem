@@ -136,12 +136,16 @@ impl Element for Document {
                 }?;
 
                 if ended {
-                    self.1 = ElementParsingStage::Interlude;
+                    self.1 = if *length_rem == 0 {
+                        ElementParsingStage::Finish
+                    } else {
+                        ElementParsingStage::Interlude
+                    };
                 }
 
                 Ok((stream, false))
             }
-            Self(length_rem, ElementParsingStage::Global(global, child)) => todo!(),
+            Self(_length_rem, ElementParsingStage::Global(_global, _child)) => todo!(),
         }
     }
 }
