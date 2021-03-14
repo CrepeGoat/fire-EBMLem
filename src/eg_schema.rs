@@ -54,12 +54,15 @@ Example schema (https://github.com/ietf-wg-cellar/ebml-specification/blob/master
 </EBMLSchema>
 */
 
+use std::convert::TryInto;
+
 use crate::schema_types::Bound;
 use crate::schema_types::{
     BinaryElement, DateElement, Element, MasterElement, RangeDef, StringElement, UIntElement,
     UTF8Element,
 };
-use crate::schema_types::{ChangeElement, ElementParsingStage, EmptyEnum};
+use crate::schema_types::{ElementParsingStage, EmptyEnum};
+use crate::stream::{parse, ElementLength};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implicit Items
@@ -81,24 +84,64 @@ impl Element for Document {
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
 
-    fn next<'a>(&mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], ChangeElement, ()> {
+    fn next<'a>(&mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], bool, ()> {
         match self {
             Self(_, ElementParsingStage::Start) | Self(_, ElementParsingStage::Interlude) => {
-                todo!()
+                let (stream, id) = parse::element_id(stream)?;
+                match id {
+                    EBML::ID => {
+                        let (stream, len) = parse::element_len(stream)?;
+                        match len {
+                            ElementLength::Known(len) => {
+                                let len: usize = len.try_into().unwrap();
+                                self.0 -= len;
+                                self.1 =
+                                    ElementParsingStage::Child(Document_SubElements::EBML_Variant(
+                                        EBML(len, ElementParsingStage::Start),
+                                    ));
+
+                                Ok((stream, false))
+                            }
+                            ElementLength::Unknown => Err(nom::Err::Failure(())),
+                        }
+                    }
+                    Files::ID => {
+                        let (stream, len) = parse::element_len(stream)?;
+                        match len {
+                            ElementLength::Known(len) => {
+                                let len: usize = len.try_into().unwrap();
+                                self.0 -= len;
+                                self.1 = ElementParsingStage::Child(
+                                    Document_SubElements::Files_Variant(Files(
+                                        len,
+                                        ElementParsingStage::Start,
+                                    )),
+                                );
+
+                                Ok((stream, false))
+                            }
+                            ElementLength::Unknown => Err(nom::Err::Failure(())),
+                        }
+                    }
+                    _ => Err(nom::Err::Failure(())),
+                }
             }
             Self(_, ElementParsingStage::Finish) | Self(_, ElementParsingStage::EndOfStream) => {
-                Ok((stream, ChangeElement::Remove))
+                Ok((stream, true))
             }
-            Self(length_rem, ElementParsingStage::Child(variant)) => match variant {
-                Document_SubElements::EBML_Variant(e) => match e.next(stream) {
-                    Some(e2) => Self(length_rem, e2),
-                    None => Self(length_rem),
-                },
-                Document_SubElements::Files_Variant(e) => match e.next(stream) {
-                    Some(e2) => Self(length_rem, e2),
-                    None => Self(length_rem),
-                },
-            },
+            Self(length_rem, ElementParsingStage::Child(variant)) => {
+                let (stream, ended) = match variant {
+                    Document_SubElements::EBML_Variant(e) => e.next(stream),
+                    Document_SubElements::Files_Variant(e) => e.next(stream),
+                }?;
+
+                if ended {
+                    self.1 = ElementParsingStage::Interlude;
+                }
+
+                Ok((stream, false))
+            }
+            Self(length_rem, ElementParsingStage::Global(global, child)) => todo!(),
         }
     }
 }

@@ -21,11 +21,6 @@ pub enum ElementParsingStage<T, G> {
 #[derive(Debug, Clone)]
 pub enum EmptyEnum {}
 
-pub enum ChangeElement {
-    Remove,
-    NoChange,
-}
-
 pub trait Element {
     // name
     // path
@@ -38,7 +33,7 @@ pub trait Element {
     const MIN_VERSION: Option<u64>;
     const MAX_VERSION: Option<u64>;
 
-    fn next<'a>(&mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], ChangeElement, ()>
+    fn next<'a>(&mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], bool, ()>
     where
         Self: std::marker::Sized,
     {
@@ -50,8 +45,8 @@ pub trait Element {
             ElementLength::Known(len) => {
                 let (stream, _) = nom::bytes::streaming::take(len)(stream)?;
 
-                Ok((stream, ChangeElement::Remove))
-            },
+                Ok((stream, true))
+            }
             ElementLength::Unknown => Err(nom::Err::Failure(())),
         }
     }
