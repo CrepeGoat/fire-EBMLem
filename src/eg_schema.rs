@@ -86,14 +86,14 @@ impl StreamState for Document {
                         let (stream, e) = EBML::init_from_stream(stream)?;
                         Ok((
                             stream,
-                            ElementParsingStage::Child(Document_SubElements::EBML_Variant(e)),
+                            ElementParsingStage::Child(Document_SubElements::EBML(e)),
                         ))
                     }
                     Files::ID => {
                         let (stream, e) = Files::init_from_stream(stream)?;
                         Ok((
                             stream,
-                            ElementParsingStage::Child(Document_SubElements::Files_Variant(e)),
+                            ElementParsingStage::Child(Document_SubElements::Files(e)),
                         ))
                     }
                     _ => Err(nom::Err::Failure(())),
@@ -109,8 +109,8 @@ impl StreamState for Document {
             }
             Self(length_rem, ElementParsingStage::Child(variant)) => {
                 let (stream, ended) = match variant {
-                    Document_SubElements::EBML_Variant(e) => e.next(stream),
-                    Document_SubElements::Files_Variant(e) => e.next(stream),
+                    Document_SubElements::EBML(e) => e.next(stream),
+                    Document_SubElements::Files(e) => e.next(stream),
                 }?;
 
                 if ended {
@@ -149,8 +149,8 @@ impl MasterElement for Document {
 
 #[derive(Debug, Clone)]
 enum Document_SubElements {
-    EBML_Variant(EBML),
-    Files_Variant(Files),
+    EBML(EBML),
+    Files(Files),
 }
 
 // parent: None
@@ -196,14 +196,14 @@ impl MasterElement for EBML {
 
 #[derive(Debug, Clone)]
 enum EBML_SubElements {
-    EBMLVersion_Variant(EBMLVersion),
-    EBMLReadVersion_Variant(EBMLReadVersion),
-    EBMLMaxIDLength_Variant(EBMLMaxIDLength),
-    EBMLMaxSizeLength_Variant(EBMLMaxSizeLength),
-    DocType_Variant(DocType),
-    DocTypeVersion_Variant(DocTypeVersion),
-    DocTypeReadVersion_Variant(DocTypeReadVersion),
-    DocTypeExtension_Variant(DocTypeExtension),
+    EBMLVersion(EBMLVersion),
+    EBMLReadVersion(EBMLReadVersion),
+    EBMLMaxIDLength(EBMLMaxIDLength),
+    EBMLMaxSizeLength(EBMLMaxSizeLength),
+    DocType(DocType),
+    DocTypeVersion(DocTypeVersion),
+    DocTypeReadVersion(DocTypeReadVersion),
+    DocTypeExtension(DocTypeExtension),
 }
 
 // parent: EBML
@@ -397,8 +397,8 @@ impl MasterElement for DocTypeExtension {
 
 #[derive(Debug, Clone)]
 enum DocTypeExtension_SubElements {
-    DocTypeExtensionName_Variant(DocTypeExtensionName),
-    DocTypeExtensionVersion_Variant(DocTypeExtensionVersion),
+    DocTypeExtensionName(DocTypeExtensionName),
+    DocTypeExtensionVersion(DocTypeExtensionVersion),
 }
 
 // parent: DocTypeExtension
@@ -561,7 +561,7 @@ impl StreamState for Files {
                         let (stream, e) = File::init_from_stream(stream)?;
                         Ok((
                             stream,
-                            ElementParsingStage::Child(Files_SubElements::File_Variant(e)),
+                            ElementParsingStage::Child(Files_SubElements::File(e)),
                         ))
                     }
                     _ => Err(nom::Err::Failure(())),
@@ -577,7 +577,7 @@ impl StreamState for Files {
             }
             Self(length_rem, ElementParsingStage::Child(variant)) => {
                 let (stream, ended) = match variant {
-                    Files_SubElements::File_Variant(e) => e.next(stream),
+                    Files_SubElements::File(e) => e.next(stream),
                 }?;
 
                 if ended {
@@ -616,13 +616,13 @@ impl MasterElement for Files {
 
 #[derive(Debug, Clone)]
 enum Files_SubElements {
-    File_Variant(File),
+    File(File),
 }
 
 #[derive(Debug, Clone)]
 enum Files_SubGlobals {
-    CRC32_Variant(CRC32),
-    Void_Variant(Void),
+    CRC32(CRC32),
+    Void(Void),
 }
 
 #[derive(Debug, Clone)]
@@ -656,30 +656,28 @@ impl StreamState for File {
                         let (stream, e) = FileName::init_from_stream(stream)?;
                         Ok((
                             stream,
-                            ElementParsingStage::Child(File_SubElements::FileName_Variant(e)),
+                            ElementParsingStage::Child(File_SubElements::FileName(e)),
                         ))
                     }
                     MimeType::ID => {
                         let (stream, e) = MimeType::init_from_stream(stream)?;
                         Ok((
                             stream,
-                            ElementParsingStage::Child(File_SubElements::MimeType_Variant(e)),
+                            ElementParsingStage::Child(File_SubElements::MimeType(e)),
                         ))
                     }
                     ModificationTimestamp::ID => {
                         let (stream, e) = ModificationTimestamp::init_from_stream(stream)?;
                         Ok((
                             stream,
-                            ElementParsingStage::Child(
-                                File_SubElements::ModificationTimestamp_Variant(e),
-                            ),
+                            ElementParsingStage::Child(File_SubElements::ModificationTimestamp(e)),
                         ))
                     }
                     Data::ID => {
                         let (stream, e) = Data::init_from_stream(stream)?;
                         Ok((
                             stream,
-                            ElementParsingStage::Child(File_SubElements::Data_Variant(e)),
+                            ElementParsingStage::Child(File_SubElements::Data(e)),
                         ))
                     }
                     _ => Err(nom::Err::Failure(())),
@@ -695,10 +693,10 @@ impl StreamState for File {
             }
             Self(length_rem, ElementParsingStage::Child(variant)) => {
                 let (stream, ended) = match variant {
-                    File_SubElements::FileName_Variant(e) => e.next(stream),
-                    File_SubElements::MimeType_Variant(e) => e.next(stream),
-                    File_SubElements::ModificationTimestamp_Variant(e) => e.next(stream),
-                    File_SubElements::Data_Variant(e) => e.next(stream),
+                    File_SubElements::FileName(e) => e.next(stream),
+                    File_SubElements::MimeType(e) => e.next(stream),
+                    File_SubElements::ModificationTimestamp(e) => e.next(stream),
+                    File_SubElements::Data(e) => e.next(stream),
                 }?;
 
                 if ended {
@@ -737,10 +735,10 @@ impl MasterElement for File {
 
 #[derive(Debug, Clone)]
 enum File_SubElements {
-    FileName_Variant(FileName),
-    MimeType_Variant(MimeType),
-    ModificationTimestamp_Variant(ModificationTimestamp),
-    Data_Variant(Data),
+    FileName(FileName),
+    MimeType(MimeType),
+    ModificationTimestamp(ModificationTimestamp),
+    Data(Data),
 }
 
 #[derive(Debug, Clone)]
