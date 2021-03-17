@@ -833,3 +833,32 @@ impl Element for Data {
 impl BinaryElement for Data {
     const DEFAULT: Option<&'static [u8]> = None;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_document_next() {
+        let stream = [
+            0x10, 0x1A, 0x45, 0xDF, 0xA3, // EBML id
+            0x82, // EBML length
+            0x00, 0x00, // Unread data
+        ];
+
+        let mut element = Document(stream.len(), ElementParsingStage::Interlude);
+        let result = element.next(&stream[..]);
+
+        assert_eq!(result, Ok((&stream[6..], false)));
+        assert!(matches!(
+            element,
+            Document(
+                2,
+                ElementParsingStage::Child(Document_SubElements::EBML(EBML(
+                    2,
+                    ElementParsingStage::Interlude,
+                )))
+            )
+        ));
+    }
+}
