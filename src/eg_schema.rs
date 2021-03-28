@@ -77,7 +77,10 @@ struct Document(
 impl StreamState for Document {
     fn next<'a>(&mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], bool, ()> {
         match self {
-            Self(_, ElementParsingStage::Start) | Self(_, ElementParsingStage::Interlude) => {
+            Self(0, ElementParsingStage::Interlude) | Self(_, ElementParsingStage::EndOfStream) => {
+                Ok((stream, true))
+            }
+            Self(_, ElementParsingStage::Interlude) => {
                 let orig_stream = stream;
 
                 let (stream, id) = parse::element_id(stream)?;
@@ -104,9 +107,6 @@ impl StreamState for Document {
 
                 Ok((stream, false))
             }
-            Self(_, ElementParsingStage::Finish) | Self(_, ElementParsingStage::EndOfStream) => {
-                Ok((stream, true))
-            }
             Self(length_rem, ElementParsingStage::Child(variant)) => {
                 let (stream, ended) = match variant {
                     Document_SubElements::EBML(e) => e.next(stream),
@@ -114,11 +114,7 @@ impl StreamState for Document {
                 }?;
 
                 if ended {
-                    self.1 = if *length_rem == 0 {
-                        ElementParsingStage::Finish
-                    } else {
-                        ElementParsingStage::Interlude
-                    };
+                    self.1 = ElementParsingStage::Interlude;
                 }
 
                 Ok((stream, false))
@@ -166,7 +162,7 @@ impl EBML {
         match len {
             ElementLength::Known(len) => {
                 let len: usize = len.try_into().unwrap();
-                Ok((stream, Self(len, ElementParsingStage::Start)))
+                Ok((stream, Self(len, ElementParsingStage::Interlude)))
             }
             ElementLength::Unknown => Err(nom::Err::Failure(())),
         }
@@ -542,7 +538,7 @@ impl Files {
         match len {
             ElementLength::Known(len) => {
                 let len: usize = len.try_into().unwrap();
-                Ok((stream, Self(len, ElementParsingStage::Start)))
+                Ok((stream, Self(len, ElementParsingStage::Interlude)))
             }
             ElementLength::Unknown => Err(nom::Err::Failure(())),
         }
@@ -552,7 +548,10 @@ impl Files {
 impl StreamState for Files {
     fn next<'a>(&mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], bool, ()> {
         match self {
-            Self(_, ElementParsingStage::Start) | Self(_, ElementParsingStage::Interlude) => {
+            Self(0, ElementParsingStage::Interlude) | Self(_, ElementParsingStage::EndOfStream) => {
+                Ok((stream, true))
+            }
+            Self(_, ElementParsingStage::Interlude) => {
                 let orig_stream = stream;
 
                 let (stream, id) = parse::element_id(stream)?;
@@ -572,20 +571,13 @@ impl StreamState for Files {
 
                 Ok((stream, false))
             }
-            Self(_, ElementParsingStage::Finish) | Self(_, ElementParsingStage::EndOfStream) => {
-                Ok((stream, true))
-            }
             Self(length_rem, ElementParsingStage::Child(variant)) => {
                 let (stream, ended) = match variant {
                     Files_SubElements::File(e) => e.next(stream),
                 }?;
 
                 if ended {
-                    self.1 = if *length_rem == 0 {
-                        ElementParsingStage::Finish
-                    } else {
-                        ElementParsingStage::Interlude
-                    };
+                    self.1 = ElementParsingStage::Interlude;
                 }
 
                 Ok((stream, false))
@@ -637,7 +629,7 @@ impl File {
         match len {
             ElementLength::Known(len) => {
                 let len: usize = len.try_into().unwrap();
-                Ok((stream, Self(len, ElementParsingStage::Start)))
+                Ok((stream, Self(len, ElementParsingStage::Interlude)))
             }
             ElementLength::Unknown => Err(nom::Err::Failure(())),
         }
@@ -647,7 +639,10 @@ impl File {
 impl StreamState for File {
     fn next<'a>(&mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], bool, ()> {
         match self {
-            Self(_, ElementParsingStage::Start) | Self(_, ElementParsingStage::Interlude) => {
+            Self(0, ElementParsingStage::Interlude) | Self(_, ElementParsingStage::EndOfStream) => {
+                Ok((stream, true))
+            }
+            Self(_, ElementParsingStage::Interlude) => {
                 let orig_stream = stream;
 
                 let (stream, id) = parse::element_id(stream)?;
@@ -688,9 +683,6 @@ impl StreamState for File {
 
                 Ok((stream, false))
             }
-            Self(_, ElementParsingStage::Finish) | Self(_, ElementParsingStage::EndOfStream) => {
-                Ok((stream, true))
-            }
             Self(length_rem, ElementParsingStage::Child(variant)) => {
                 let (stream, ended) = match variant {
                     File_SubElements::FileName(e) => e.next(stream),
@@ -700,11 +692,7 @@ impl StreamState for File {
                 }?;
 
                 if ended {
-                    self.1 = if *length_rem == 0 {
-                        ElementParsingStage::Finish
-                    } else {
-                        ElementParsingStage::Interlude
-                    };
+                    self.1 = ElementParsingStage::Interlude;
                 }
 
                 Ok((stream, false))

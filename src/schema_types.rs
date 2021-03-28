@@ -10,9 +10,7 @@ pub enum RangeDef<T> {
 
 #[derive(Debug, Clone)]
 pub enum ElementParsingStage<T, G> {
-    Start,
     Interlude,
-    Finish,
     Child(T),
     Global(T, G),
     EndOfStream,
