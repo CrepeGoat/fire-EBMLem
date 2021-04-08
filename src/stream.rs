@@ -100,27 +100,36 @@ pub mod parse {
     make_vlen_parser!(vlen_to_u64, u64);
 
     pub fn element_id(input: &[u8]) -> IResult<&[u8], u32, ()> {
-        let (new_input, (result, bytelen)) = vlen_to_u32(input)?;
+        let ((_, _), bytelen_m1) = take_zeros(size_of::<u32>())((input, 0))?;
 
-        if result == 0 || result.count_ones() == 7 * (bytelen as u32) {
+        if bytelen_m1 == size_of::<u32>() {
+            return Err(nom::Err::Error(()));
+        }
+        let (input, bytes) = take_bytes(bytelen_m1 + 1)(input)?;
+
+        let mut buffer = [0u8; size_of::<u32>()];
+        buffer[(size_of::<u32>() - bytes.len())..].copy_from_slice(bytes);
+        let result = u32::from_be_bytes(buffer);
+
+        if result == 0 || result.count_ones() == 1 + 7 * ((bytelen_m1 + 1) as u32) {
             // if all non-length bits are 0's or 1's
             // corner-case: reserved ID's
             return Err(nom::Err::Error(()));
         }
         let sig_bits = 8 * size_of::<u32>() - ((result + 1).leading_zeros() as usize);
-        if sig_bits <= 7 * (bytelen - 1) {
+        if sig_bits <= 7 * bytelen_m1 {
             // element ID's must use the smallest representation possible
             return Err(nom::Err::Error(()));
         }
 
-        Ok((new_input, result))
+        Ok((input, result))
     }
 
     pub fn element_len(input: &[u8]) -> IResult<&[u8], ElementLength, ()> {
         use ElementLength::*;
-        let (new_input, (result, bytelen)) = vlen_to_u64(input)?;
+        let (new_input, (result, bytelen_m1)) = vlen_to_u64(input)?;
 
-        Ok(if result.count_ones() == 7 * (bytelen as u32) {
+        Ok(if result.count_ones() == 7 * (bytelen_m1 as u32) {
             // if all non-length bits are 1's
             // corner-case: reserved ID's
             (new_input, Unknown)
@@ -335,10 +344,12 @@ pub mod parse {
             );
         }
 
-        #[test]
-        fn test_element_id() {
-            let source = [0x40, 0x7F, 0xFF];
-            assert_eq!(element_id(&source[..]), Ok((&source[2..], 0x7F)));
+        #[rstest(source, expt_result,
+            case(&[0x40, 0x7F, 0xFF], (&source[2..], 0x407F)),
+            case(&[0xDF, 0xFF], (&source[1..], 0xDF)),
+        )]
+        fn test_element_id(source: &'static [u8], expt_result: (&'static [u8], u32)) {
+            assert_eq!(element_id(&source[..]), Ok(expt_result));
         }
 
         #[test]
@@ -493,9 +504,18 @@ pub mod serialize {
 
     pub fn element_id(output: &mut [u8], value: NonZeroU32) -> IResult<&mut [u8], usize, ()> {
         let value = value.get();
-        let min_bytelen = (value.count_ones() / 7 + 1) as usize; // ensures that VINT_DATA of id's are not all 1's
 
-        vlen_int(output, value.into(), Some(min_bytelen), Some(4))
+        let bytelen = match value {
+            0x81..=0xFE => 1,
+            0x407F..=0x7FFE => 2,
+            0x203FFF..=0x3FFFFE => 3,
+            0x101FFFFF..=0x1FFFFFFE => 4,
+            _ => return Err(nom::Err::Error(())),
+        };
+        let buffer = &value.to_be_bytes()[size_of::<u32>() - bytelen..];
+        let (output, _) = give_bytes(&mut output[..buffer.len()], buffer)?;
+        
+        Ok((output, bytelen))
     }
 
     pub fn element_len(
@@ -624,9 +644,9 @@ pub mod serialize {
         }
 
         #[rstest(value, expt_output,
-            case(0x01, &[0x81, 0x00, 0x00, 0x00, 0x00]),
-            case(0x2345, &[0x63, 0x45, 0x00, 0x00, 0x00]),
-            case(0x7F, &[0x40, 0x7F, 0x00, 0x00, 0x00]),
+            case(0x81, &[0x81, 0x00, 0x00, 0x00, 0x00]),
+            case(0x6345, &[0x63, 0x45, 0x00, 0x00, 0x00]),
+            case(0x407F, &[0x40, 0x7F, 0x00, 0x00, 0x00]),
         )]
         fn test_element_id(value: u32, expt_output: &[u8]) {
             let mut output = [0x00u8; 5];
@@ -726,14 +746,65 @@ mod tests {
 
     proptest! {
         #[test]
-        fn write_read_eq_element_id(value in 1u32..((u32::MAX >> 4)-1)) {
+        fn write_read_eq_element_id_1byte(value in 0x81u32..0xFE) {
             let mut buffer = [0x00u8; 5];
 
             let (_output, _bytelen) = serialize::element_id(
                 &mut buffer[..],
                 NonZeroU32::new(value).expect("`NonZeroU32::new` failed"),
             ).expect("failed to write value");
-            let (_input, result) = parse::element_id(&buffer[..]).expect("failed to read value");
+            let (_input, result) = parse::element_id(&buffer[..]).expect(&format!(
+                "failed to read value from [{}, {}, {}, {}, {}]",
+                buffer[0], buffer[1], buffer[2], buffer[3], buffer[4],
+            )[..]);
+
+            prop_assert_eq!(result, value);
+        }
+
+        #[test]
+        fn write_read_eq_element_id_2byte(value in 0x407Fu32..0x7FFE) {
+            let mut buffer = [0x00u8; 5];
+
+            let (_output, _bytelen) = serialize::element_id(
+                &mut buffer[..],
+                NonZeroU32::new(value).expect("`NonZeroU32::new` failed"),
+            ).expect("failed to write value");
+            let (_input, result) = parse::element_id(&buffer[..]).expect(&format!(
+                "failed to read value from [{}, {}, {}, {}, {}]",
+                buffer[0], buffer[1], buffer[2], buffer[3], buffer[4],
+            )[..]);
+
+            prop_assert_eq!(result, value);
+        }
+
+        #[test]
+        fn write_read_eq_element_id_3byte(value in 0x203FFFu32..0x3FFFFE) {
+            let mut buffer = [0x00u8; 5];
+
+            let (_output, _bytelen) = serialize::element_id(
+                &mut buffer[..],
+                NonZeroU32::new(value).expect("`NonZeroU32::new` failed"),
+            ).expect("failed to write value");
+            let (_input, result) = parse::element_id(&buffer[..]).expect(&format!(
+                "failed to read value from [{}, {}, {}, {}, {}]",
+                buffer[0], buffer[1], buffer[2], buffer[3], buffer[4],
+            )[..]);
+
+            prop_assert_eq!(result, value);
+        }
+
+        #[test]
+        fn write_read_eq_element_id_4byte(value in 0x101FFFFFu32..0x1FFFFFFE) {
+            let mut buffer = [0x00u8; 5];
+
+            let (_output, _bytelen) = serialize::element_id(
+                &mut buffer[..],
+                NonZeroU32::new(value).expect("`NonZeroU32::new` failed"),
+            ).expect("failed to write value");
+            let (_input, result) = parse::element_id(&buffer[..]).expect(&format!(
+                "failed to read value from [{}, {}, {}, {}, {}]",
+                buffer[0], buffer[1], buffer[2], buffer[3], buffer[4],
+            )[..]);
 
             prop_assert_eq!(result, value);
         }
