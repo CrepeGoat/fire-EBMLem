@@ -1,5 +1,4 @@
-mod parse;
-mod write;
+mod stream;
 
 #[cfg(test)]
 mod tests {
