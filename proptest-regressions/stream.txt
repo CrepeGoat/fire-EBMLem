@@ -5,3 +5,5 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc 21e5cda1946527fac38825ed2df14a9aaa1fe3a6ac6c2bba0063c688cef5301f # shrinks to value = ""
+cc 8382043682a7528694341393f96a61dbe4d18ef4e0f41e8b840033abdec35b53 # shrinks to value = 223
+cc fe5226e0936699f49f7b1c7ce397ece2085b20093e75f50e60da4d1e69b0af6b # shrinks to value = 32735
