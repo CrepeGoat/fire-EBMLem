@@ -93,22 +93,23 @@ pub mod parse {
 
     pub fn element_id(input: &[u8]) -> IResult<&[u8], u32, ()> {
         let ((_, _), bytelen_m1) = take_zeros(size_of::<u32>())((input, 0))?;
-
         if bytelen_m1 == size_of::<u32>() {
             return Err(nom::Err::Error(()));
         }
-        let (input, bytes) = take_bytes(bytelen_m1 + 1)(input)?;
+        let bytelen = bytelen_m1 + 1;
 
+        let (input, bytes) = take_bytes(bytelen)(input)?;
         let mut buffer = [0u8; size_of::<u32>()];
         buffer[(size_of::<u32>() - bytes.len())..].copy_from_slice(bytes);
         let result = u32::from_be_bytes(buffer);
 
-        if result == 0 || result.count_ones() == 1 + 7 * ((bytelen_m1 + 1) as u32) {
+        let result_data = result ^ (1u32 << (7*bytelen));
+        if result_data == 0 || result_data.count_ones() == 7 * (bytelen as u32) {
             // if all non-length bits are 0's or 1's
             // corner-case: reserved ID's
             return Err(nom::Err::Error(()));
         }
-        let sig_bits = 8 * size_of::<u32>() - ((result + 1).leading_zeros() as usize);
+        let sig_bits = 8 * size_of::<u32>() - ((result_data + 1).leading_zeros() as usize);
         if sig_bits <= 7 * bytelen_m1 {
             // element ID's must use the smallest representation possible
             return Err(nom::Err::Error(()));
@@ -339,6 +340,20 @@ pub mod parse {
         )]
         fn test_element_id(source: &'static [u8], expt_result: (&'static [u8], u32)) {
             assert_eq!(element_id(&source[..]), Ok(expt_result));
+        }
+
+        #[rstest(source,
+            case(&[0x80]),
+            case(&[0xFF]),
+            case(&[0x40, 0x7E]),
+            case(&[0x7F, 0xFF]),
+            case(&[0x20, 0x3F, 0xFE]),
+            case(&[0x3F, 0xFF, 0xFF]),
+            case(&[0x10, 0x1F, 0xFF, 0xFE]),
+            case(&[0x1F, 0xFF, 0xFF, 0xFF]),
+        )]
+        fn test_element_id_err(source: &'static [u8]) {
+            assert_eq!(element_id(&source[..]), Err(nom::Err::Error(())));
         }
 
         #[test]
