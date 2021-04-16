@@ -59,17 +59,13 @@ use crate::schema_types::{
     BinaryElement, DateElement, Element, FloatElement, IntElement, MasterElement, RangeDef,
     StringElement, UIntElement, UTF8Element,
 };
-use crate::schema_types::{ElementParsingStage, EmptyEnum};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implicit Items
 
 // parent: None
 #[derive(Debug, Clone)]
-struct Document(
-    usize,
-    ElementParsingStage<<Self as MasterElement>::SubElements, <Self as MasterElement>::SubGlobals>,
-);
+struct Document(usize);
 
 impl Element for Document {
     const ID: u32 = 0; // no ID for this element
@@ -85,23 +81,11 @@ impl Element for Document {
 impl MasterElement for Document {
     const UNKNOWN_SIZE_ALLOWED: Option<bool> = Some(true);
     const RECURSIVE: Option<bool> = None;
-
-    type SubElements = Document_SubElements;
-    type SubGlobals = EmptyEnum;
-}
-
-#[derive(Debug, Clone)]
-enum Document_SubElements {
-    EBML_Variant(EBML),
-    Files_Variant(Files),
 }
 
 // parent: None
 #[derive(Debug, Clone)]
-struct EBML(
-    usize,
-    ElementParsingStage<<Self as MasterElement>::SubElements, <Self as MasterElement>::SubGlobals>,
-);
+struct EBML(usize, Document);
 
 impl Element for EBML {
     const ID: u32 = 0x1A45DFA3;
@@ -117,26 +101,11 @@ impl Element for EBML {
 impl MasterElement for EBML {
     const UNKNOWN_SIZE_ALLOWED: Option<bool> = None;
     const RECURSIVE: Option<bool> = None;
-
-    type SubElements = EBML_SubElements;
-    type SubGlobals = EmptyEnum;
-}
-
-#[derive(Debug, Clone)]
-enum EBML_SubElements {
-    EBMLVersion_Variant(EBMLVersion),
-    EBMLReadVersion_Variant(EBMLReadVersion),
-    EBMLMaxIDLength_Variant(EBMLMaxIDLength),
-    EBMLMaxSizeLength_Variant(EBMLMaxSizeLength),
-    DocType_Variant(DocType),
-    DocTypeVersion_Variant(DocTypeVersion),
-    DocTypeReadVersion_Variant(DocTypeReadVersion),
-    DocTypeExtension_Variant(DocTypeExtension),
 }
 
 // parent: EBML
 #[derive(Debug, Clone)]
-struct EBMLVersion {}
+struct EBMLVersion(EBML);
 
 impl Element for EBMLVersion {
     const ID: u32 = 0x4286;
@@ -178,7 +147,7 @@ impl UIntElement for EBMLReadVersion {
 
 // parent: EBML
 #[derive(Debug, Clone)]
-struct EBMLMaxIDLength {}
+struct EBMLMaxIDLength(EBML);
 
 impl Element for EBMLMaxIDLength {
     const ID: u32 = 0x42F2;
@@ -200,7 +169,7 @@ impl UIntElement for EBMLMaxIDLength {
 /*
 // parent: EBML
 #[derive(Debug, Clone)]
-struct EBMLMaxSizeLength {}
+struct EBMLMaxSizeLength(EBML);
 
 impl Element for EBMLMaxSizeLength {
     const ID: u32 = 0x42F3;
@@ -221,7 +190,7 @@ impl UIntElement for EBMLMaxSizeLength {
 
 // parent: EBML
 #[derive(Debug, Clone)]
-struct DocType {}
+struct DocType(EBML);
 
 impl Element for DocType {
     const ID: u32 = 0x4282;
@@ -241,7 +210,7 @@ impl StringElement for DocType {
 
 // parent: EBML
 #[derive(Debug, Clone)]
-struct DocTypeVersion {}
+struct DocTypeVersion(EBML);
 
 impl Element for DocTypeVersion {
     const ID: u32 = 0x4287;
@@ -261,7 +230,7 @@ impl UIntElement for DocTypeVersion {
 
 // parent: EBML
 #[derive(Debug, Clone)]
-struct DocTypeReadVersion {}
+struct DocTypeReadVersion(EBML);
 
 impl Element for DocTypeReadVersion {
     const ID: u32 = 0x4285;
@@ -281,10 +250,7 @@ impl UIntElement for DocTypeReadVersion {
 
 // parent: EBML
 #[derive(Debug, Clone)]
-struct DocTypeExtension(
-    usize,
-    ElementParsingStage<<Self as MasterElement>::SubElements, <Self as MasterElement>::SubGlobals>,
-);
+struct DocTypeExtension(usize, EBML);
 
 impl Element for DocTypeExtension {
     const ID: u32 = 0x4281;
@@ -300,20 +266,11 @@ impl Element for DocTypeExtension {
 impl MasterElement for DocTypeExtension {
     const UNKNOWN_SIZE_ALLOWED: Option<bool> = None;
     const RECURSIVE: Option<bool> = None;
-
-    type SubElements = DocTypeExtension_SubElements;
-    type SubGlobals = EmptyEnum;
-}
-
-#[derive(Debug, Clone)]
-enum DocTypeExtension_SubElements {
-    DocTypeExtensionName_Variant(DocTypeExtensionName),
-    DocTypeExtensionVersion_Variant(DocTypeExtensionVersion),
 }
 
 // parent: DocTypeExtension
 #[derive(Debug, Clone)]
-struct DocTypeExtensionName {}
+struct DocTypeExtensionName(DocTypeExtension);
 
 impl Element for DocTypeExtensionName {
     const ID: u32 = 0x4283;
@@ -333,7 +290,7 @@ impl StringElement for DocTypeExtensionName {
 
 // parent: DocTypeExtension
 #[derive(Debug, Clone)]
-struct DocTypeExtensionVersion {}
+struct DocTypeExtensionVersion(DocTypeExtension);
 
 impl Element for DocTypeExtensionVersion {
     const ID: u32 = 0x4284;
@@ -351,6 +308,7 @@ impl UIntElement for DocTypeExtensionVersion {
     const DEFAULT: Option<u64> = None;
 }
 
+/*
 #[derive(Debug, Clone)]
 struct CRC32 {}
 
@@ -386,12 +344,13 @@ impl Element for Void {
 impl BinaryElement for Void {
     const DEFAULT: Option<&'static [u8]> = None;
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Explicit Items
 
 #[derive(Debug, Clone)]
-struct EBMLReadVersion {}
+struct EBMLReadVersion(EBML);
 
 impl Element for EBMLReadVersion {
     const ID: u32 = 0x42F7;
@@ -410,7 +369,7 @@ impl UIntElement for EBMLReadVersion {
 }
 
 #[derive(Debug, Clone)]
-struct EBMLMaxSizeLength {}
+struct EBMLMaxSizeLength(EBML);
 
 impl Element for EBMLMaxSizeLength {
     const ID: u32 = 0x42F3;
@@ -429,10 +388,7 @@ impl UIntElement for EBMLMaxSizeLength {
 }
 
 #[derive(Debug, Clone)]
-struct Files(
-    usize,
-    ElementParsingStage<<Self as MasterElement>::SubElements, <Self as MasterElement>::SubGlobals>,
-);
+struct Files(usize, Document);
 
 impl Element for Files {
     const ID: u32 = 0x1946696C;
@@ -448,27 +404,10 @@ impl Element for Files {
 impl MasterElement for Files {
     const UNKNOWN_SIZE_ALLOWED: Option<bool> = None;
     const RECURSIVE: Option<bool> = None;
-
-    type SubElements = Files_SubElements;
-    type SubGlobals = Files_SubGlobals;
 }
 
 #[derive(Debug, Clone)]
-enum Files_SubElements {
-    File_Variant(File),
-}
-
-#[derive(Debug, Clone)]
-enum Files_SubGlobals {
-    CRC32_Variant(CRC32),
-    Void_Variant(Void),
-}
-
-#[derive(Debug, Clone)]
-struct File(
-    usize,
-    ElementParsingStage<<Self as MasterElement>::SubElements, <Self as MasterElement>::SubGlobals>,
-);
+struct File(usize, Files);
 
 impl Element for File {
     const ID: u32 = 0x6146;
@@ -484,21 +423,10 @@ impl Element for File {
 impl MasterElement for File {
     const UNKNOWN_SIZE_ALLOWED: Option<bool> = None;
     const RECURSIVE: Option<bool> = None;
-
-    type SubElements = File_SubElements;
-    type SubGlobals = EmptyEnum;
 }
 
 #[derive(Debug, Clone)]
-enum File_SubElements {
-    FileName_Variant(FileName),
-    MimeType_Variant(MimeType),
-    ModificationTimestamp_Variant(ModificationTimestamp),
-    Data_Variant(Data),
-}
-
-#[derive(Debug, Clone)]
-struct FileName {}
+struct FileName(File);
 
 impl Element for FileName {
     const ID: u32 = 0x614E;
@@ -516,7 +444,7 @@ impl UTF8Element for FileName {
 }
 
 #[derive(Debug, Clone)]
-struct MimeType {}
+struct MimeType(File);
 
 impl Element for MimeType {
     const ID: u32 = 0x464D;
@@ -534,7 +462,7 @@ impl StringElement for MimeType {
 }
 
 #[derive(Debug, Clone)]
-struct ModificationTimestamp {}
+struct ModificationTimestamp(File);
 
 impl Element for ModificationTimestamp {
     const ID: u32 = 0x4654;
@@ -553,7 +481,7 @@ impl DateElement for ModificationTimestamp {
 }
 
 #[derive(Debug, Clone)]
-struct Data {}
+struct Data(File);
 
 impl Element for Data {
     const ID: u32 = 0x4664;

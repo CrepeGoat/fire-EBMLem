@@ -6,19 +6,6 @@ pub enum RangeDef<T> {
     IsWithin(Bound<T>, Bound<T>),
 }
 
-#[derive(Debug, Clone)]
-pub enum ElementParsingStage<T, G> {
-    Start,
-    Interlude,
-    Finish,
-    Child(T),
-    Global(T, G),
-    EndOfStream,
-}
-
-#[derive(Debug, Clone)]
-pub enum EmptyEnum {}
-
 pub trait Element {
     // name
     // path
@@ -35,9 +22,6 @@ pub trait Element {
 pub trait MasterElement: Element {
     const UNKNOWN_SIZE_ALLOWED: Option<bool>;
     const RECURSIVE: Option<bool>;
-
-    type SubElements;
-    type SubGlobals;
 }
 
 pub trait UIntElement: Element {
