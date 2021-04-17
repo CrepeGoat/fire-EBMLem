@@ -767,3 +767,39 @@ enum Elements {
     ModificationTimestamp(ModificationTimestamp),
     Data(Data),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::*;
+
+    #[rstest(element, source, expt_result,
+        case(
+            File{bytes_left: 5, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}},
+            &[0x61, 0x4E, 0x82, 0xFF, 0xFF],
+            (&[0xFF, 0xFF][..], FileName{bytes_left: 2, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}}.into())
+        ),
+        case(
+            File{bytes_left: 5, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}},
+            &[0x46, 0x4D, 0x82, 0xFF, 0xFF],
+            (&[0xFF, 0xFF][..], MimeType{bytes_left: 2, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}}.into())
+        ),
+        case(
+            File{bytes_left: 5, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}},
+            &[0x46, 0x54, 0x82, 0xFF, 0xFF],
+            (&[0xFF, 0xFF][..], ModificationTimestamp{bytes_left: 2, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}}.into())
+        ),
+        case(
+            File{bytes_left: 5, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}},
+            &[0x46, 0x64, 0x82, 0xFF, 0xFF],
+            (&[0xFF, 0xFF][..], Data{bytes_left: 2, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}}.into())
+        ),
+    )]
+    fn test_file_next(
+        element: File,
+        source: &'static [u8],
+        expt_result: (&'static [u8], Elements),
+    ) {
+        assert_eq!(element.next(source).unwrap(), expt_result);
+    }
+}
