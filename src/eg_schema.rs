@@ -631,6 +631,11 @@ impl File {
             }
         }
     }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
 }
 
 // parent: File
@@ -801,5 +806,20 @@ mod tests {
         expt_result: (&'static [u8], Elements),
     ) {
         assert_eq!(element.next(source).unwrap(), expt_result);
+    }
+
+    #[rstest(element, source, expt_result,
+        case(
+            File{bytes_left: 5, parent: Files{bytes_left: 1, parent: Document{bytes_left: 0}}},
+            &[0x61, 0x4E, 0x82, 0xFF, 0xFF, 0xFF],
+            (&[0xFF][..], Files{bytes_left: 1, parent: Document{bytes_left: 0}}.into())
+        ),
+    )]
+    fn test_file_skip(
+        element: File,
+        source: &'static [u8],
+        expt_result: (&'static [u8], Elements),
+    ) {
+        assert_eq!(element.skip(source).unwrap(), expt_result);
     }
 }
