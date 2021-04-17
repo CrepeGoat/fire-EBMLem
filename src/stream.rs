@@ -1,7 +1,15 @@
+use std::convert::TryInto;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ElementLength {
     Known(u64),
     Unknown,
+}
+
+pub fn stream_diff<'a>(first: &'a [u8], second: &'a [u8]) -> usize {
+    unsafe { second.as_ptr().offset_from(first.as_ptr()) }
+        .try_into()
+        .unwrap()
 }
 
 pub mod parse {
