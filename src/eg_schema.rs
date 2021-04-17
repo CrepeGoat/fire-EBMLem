@@ -67,7 +67,7 @@ use crate::stream::{parse, stream_diff};
 // Implicit Items
 
 // parent: None
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct Document {
     bytes_left: usize,
 }
@@ -89,7 +89,7 @@ impl MasterElement for Document {
 }
 
 // parent: None
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct EBML {
     bytes_left: usize,
     parent: Document,
@@ -118,7 +118,7 @@ impl From<EBML> for Elements {
 }
 
 // parent: EBML
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct EBMLVersion {
     bytes_left: usize,
     parent: EBML,
@@ -148,7 +148,7 @@ impl From<EBMLVersion> for Elements {
 
 /*
 // parent: EBML
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct EBMLReadVersion {
     bytes_left: usize,
     parent: EBML,
@@ -179,7 +179,7 @@ impl From<EBMLReadVersion> for Elements {
 */
 
 // parent: EBML
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct EBMLMaxIDLength {
     bytes_left: usize,
     parent: EBML,
@@ -210,7 +210,7 @@ impl From<EBMLMaxIDLength> for Elements {
 
 /*
 // parent: EBML
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct EBMLMaxSizeLength {
     bytes_left: usize,
     parent: EBML,
@@ -240,7 +240,7 @@ impl From<EBMLMaxSizeLength> for Elements {
 */
 
 // parent: EBML
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct DocType {
     bytes_left: usize,
     parent: EBML,
@@ -269,7 +269,7 @@ impl From<DocType> for Elements {
 }
 
 // parent: EBML
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct DocTypeVersion {
     bytes_left: usize,
     parent: EBML,
@@ -298,7 +298,7 @@ impl From<DocTypeVersion> for Elements {
 }
 
 // parent: EBML
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct DocTypeReadVersion {
     bytes_left: usize,
     parent: EBML,
@@ -327,7 +327,7 @@ impl From<DocTypeReadVersion> for Elements {
 }
 
 // parent: EBML
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct DocTypeExtension {
     bytes_left: usize,
     parent: EBML,
@@ -356,7 +356,7 @@ impl From<DocTypeExtension> for Elements {
 }
 
 // parent: DocTypeExtension
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct DocTypeExtensionName {
     bytes_left: usize,
     parent: DocTypeExtension,
@@ -385,7 +385,7 @@ impl From<DocTypeExtensionName> for Elements {
 }
 
 // parent: DocTypeExtension
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct DocTypeExtensionVersion {
     bytes_left: usize,
     parent: DocTypeExtension,
@@ -414,7 +414,7 @@ impl From<DocTypeExtensionVersion> for Elements {
 }
 
 /*
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct CRC32 {}
 
 impl Element for CRC32 {
@@ -439,7 +439,7 @@ impl From<CRC32> for Elements {
 }
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct Void {}
 
 impl Element for Void {
@@ -468,7 +468,7 @@ impl From<Void> for Elements {
 // Explicit Items
 
 // parent: EBML
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct EBMLReadVersion {
     bytes_left: usize,
     parent: EBML,
@@ -497,7 +497,7 @@ impl From<EBMLReadVersion> for Elements {
 }
 
 // parent: EBML
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct EBMLMaxSizeLength {
     bytes_left: usize,
     parent: EBML,
@@ -526,7 +526,7 @@ impl From<EBMLMaxSizeLength> for Elements {
 }
 
 // parent: (None)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct Files {
     bytes_left: usize,
     parent: Document,
@@ -555,7 +555,7 @@ impl From<Files> for Elements {
 }
 
 // parent: Files
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct File {
     bytes_left: usize,
     parent: Files,
@@ -634,7 +634,7 @@ impl File {
 }
 
 // parent: File
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct FileName {
     bytes_left: usize,
     parent: File,
@@ -662,7 +662,7 @@ impl From<FileName> for Elements {
 }
 
 // parent: File
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct MimeType {
     bytes_left: usize,
     parent: File,
@@ -690,7 +690,7 @@ impl From<MimeType> for Elements {
 }
 
 // parent: File
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct ModificationTimestamp {
     bytes_left: usize,
     parent: File,
@@ -719,7 +719,7 @@ impl From<ModificationTimestamp> for Elements {
 }
 
 // parent: File
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct Data {
     bytes_left: usize,
     parent: File,
@@ -746,6 +746,7 @@ impl From<Data> for Elements {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 enum Elements {
     EBML(EBML),
     EBMLVersion(EBMLVersion),
