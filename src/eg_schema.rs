@@ -54,6 +54,8 @@ Example schema (https://github.com/ietf-wg-cellar/ebml-specification/blob/master
 </EBMLSchema>
 */
 
+use std::convert::From;
+
 use crate::schema_types::Bound;
 use crate::schema_types::{
     BinaryElement, DateElement, Element, FloatElement, IntElement, MasterElement, RangeDef,
@@ -65,7 +67,9 @@ use crate::schema_types::{
 
 // parent: None
 #[derive(Debug, Clone)]
-struct Document(usize);
+struct Document {
+    bytes_left: usize,
+}
 
 impl Element for Document {
     const ID: u32 = 0; // no ID for this element
@@ -85,7 +89,10 @@ impl MasterElement for Document {
 
 // parent: None
 #[derive(Debug, Clone)]
-struct EBML(usize, Document);
+struct EBML {
+    bytes_left: usize,
+    parent: Document,
+}
 
 impl Element for EBML {
     const ID: u32 = 0x1A45DFA3;
@@ -103,9 +110,18 @@ impl MasterElement for EBML {
     const RECURSIVE: Option<bool> = None;
 }
 
+impl From<EBML> for Elements {
+    fn from(element: EBML) -> Elements {
+        Elements::EBML(element)
+    }
+}
+
 // parent: EBML
 #[derive(Debug, Clone)]
-struct EBMLVersion(EBML);
+struct EBMLVersion {
+    bytes_left: usize,
+    parent: EBML,
+}
 
 impl Element for EBMLVersion {
     const ID: u32 = 0x4286;
@@ -123,10 +139,19 @@ impl UIntElement for EBMLVersion {
     const DEFAULT: Option<u64> = Some(1);
 }
 
+impl From<EBMLVersion> for Elements {
+    fn from(element: EBMLVersion) -> Elements {
+        Elements::EBMLVersion(element)
+    }
+}
+
 /*
 // parent: EBML
 #[derive(Debug, Clone)]
-struct EBMLReadVersion {}
+struct EBMLReadVersion {
+    bytes_left: usize,
+    parent: EBML,
+}
 
 impl Element for EBMLReadVersion {
     const ID: u32 = 0x42F7;
@@ -143,11 +168,21 @@ impl UIntElement for EBMLReadVersion {
     const RANGE: Option<RangeDef<u64>> = Some(RangeDef::IsExactly(1));
     const DEFAULT: Option<u64> = Some(1);
 }
+
+impl From<EBMLReadVersion> for Elements {
+    fn from(element: EBMLReadVersion) -> Elements {
+        Elements::EBMLReadVersion(element)
+    }
+}
+
 */
 
 // parent: EBML
 #[derive(Debug, Clone)]
-struct EBMLMaxIDLength(EBML);
+struct EBMLMaxIDLength {
+    bytes_left: usize,
+    parent: EBML,
+}
 
 impl Element for EBMLMaxIDLength {
     const ID: u32 = 0x42F2;
@@ -166,10 +201,19 @@ impl UIntElement for EBMLMaxIDLength {
     const DEFAULT: Option<u64> = Some(4);
 }
 
+impl From<EBMLMaxIDLength> for Elements {
+    fn from(element: EBMLMaxIDLength) -> Elements {
+        Elements::EBMLMaxIDLength(element)
+    }
+}
+
 /*
 // parent: EBML
 #[derive(Debug, Clone)]
-struct EBMLMaxSizeLength(EBML);
+struct EBMLMaxSizeLength {
+    bytes_left: usize,
+    parent: EBML,
+}
 
 impl Element for EBMLMaxSizeLength {
     const ID: u32 = 0x42F3;
@@ -186,11 +230,20 @@ impl UIntElement for EBMLMaxSizeLength {
     const RANGE: Option<RangeDef<u64>> = Some(RangeDef::Excludes(0));
     const DEFAULT: Option<u64> = Some(8);
 }
+
+impl From<EBMLMaxSizeLength> for Elements {
+    fn from(element: EBMLMaxSizeLength) -> Elements {
+        Elements::EBMLMaxSizeLength(element)
+    }
+}
 */
 
 // parent: EBML
 #[derive(Debug, Clone)]
-struct DocType(EBML);
+struct DocType {
+    bytes_left: usize,
+    parent: EBML,
+}
 
 impl Element for DocType {
     const ID: u32 = 0x4282;
@@ -208,9 +261,18 @@ impl StringElement for DocType {
     const DEFAULT: Option<&'static str> = None;
 }
 
+impl From<DocType> for Elements {
+    fn from(element: DocType) -> Elements {
+        Elements::DocType(element)
+    }
+}
+
 // parent: EBML
 #[derive(Debug, Clone)]
-struct DocTypeVersion(EBML);
+struct DocTypeVersion {
+    bytes_left: usize,
+    parent: EBML,
+}
 
 impl Element for DocTypeVersion {
     const ID: u32 = 0x4287;
@@ -228,9 +290,18 @@ impl UIntElement for DocTypeVersion {
     const DEFAULT: Option<u64> = Some(1);
 }
 
+impl From<DocTypeVersion> for Elements {
+    fn from(element: DocTypeVersion) -> Elements {
+        Elements::DocTypeVersion(element)
+    }
+}
+
 // parent: EBML
 #[derive(Debug, Clone)]
-struct DocTypeReadVersion(EBML);
+struct DocTypeReadVersion {
+    bytes_left: usize,
+    parent: EBML,
+}
 
 impl Element for DocTypeReadVersion {
     const ID: u32 = 0x4285;
@@ -248,9 +319,18 @@ impl UIntElement for DocTypeReadVersion {
     const DEFAULT: Option<u64> = Some(1);
 }
 
+impl From<DocTypeReadVersion> for Elements {
+    fn from(element: DocTypeReadVersion) -> Elements {
+        Elements::DocTypeReadVersion(element)
+    }
+}
+
 // parent: EBML
 #[derive(Debug, Clone)]
-struct DocTypeExtension(usize, EBML);
+struct DocTypeExtension {
+    bytes_left: usize,
+    parent: EBML,
+}
 
 impl Element for DocTypeExtension {
     const ID: u32 = 0x4281;
@@ -268,9 +348,18 @@ impl MasterElement for DocTypeExtension {
     const RECURSIVE: Option<bool> = None;
 }
 
+impl From<DocTypeExtension> for Elements {
+    fn from(element: DocTypeExtension) -> Elements {
+        Elements::DocTypeExtension(element)
+    }
+}
+
 // parent: DocTypeExtension
 #[derive(Debug, Clone)]
-struct DocTypeExtensionName(DocTypeExtension);
+struct DocTypeExtensionName {
+    bytes_left: usize,
+    parent: DocTypeExtension,
+}
 
 impl Element for DocTypeExtensionName {
     const ID: u32 = 0x4283;
@@ -288,9 +377,18 @@ impl StringElement for DocTypeExtensionName {
     const DEFAULT: Option<&'static str> = None;
 }
 
+impl From<DocTypeExtensionName> for Elements {
+    fn from(element: DocTypeExtensionName) -> Elements {
+        Elements::DocTypeExtensionName(element)
+    }
+}
+
 // parent: DocTypeExtension
 #[derive(Debug, Clone)]
-struct DocTypeExtensionVersion(DocTypeExtension);
+struct DocTypeExtensionVersion {
+    bytes_left: usize,
+    parent: DocTypeExtension,
+}
 
 impl Element for DocTypeExtensionVersion {
     const ID: u32 = 0x4284;
@@ -306,6 +404,12 @@ impl Element for DocTypeExtensionVersion {
 impl UIntElement for DocTypeExtensionVersion {
     const RANGE: Option<RangeDef<u64>> = Some(RangeDef::Excludes(0));
     const DEFAULT: Option<u64> = None;
+}
+
+impl From<DocTypeExtensionVersion> for Elements {
+    fn from(element: DocTypeExtensionVersion) -> Elements {
+        Elements::DocTypeExtensionVersion(element)
+    }
 }
 
 /*
@@ -327,6 +431,13 @@ impl BinaryElement for CRC32 {
     const DEFAULT: Option<&'static [u8]> = None;
 }
 
+impl From<CRC32> for Elements {
+    fn from(element: CRC32) -> Elements {
+        Elements::CRC32(element)
+    }
+}
+
+
 #[derive(Debug, Clone)]
 struct Void {}
 
@@ -344,13 +455,23 @@ impl Element for Void {
 impl BinaryElement for Void {
     const DEFAULT: Option<&'static [u8]> = None;
 }
+
+impl From<Void> for Elements {
+    fn from(element: Void) -> Elements {
+        Elements::Void(element)
+    }
+}
 */
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Explicit Items
 
+// parent: EBML
 #[derive(Debug, Clone)]
-struct EBMLReadVersion(EBML);
+struct EBMLReadVersion {
+    bytes_left: usize,
+    parent: EBML,
+}
 
 impl Element for EBMLReadVersion {
     const ID: u32 = 0x42F7;
@@ -368,8 +489,18 @@ impl UIntElement for EBMLReadVersion {
     const DEFAULT: Option<u64> = Some(1);
 }
 
+impl From<EBMLReadVersion> for Elements {
+    fn from(element: EBMLReadVersion) -> Elements {
+        Elements::EBMLReadVersion(element)
+    }
+}
+
+// parent: EBML
 #[derive(Debug, Clone)]
-struct EBMLMaxSizeLength(EBML);
+struct EBMLMaxSizeLength {
+    bytes_left: usize,
+    parent: EBML,
+}
 
 impl Element for EBMLMaxSizeLength {
     const ID: u32 = 0x42F3;
@@ -387,8 +518,18 @@ impl UIntElement for EBMLMaxSizeLength {
     const DEFAULT: Option<u64> = Some(8);
 }
 
+impl From<EBMLMaxSizeLength> for Elements {
+    fn from(element: EBMLMaxSizeLength) -> Elements {
+        Elements::EBMLMaxSizeLength(element)
+    }
+}
+
+// parent: (None)
 #[derive(Debug, Clone)]
-struct Files(usize, Document);
+struct Files {
+    bytes_left: usize,
+    parent: Document,
+}
 
 impl Element for Files {
     const ID: u32 = 0x1946696C;
@@ -406,8 +547,18 @@ impl MasterElement for Files {
     const RECURSIVE: Option<bool> = None;
 }
 
+impl From<Files> for Elements {
+    fn from(element: Files) -> Elements {
+        Elements::Files(element)
+    }
+}
+
+// parent: Files
 #[derive(Debug, Clone)]
-struct File(usize, Files);
+struct File {
+    bytes_left: usize,
+    parent: Files,
+}
 
 impl Element for File {
     const ID: u32 = 0x6146;
@@ -425,8 +576,18 @@ impl MasterElement for File {
     const RECURSIVE: Option<bool> = None;
 }
 
+impl From<File> for Elements {
+    fn from(element: File) -> Elements {
+        Elements::File(element)
+    }
+}
+
+// parent: File
 #[derive(Debug, Clone)]
-struct FileName(File);
+struct FileName {
+    bytes_left: usize,
+    parent: File,
+}
 
 impl Element for FileName {
     const ID: u32 = 0x614E;
@@ -443,8 +604,18 @@ impl UTF8Element for FileName {
     const DEFAULT: Option<&'static str> = None;
 }
 
+impl From<FileName> for Elements {
+    fn from(element: FileName) -> Elements {
+        Elements::FileName(element)
+    }
+}
+
+// parent: File
 #[derive(Debug, Clone)]
-struct MimeType(File);
+struct MimeType {
+    bytes_left: usize,
+    parent: File,
+}
 
 impl Element for MimeType {
     const ID: u32 = 0x464D;
@@ -461,8 +632,18 @@ impl StringElement for MimeType {
     const DEFAULT: Option<&'static str> = None;
 }
 
+impl From<MimeType> for Elements {
+    fn from(element: MimeType) -> Elements {
+        Elements::MimeType(element)
+    }
+}
+
+// parent: File
 #[derive(Debug, Clone)]
-struct ModificationTimestamp(File);
+struct ModificationTimestamp {
+    bytes_left: usize,
+    parent: File,
+}
 
 impl Element for ModificationTimestamp {
     const ID: u32 = 0x4654;
@@ -480,8 +661,18 @@ impl DateElement for ModificationTimestamp {
     const DEFAULT: Option<i64> = None;
 }
 
+impl From<ModificationTimestamp> for Elements {
+    fn from(element: ModificationTimestamp) -> Elements {
+        Elements::ModificationTimestamp(element)
+    }
+}
+
+// parent: File
 #[derive(Debug, Clone)]
-struct Data(File);
+struct Data {
+    bytes_left: usize,
+    parent: File,
+}
 
 impl Element for Data {
     const ID: u32 = 0x4664;
@@ -496,4 +687,31 @@ impl Element for Data {
 
 impl BinaryElement for Data {
     const DEFAULT: Option<&'static [u8]> = None;
+}
+
+impl From<Data> for Elements {
+    fn from(element: Data) -> Elements {
+        Elements::Data(element)
+    }
+}
+
+enum Elements {
+    EBML(EBML),
+    EBMLVersion(EBMLVersion),
+    EBMLReadVersion(EBMLReadVersion),
+    EBMLMaxIDLength(EBMLMaxIDLength),
+    EBMLMaxSizeLength(EBMLMaxSizeLength),
+    DocType(DocType),
+    DocTypeVersion(DocTypeVersion),
+    DocTypeReadVersion(DocTypeReadVersion),
+    DocTypeExtension(DocTypeExtension),
+    DocTypeExtensionName(DocTypeExtensionName),
+    DocTypeExtensionVersion(DocTypeExtensionVersion),
+
+    Files(Files),
+    File(File),
+    FileName(FileName),
+    MimeType(MimeType),
+    ModificationTimestamp(ModificationTimestamp),
+    Data(Data),
 }
