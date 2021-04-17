@@ -54,13 +54,14 @@ Example schema (https://github.com/ietf-wg-cellar/ebml-specification/blob/master
 </EBMLSchema>
 */
 
-use std::convert::From;
+use std::convert::{From, TryInto};
 
 use crate::schema_types::Bound;
 use crate::schema_types::{
     BinaryElement, DateElement, Element, FloatElement, IntElement, MasterElement, RangeDef,
     StringElement, UIntElement, UTF8Element,
 };
+use crate::stream::{parse, stream_diff};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implicit Items
@@ -579,6 +580,56 @@ impl MasterElement for File {
 impl From<File> for Elements {
     fn from(element: File) -> Elements {
         Elements::File(element)
+    }
+}
+
+impl File {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        match self {
+            Self {
+                bytes_left: 0,
+                parent: _,
+            } => Ok((stream, self.parent.into())),
+            _ => {
+                let orig_stream = stream;
+
+                let (stream, id) = parse::element_id(stream)?;
+                let (stream, len) = parse::element_len(stream)?;
+                let len: usize = len
+                    .expect("todo: handle optionally unsized elements")
+                    .try_into()
+                    .expect("overflow in storing element bytelength");
+
+                self.bytes_left -= len + stream_diff(orig_stream, stream);
+
+                Ok((
+                    stream,
+                    match id {
+                        FileName::ID => FileName {
+                            bytes_left: len,
+                            parent: self,
+                        }
+                        .into(),
+                        MimeType::ID => MimeType {
+                            bytes_left: len,
+                            parent: self,
+                        }
+                        .into(),
+                        ModificationTimestamp::ID => ModificationTimestamp {
+                            bytes_left: len,
+                            parent: self,
+                        }
+                        .into(),
+                        Data::ID => Data {
+                            bytes_left: len,
+                            parent: self,
+                        }
+                        .into(),
+                        _ => return Err(nom::Err::Failure(())),
+                    },
+                ))
+            }
+        }
     }
 }
 
