@@ -88,6 +88,12 @@ impl MasterElement for Document {
     const RECURSIVE: Option<bool> = None;
 }
 
+impl From<Document> for Elements {
+    fn from(element: Document) -> Elements {
+        Elements::Document(element)
+    }
+}
+
 // parent: None
 #[derive(Debug, Clone, PartialEq)]
 struct EBML {
@@ -146,6 +152,17 @@ impl From<EBMLVersion> for Elements {
     }
 }
 
+impl EBMLVersion {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
+}
+
 /*
 // parent: EBML
 #[derive(Debug, Clone, PartialEq)]
@@ -173,6 +190,17 @@ impl UIntElement for EBMLReadVersion {
 impl From<EBMLReadVersion> for Elements {
     fn from(element: EBMLReadVersion) -> Elements {
         Elements::EBMLReadVersion(element)
+    }
+}
+
+impl EBMLReadVersion {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
     }
 }
 
@@ -208,6 +236,17 @@ impl From<EBMLMaxIDLength> for Elements {
     }
 }
 
+impl EBMLMaxIDLength {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
+}
+
 /*
 // parent: EBML
 #[derive(Debug, Clone, PartialEq)]
@@ -235,6 +274,17 @@ impl UIntElement for EBMLMaxSizeLength {
 impl From<EBMLMaxSizeLength> for Elements {
     fn from(element: EBMLMaxSizeLength) -> Elements {
         Elements::EBMLMaxSizeLength(element)
+    }
+}
+
+impl EBMLMaxSizeLength {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
     }
 }
 */
@@ -268,6 +318,17 @@ impl From<DocType> for Elements {
     }
 }
 
+impl DocType {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
+}
+
 // parent: EBML
 #[derive(Debug, Clone, PartialEq)]
 struct DocTypeVersion {
@@ -297,6 +358,17 @@ impl From<DocTypeVersion> for Elements {
     }
 }
 
+impl DocTypeVersion {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
+}
+
 // parent: EBML
 #[derive(Debug, Clone, PartialEq)]
 struct DocTypeReadVersion {
@@ -323,6 +395,17 @@ impl UIntElement for DocTypeReadVersion {
 impl From<DocTypeReadVersion> for Elements {
     fn from(element: DocTypeReadVersion) -> Elements {
         Elements::DocTypeReadVersion(element)
+    }
+}
+
+impl DocTypeReadVersion {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
     }
 }
 
@@ -384,6 +467,17 @@ impl From<DocTypeExtensionName> for Elements {
     }
 }
 
+impl DocTypeExtensionName {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
+}
+
 // parent: DocTypeExtension
 #[derive(Debug, Clone, PartialEq)]
 struct DocTypeExtensionVersion {
@@ -410,6 +504,17 @@ impl UIntElement for DocTypeExtensionVersion {
 impl From<DocTypeExtensionVersion> for Elements {
     fn from(element: DocTypeExtensionVersion) -> Elements {
         Elements::DocTypeExtensionVersion(element)
+    }
+}
+
+impl DocTypeExtensionVersion {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
     }
 }
 
@@ -496,6 +601,17 @@ impl From<EBMLReadVersion> for Elements {
     }
 }
 
+impl EBMLReadVersion {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
+}
+
 // parent: EBML
 #[derive(Debug, Clone, PartialEq)]
 struct EBMLMaxSizeLength {
@@ -525,6 +641,17 @@ impl From<EBMLMaxSizeLength> for Elements {
     }
 }
 
+impl EBMLMaxSizeLength {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
+}
+
 // parent: (None)
 #[derive(Debug, Clone, PartialEq)]
 struct Files {
@@ -551,6 +678,46 @@ impl MasterElement for Files {
 impl From<Files> for Elements {
     fn from(element: Files) -> Elements {
         Elements::Files(element)
+    }
+}
+
+impl Files {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        match self {
+            Self {
+                bytes_left: 0,
+                parent: _,
+            } => Ok((stream, self.parent.into())),
+            _ => {
+                let orig_stream = stream;
+
+                let (stream, id) = parse::element_id(stream)?;
+                let (stream, len) = parse::element_len(stream)?;
+                let len: usize = len
+                    .expect("todo: handle optionally unsized elements")
+                    .try_into()
+                    .expect("overflow in storing element bytelength");
+
+                self.bytes_left -= len + stream_diff(orig_stream, stream);
+
+                Ok((
+                    stream,
+                    match id {
+                        File::ID => File {
+                            bytes_left: len,
+                            parent: self,
+                        }
+                        .into(),
+                        _ => return Err(nom::Err::Failure(())),
+                    },
+                ))
+            }
+        }
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
     }
 }
 
@@ -666,6 +833,17 @@ impl From<FileName> for Elements {
     }
 }
 
+impl FileName {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
+}
+
 // parent: File
 #[derive(Debug, Clone, PartialEq)]
 struct MimeType {
@@ -691,6 +869,17 @@ impl StringElement for MimeType {
 impl From<MimeType> for Elements {
     fn from(element: MimeType) -> Elements {
         Elements::MimeType(element)
+    }
+}
+
+impl MimeType {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
     }
 }
 
@@ -723,6 +912,17 @@ impl From<ModificationTimestamp> for Elements {
     }
 }
 
+impl ModificationTimestamp {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
+}
+
 // parent: File
 #[derive(Debug, Clone, PartialEq)]
 struct Data {
@@ -751,8 +951,21 @@ impl From<Data> for Elements {
     }
 }
 
+impl Data {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 enum Elements {
+    Document(Document),
+
     EBML(EBML),
     EBMLVersion(EBMLVersion),
     EBMLReadVersion(EBMLReadVersion),
@@ -777,6 +990,36 @@ enum Elements {
 mod tests {
     use super::*;
     use rstest::*;
+
+    #[rstest(element, source, expt_result,
+        case(
+            Files{bytes_left: 5, parent: Document{bytes_left: 0}},
+            &[0x61, 0x46, 0x82, 0xFF, 0xFF, 0xFF],
+            (&[0xFF, 0xFF, 0xFF][..], File{bytes_left: 2, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into())
+        ),
+    )]
+    fn test_files_next(
+        element: Files,
+        source: &'static [u8],
+        expt_result: (&'static [u8], Elements),
+    ) {
+        assert_eq!(element.next(source).unwrap(), expt_result);
+    }
+
+    #[rstest(element, source, expt_result,
+        case(
+            Files{bytes_left: 5, parent: Document{bytes_left: 0}},
+            &[0x61, 0x4E, 0x82, 0xFF, 0xFF, 0xFF],
+            (&[0xFF][..], Document{bytes_left: 0}.into())
+        ),
+    )]
+    fn test_files_skip(
+        element: Files,
+        source: &'static [u8],
+        expt_result: (&'static [u8], Elements),
+    ) {
+        assert_eq!(element.skip(source).unwrap(), expt_result);
+    }
 
     #[rstest(element, source, expt_result,
         case(
@@ -817,6 +1060,126 @@ mod tests {
     )]
     fn test_file_skip(
         element: File,
+        source: &'static [u8],
+        expt_result: (&'static [u8], Elements),
+    ) {
+        assert_eq!(element.skip(source).unwrap(), expt_result);
+    }
+
+    #[rstest(element, source, expt_result,
+        case(
+            FileName{bytes_left: 3, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}},
+            &[0xFF, 0xFF, 0xFF, 0xFF],
+            (&[0xFF][..], File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into()),
+        ),
+    )]
+    fn test_filename_next(
+        element: FileName,
+        source: &'static [u8],
+        expt_result: (&'static [u8], Elements),
+    ) {
+        assert_eq!(element.next(source).unwrap(), expt_result);
+    }
+
+    #[rstest(element, source, expt_result,
+        case(
+            FileName{bytes_left: 3, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}},
+            &[0xFF, 0xFF, 0xFF, 0xFF],
+            (&[0xFF][..], File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into())
+        ),
+    )]
+    fn test_filename_skip(
+        element: FileName,
+        source: &'static [u8],
+        expt_result: (&'static [u8], Elements),
+    ) {
+        assert_eq!(element.skip(source).unwrap(), expt_result);
+    }
+
+    #[rstest(element, source, expt_result,
+        case(
+            MimeType{bytes_left: 3, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}},
+            &[0xFF, 0xFF, 0xFF, 0xFF],
+            (&[0xFF][..], File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into()),
+        ),
+    )]
+    fn test_mimetype_next(
+        element: MimeType,
+        source: &'static [u8],
+        expt_result: (&'static [u8], Elements),
+    ) {
+        assert_eq!(element.next(source).unwrap(), expt_result);
+    }
+
+    #[rstest(element, source, expt_result,
+        case(
+            MimeType{bytes_left: 3, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}},
+            &[0xFF, 0xFF, 0xFF, 0xFF],
+            (&[0xFF][..], File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into())
+        ),
+    )]
+    fn test_mimetype_skip(
+        element: MimeType,
+        source: &'static [u8],
+        expt_result: (&'static [u8], Elements),
+    ) {
+        assert_eq!(element.skip(source).unwrap(), expt_result);
+    }
+
+    #[rstest(element, source, expt_result,
+        case(
+            ModificationTimestamp{bytes_left: 3, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}},
+            &[0xFF, 0xFF, 0xFF, 0xFF],
+            (&[0xFF][..], File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into()),
+        ),
+    )]
+    fn test_modificationtimestamp_next(
+        element: ModificationTimestamp,
+        source: &'static [u8],
+        expt_result: (&'static [u8], Elements),
+    ) {
+        assert_eq!(element.next(source).unwrap(), expt_result);
+    }
+
+    #[rstest(element, source, expt_result,
+        case(
+            ModificationTimestamp{bytes_left: 3, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}},
+            &[0xFF, 0xFF, 0xFF, 0xFF],
+            (&[0xFF][..], File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into())
+        ),
+    )]
+    fn test_modificationtimestamp_skip(
+        element: ModificationTimestamp,
+        source: &'static [u8],
+        expt_result: (&'static [u8], Elements),
+    ) {
+        assert_eq!(element.skip(source).unwrap(), expt_result);
+    }
+
+    #[rstest(element, source, expt_result,
+        case(
+            Data{bytes_left: 3, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}},
+            &[0xFF, 0xFF, 0xFF, 0xFF],
+            (&[0xFF][..], File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into()),
+        ),
+    )]
+    fn test_data_next(
+        element: Data,
+        source: &'static [u8],
+        expt_result: (&'static [u8], Elements),
+    ) {
+        assert_eq!(element.next(source).unwrap(), expt_result);
+    }
+
+    #[rstest(element, source, expt_result,
+        case(
+            Data{bytes_left: 3, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}},
+            &[0xFF, 0xFF, 0xFF, 0xFF],
+            (&[0xFF][..], File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into())
+        ),
+    )]
+    fn test_data_skip(
+        element: Data,
         source: &'static [u8],
         expt_result: (&'static [u8], Elements),
     ) {
