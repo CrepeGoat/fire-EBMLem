@@ -1,7 +1,8 @@
-mod eg_schema;
+#[macro_use]
 mod schema_types;
-mod stream;
 mod doc_iter;
+mod eg_schema;
+mod stream;
 
 #[cfg(test)]
 mod tests {

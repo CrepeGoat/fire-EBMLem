@@ -29,6 +29,58 @@ pub trait Element {
     fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()>;
 }
 
+#[macro_export]
+macro_rules! Element_next {
+    () => {
+        fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
+            self.skip(stream)
+        }
+    };
+    ( $( $subelement:ident ),* ) => {
+        fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
+            match self {
+                Self { bytes_left: 0, parent: p} => Ok((stream, p.into())),
+                _ => {
+                    let orig_stream = stream;
+
+                    let (stream, id) = parse::element_id(stream)?;
+                    let (stream, len) = parse::element_len(stream)?;
+                    let len: usize = len
+                        .expect("todo: handle optionally unsized elements")
+                        .try_into()
+                        .expect("overflow in storing element bytelength");
+
+                    self.bytes_left -= len + stream_diff(orig_stream, stream);
+
+                    Ok((
+                        stream,
+                        match id {
+                            $(
+                                $subelement::ID => $subelement {
+                                    bytes_left: len,
+                                    parent: self,
+                                }
+                                .into(),
+                            )*
+                            _ => return Err(nom::Err::Failure(())),
+                        },
+                    ))
+                }
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! Element_skip {
+    () => {
+        fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
+            let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+            Ok((stream, self.parent.into()))
+        }
+    };
+}
+
 pub trait MasterElement: Element {
     const UNKNOWN_SIZE_ALLOWED: Option<bool>;
     const RECURSIVE: Option<bool>;

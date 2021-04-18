@@ -155,78 +155,17 @@ impl Element for EBML {
 
     type Elements = Elements;
 
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
-        match self {
-            Self {
-                bytes_left: 0,
-                parent: _,
-            } => Ok((stream, self.parent.into())),
-            _ => {
-                let orig_stream = stream;
-
-                let (stream, id) = parse::element_id(stream)?;
-                let (stream, len) = parse::element_len(stream)?;
-                let len: usize = len
-                    .expect("todo: handle optionally unsized elements")
-                    .try_into()
-                    .expect("overflow in storing element bytelength");
-
-                self.bytes_left -= len + stream_diff(orig_stream, stream);
-
-                Ok((
-                    stream,
-                    match id {
-                        EBMLVersion::ID => EBMLVersion {
-                            bytes_left: len,
-                            parent: self,
-                        }
-                        .into(),
-                        EBMLReadVersion::ID => EBMLReadVersion {
-                            bytes_left: len,
-                            parent: self,
-                        }
-                        .into(),
-                        EBMLMaxIDLength::ID => EBMLMaxIDLength {
-                            bytes_left: len,
-                            parent: self,
-                        }
-                        .into(),
-                        EBMLMaxSizeLength::ID => EBMLMaxSizeLength {
-                            bytes_left: len,
-                            parent: self,
-                        }
-                        .into(),
-                        DocType::ID => DocType {
-                            bytes_left: len,
-                            parent: self,
-                        }
-                        .into(),
-                        DocTypeVersion::ID => DocTypeVersion {
-                            bytes_left: len,
-                            parent: self,
-                        }
-                        .into(),
-                        DocTypeReadVersion::ID => DocTypeReadVersion {
-                            bytes_left: len,
-                            parent: self,
-                        }
-                        .into(),
-                        DocTypeExtension::ID => DocTypeExtension {
-                            bytes_left: len,
-                            parent: self,
-                        }
-                        .into(),
-                        _ => return Err(nom::Err::Failure(())),
-                    },
-                ))
-            }
-        }
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
-    }
+    Element_next!(
+        EBMLVersion,
+        EBMLReadVersion,
+        EBMLMaxIDLength,
+        EBMLMaxSizeLength,
+        DocType,
+        DocTypeVersion,
+        DocTypeReadVersion,
+        DocTypeExtension
+    );
+    Element_skip!();
 }
 
 impl MasterElement for EBML {
@@ -261,14 +200,8 @@ impl Element for EBMLVersion {
 
     type Elements = Elements;
 
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
-    }
+    Element_next!();
+    Element_skip!();
 }
 
 impl UIntElement for EBMLVersion {
@@ -301,15 +234,8 @@ impl Element for EBMLReadVersion {
     const MAX_VERSION: Option<u64> = None;
 
     type Elements = Elements;
-
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
-    }
+    Element_next!();
+    Element_skip!();
 }
 
 impl UIntElement for EBMLReadVersion {
@@ -342,15 +268,8 @@ impl Element for EBMLMaxIDLength {
     const MAX_VERSION: Option<u64> = None;
 
     type Elements = Elements;
-
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
-    }
+    Element_next!();
+    Element_skip!();
 }
 
 impl UIntElement for EBMLMaxIDLength {
@@ -384,15 +303,8 @@ impl Element for EBMLMaxSizeLength {
     const MAX_VERSION: Option<u64> = None;
 
     type Elements = Elements;
-
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
-    }
+    Element_next!();
+    Element_skip!();
 }
 
 impl UIntElement for EBMLMaxSizeLength {
@@ -426,15 +338,8 @@ impl Element for DocType {
     const MAX_VERSION: Option<u64> = None;
 
     type Elements = Elements;
-
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
-    }
+    Element_next!();
+    Element_skip!();
 }
 
 impl StringElement for DocType {
@@ -465,15 +370,8 @@ impl Element for DocTypeVersion {
     const MAX_VERSION: Option<u64> = None;
 
     type Elements = Elements;
-
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
-    }
+    Element_next!();
+    Element_skip!();
 }
 
 impl UIntElement for DocTypeVersion {
@@ -505,15 +403,8 @@ impl Element for DocTypeReadVersion {
     const MAX_VERSION: Option<u64> = None;
 
     type Elements = Elements;
-
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
-    }
+    Element_next!();
+    Element_skip!();
 }
 
 impl UIntElement for DocTypeReadVersion {
@@ -545,49 +436,8 @@ impl Element for DocTypeExtension {
     const MAX_VERSION: Option<u64> = None;
 
     type Elements = Elements;
-
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
-        match self {
-            Self {
-                bytes_left: 0,
-                parent: _,
-            } => Ok((stream, self.parent.into())),
-            _ => {
-                let orig_stream = stream;
-
-                let (stream, id) = parse::element_id(stream)?;
-                let (stream, len) = parse::element_len(stream)?;
-                let len: usize = len
-                    .expect("todo: handle optionally unsized elements")
-                    .try_into()
-                    .expect("overflow in storing element bytelength");
-
-                self.bytes_left -= len + stream_diff(orig_stream, stream);
-
-                Ok((
-                    stream,
-                    match id {
-                        DocTypeExtensionName::ID => DocTypeExtensionName {
-                            bytes_left: len,
-                            parent: self,
-                        }
-                        .into(),
-                        DocTypeExtensionVersion::ID => DocTypeExtensionVersion {
-                            bytes_left: len,
-                            parent: self,
-                        }
-                        .into(),
-                        _ => return Err(nom::Err::Failure(())),
-                    },
-                ))
-            }
-        }
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
-    }
+    Element_next!(DocTypeExtensionName, DocTypeExtensionVersion);
+    Element_skip!();
 }
 
 impl MasterElement for DocTypeExtension {
@@ -620,15 +470,8 @@ impl Element for DocTypeExtensionName {
     const MAX_VERSION: Option<u64> = None;
 
     type Elements = Elements;
-
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
-    }
+    Element_next!();
+    Element_skip!();
 }
 
 impl StringElement for DocTypeExtensionName {
@@ -659,15 +502,8 @@ impl Element for DocTypeExtensionVersion {
     const MAX_VERSION: Option<u64> = None;
 
     type Elements = Elements;
-
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
-    }
+    Element_next!();
+    Element_skip!();
 }
 
 impl UIntElement for DocTypeExtensionVersion {
@@ -757,15 +593,8 @@ impl Element for EBMLReadVersion {
     const MAX_VERSION: Option<u64> = None;
 
     type Elements = Elements;
-
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
-    }
+    Element_next!();
+    Element_skip!();
 }
 
 impl UIntElement for EBMLReadVersion {
@@ -797,15 +626,8 @@ impl Element for EBMLMaxSizeLength {
     const MAX_VERSION: Option<u64> = None;
 
     type Elements = Elements;
-
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
-    }
+    Element_next!();
+    Element_skip!();
 }
 
 impl UIntElement for EBMLMaxSizeLength {
@@ -837,44 +659,8 @@ impl Element for Files {
     const MAX_VERSION: Option<u64> = None;
 
     type Elements = Elements;
-
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
-        match self {
-            Self {
-                bytes_left: 0,
-                parent: _,
-            } => Ok((stream, self.parent.into())),
-            _ => {
-                let orig_stream = stream;
-
-                let (stream, id) = parse::element_id(stream)?;
-                let (stream, len) = parse::element_len(stream)?;
-                let len: usize = len
-                    .expect("todo: handle optionally unsized elements")
-                    .try_into()
-                    .expect("overflow in storing element bytelength");
-
-                self.bytes_left -= len + stream_diff(orig_stream, stream);
-
-                Ok((
-                    stream,
-                    match id {
-                        File::ID => File {
-                            bytes_left: len,
-                            parent: self,
-                        }
-                        .into(),
-                        _ => return Err(nom::Err::Failure(())),
-                    },
-                ))
-            }
-        }
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
-    }
+    Element_next!(File);
+    Element_skip!();
 }
 
 impl MasterElement for Files {
@@ -906,59 +692,8 @@ impl Element for File {
     const MAX_VERSION: Option<u64> = None;
 
     type Elements = Elements;
-
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
-        match self {
-            Self {
-                bytes_left: 0,
-                parent: _,
-            } => Ok((stream, self.parent.into())),
-            _ => {
-                let orig_stream = stream;
-
-                let (stream, id) = parse::element_id(stream)?;
-                let (stream, len) = parse::element_len(stream)?;
-                let len: usize = len
-                    .expect("todo: handle optionally unsized elements")
-                    .try_into()
-                    .expect("overflow in storing element bytelength");
-
-                self.bytes_left -= len + stream_diff(orig_stream, stream);
-
-                Ok((
-                    stream,
-                    match id {
-                        FileName::ID => FileName {
-                            bytes_left: len,
-                            parent: self,
-                        }
-                        .into(),
-                        MimeType::ID => MimeType {
-                            bytes_left: len,
-                            parent: self,
-                        }
-                        .into(),
-                        ModificationTimestamp::ID => ModificationTimestamp {
-                            bytes_left: len,
-                            parent: self,
-                        }
-                        .into(),
-                        Data::ID => Data {
-                            bytes_left: len,
-                            parent: self,
-                        }
-                        .into(),
-                        _ => return Err(nom::Err::Failure(())),
-                    },
-                ))
-            }
-        }
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
-    }
+    Element_next!(FileName, MimeType, ModificationTimestamp, Data);
+    Element_skip!();
 }
 
 impl MasterElement for File {
@@ -990,15 +725,8 @@ impl Element for FileName {
     const MAX_VERSION: Option<u64> = None;
 
     type Elements = Elements;
-
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
-    }
+    Element_next!();
+    Element_skip!();
 }
 
 impl UTF8Element for FileName {
@@ -1029,15 +757,8 @@ impl Element for MimeType {
     const MAX_VERSION: Option<u64> = None;
 
     type Elements = Elements;
-
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
-    }
+    Element_next!();
+    Element_skip!();
 }
 
 impl StringElement for MimeType {
@@ -1068,15 +789,8 @@ impl Element for ModificationTimestamp {
     const MAX_VERSION: Option<u64> = None;
 
     type Elements = Elements;
-
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
-    }
+    Element_next!();
+    Element_skip!();
 }
 
 impl DateElement for ModificationTimestamp {
@@ -1108,15 +822,8 @@ impl Element for Data {
     const MAX_VERSION: Option<u64> = None;
 
     type Elements = Elements;
-
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
-    }
+    Element_next!();
+    Element_skip!();
 }
 
 impl BinaryElement for Data {
