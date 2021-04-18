@@ -17,6 +17,16 @@ pub trait Element {
     const RECURRING: Option<bool>;
     const MIN_VERSION: Option<u64>;
     const MAX_VERSION: Option<u64>;
+
+    type Elements;
+
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()>
+    where
+        Self: std::marker::Sized,
+    {
+        unreachable!()
+    }
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()>;
 }
 
 pub trait MasterElement: Element {

@@ -81,21 +81,10 @@ impl Element for Document {
     const RECURRING: Option<bool> = None;
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
-}
 
-impl MasterElement for Document {
-    const UNKNOWN_SIZE_ALLOWED: Option<bool> = Some(true);
-    const RECURSIVE: Option<bool> = None;
-}
+    type Elements = Elements;
 
-impl From<Document> for Elements {
-    fn from(element: Document) -> Elements {
-        Elements::Document(element)
-    }
-}
-
-impl Document {
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
         match self {
             Self { bytes_left: 0 } => Ok((stream, Elements::None)),
             _ => {
@@ -136,6 +125,17 @@ impl Document {
     }
 }
 
+impl MasterElement for Document {
+    const UNKNOWN_SIZE_ALLOWED: Option<bool> = Some(true);
+    const RECURSIVE: Option<bool> = None;
+}
+
+impl From<Document> for Elements {
+    fn from(element: Document) -> Elements {
+        Elements::Document(element)
+    }
+}
+
 // parent: None
 #[derive(Debug, Clone, PartialEq)]
 struct EBML {
@@ -152,21 +152,10 @@ impl Element for EBML {
     const RECURRING: Option<bool> = None;
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
-}
 
-impl MasterElement for EBML {
-    const UNKNOWN_SIZE_ALLOWED: Option<bool> = None;
-    const RECURSIVE: Option<bool> = None;
-}
+    type Elements = Elements;
 
-impl From<EBML> for Elements {
-    fn from(element: EBML) -> Elements {
-        Elements::EBML(element)
-    }
-}
-
-impl EBML {
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
         match self {
             Self {
                 bytes_left: 0,
@@ -240,6 +229,19 @@ impl EBML {
     }
 }
 
+impl MasterElement for EBML {
+    const UNKNOWN_SIZE_ALLOWED: Option<bool> = None;
+    const RECURSIVE: Option<bool> = None;
+}
+
+impl From<EBML> for Elements {
+    fn from(element: EBML) -> Elements {
+        Elements::EBML(element)
+    }
+}
+
+impl EBML {}
+
 // parent: EBML
 #[derive(Debug, Clone, PartialEq)]
 struct EBMLVersion {
@@ -256,6 +258,17 @@ impl Element for EBMLVersion {
     const RECURRING: Option<bool> = None;
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
+
+    type Elements = Elements;
+
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
 }
 
 impl UIntElement for EBMLVersion {
@@ -266,17 +279,6 @@ impl UIntElement for EBMLVersion {
 impl From<EBMLVersion> for Elements {
     fn from(element: EBMLVersion) -> Elements {
         Elements::EBMLVersion(element)
-    }
-}
-
-impl EBMLVersion {
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
     }
 }
 
@@ -297,6 +299,17 @@ impl Element for EBMLReadVersion {
     const RECURRING: Option<bool> = None;
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
+
+    type Elements = Elements;
+
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
 }
 
 impl UIntElement for EBMLReadVersion {
@@ -309,18 +322,6 @@ impl From<EBMLReadVersion> for Elements {
         Elements::EBMLReadVersion(element)
     }
 }
-
-impl EBMLReadVersion {
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
-    }
-}
-
 */
 
 // parent: EBML
@@ -339,6 +340,17 @@ impl Element for EBMLMaxIDLength {
     const RECURRING: Option<bool> = None;
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
+
+    type Elements = Elements;
+
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
 }
 
 impl UIntElement for EBMLMaxIDLength {
@@ -350,17 +362,6 @@ impl UIntElement for EBMLMaxIDLength {
 impl From<EBMLMaxIDLength> for Elements {
     fn from(element: EBMLMaxIDLength) -> Elements {
         Elements::EBMLMaxIDLength(element)
-    }
-}
-
-impl EBMLMaxIDLength {
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
     }
 }
 
@@ -381,6 +382,17 @@ impl Element for EBMLMaxSizeLength {
     const RECURRING: Option<bool> = None;
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
+
+    type Elements = Elements;
+
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
 }
 
 impl UIntElement for EBMLMaxSizeLength {
@@ -391,17 +403,6 @@ impl UIntElement for EBMLMaxSizeLength {
 impl From<EBMLMaxSizeLength> for Elements {
     fn from(element: EBMLMaxSizeLength) -> Elements {
         Elements::EBMLMaxSizeLength(element)
-    }
-}
-
-impl EBMLMaxSizeLength {
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
     }
 }
 */
@@ -423,6 +424,17 @@ impl Element for DocType {
     const RECURRING: Option<bool> = None;
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
+
+    type Elements = Elements;
+
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
 }
 
 impl StringElement for DocType {
@@ -432,17 +444,6 @@ impl StringElement for DocType {
 impl From<DocType> for Elements {
     fn from(element: DocType) -> Elements {
         Elements::DocType(element)
-    }
-}
-
-impl DocType {
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
     }
 }
 
@@ -462,6 +463,17 @@ impl Element for DocTypeVersion {
     const RECURRING: Option<bool> = None;
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
+
+    type Elements = Elements;
+
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
 }
 
 impl UIntElement for DocTypeVersion {
@@ -472,17 +484,6 @@ impl UIntElement for DocTypeVersion {
 impl From<DocTypeVersion> for Elements {
     fn from(element: DocTypeVersion) -> Elements {
         Elements::DocTypeVersion(element)
-    }
-}
-
-impl DocTypeVersion {
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
     }
 }
 
@@ -502,6 +503,17 @@ impl Element for DocTypeReadVersion {
     const RECURRING: Option<bool> = None;
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
+
+    type Elements = Elements;
+
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
 }
 
 impl UIntElement for DocTypeReadVersion {
@@ -512,17 +524,6 @@ impl UIntElement for DocTypeReadVersion {
 impl From<DocTypeReadVersion> for Elements {
     fn from(element: DocTypeReadVersion) -> Elements {
         Elements::DocTypeReadVersion(element)
-    }
-}
-
-impl DocTypeReadVersion {
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
     }
 }
 
@@ -542,21 +543,10 @@ impl Element for DocTypeExtension {
     const RECURRING: Option<bool> = None;
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
-}
 
-impl MasterElement for DocTypeExtension {
-    const UNKNOWN_SIZE_ALLOWED: Option<bool> = None;
-    const RECURSIVE: Option<bool> = None;
-}
+    type Elements = Elements;
 
-impl From<DocTypeExtension> for Elements {
-    fn from(element: DocTypeExtension) -> Elements {
-        Elements::DocTypeExtension(element)
-    }
-}
-
-impl DocTypeExtension {
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
         match self {
             Self {
                 bytes_left: 0,
@@ -600,6 +590,17 @@ impl DocTypeExtension {
     }
 }
 
+impl MasterElement for DocTypeExtension {
+    const UNKNOWN_SIZE_ALLOWED: Option<bool> = None;
+    const RECURSIVE: Option<bool> = None;
+}
+
+impl From<DocTypeExtension> for Elements {
+    fn from(element: DocTypeExtension) -> Elements {
+        Elements::DocTypeExtension(element)
+    }
+}
+
 // parent: DocTypeExtension
 #[derive(Debug, Clone, PartialEq)]
 struct DocTypeExtensionName {
@@ -617,6 +618,17 @@ impl Element for DocTypeExtensionName {
     const RECURRING: Option<bool> = None;
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
+
+    type Elements = Elements;
+
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
 }
 
 impl StringElement for DocTypeExtensionName {
@@ -626,17 +638,6 @@ impl StringElement for DocTypeExtensionName {
 impl From<DocTypeExtensionName> for Elements {
     fn from(element: DocTypeExtensionName) -> Elements {
         Elements::DocTypeExtensionName(element)
-    }
-}
-
-impl DocTypeExtensionName {
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
     }
 }
 
@@ -656,6 +657,17 @@ impl Element for DocTypeExtensionVersion {
     const RECURRING: Option<bool> = None;
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
+
+    type Elements = Elements;
+
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
 }
 
 impl UIntElement for DocTypeExtensionVersion {
@@ -666,17 +678,6 @@ impl UIntElement for DocTypeExtensionVersion {
 impl From<DocTypeExtensionVersion> for Elements {
     fn from(element: DocTypeExtensionVersion) -> Elements {
         Elements::DocTypeExtensionVersion(element)
-    }
-}
-
-impl DocTypeExtensionVersion {
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
     }
 }
 
@@ -693,6 +694,8 @@ impl Element for CRC32 {
     const RECURRING: Option<bool> = None;
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
+
+    type Elements = Elements;
 }
 
 impl BinaryElement for CRC32 {
@@ -718,6 +721,8 @@ impl Element for Void {
     const RECURRING: Option<bool> = None;
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
+
+    type Elements = Elements;
 }
 
 impl BinaryElement for Void {
@@ -750,6 +755,17 @@ impl Element for EBMLReadVersion {
     const RECURRING: Option<bool> = None;
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
+
+    type Elements = Elements;
+
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
 }
 
 impl UIntElement for EBMLReadVersion {
@@ -760,17 +776,6 @@ impl UIntElement for EBMLReadVersion {
 impl From<EBMLReadVersion> for Elements {
     fn from(element: EBMLReadVersion) -> Elements {
         Elements::EBMLReadVersion(element)
-    }
-}
-
-impl EBMLReadVersion {
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
     }
 }
 
@@ -790,6 +795,17 @@ impl Element for EBMLMaxSizeLength {
     const RECURRING: Option<bool> = None;
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
+
+    type Elements = Elements;
+
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
 }
 
 impl UIntElement for EBMLMaxSizeLength {
@@ -800,17 +816,6 @@ impl UIntElement for EBMLMaxSizeLength {
 impl From<EBMLMaxSizeLength> for Elements {
     fn from(element: EBMLMaxSizeLength) -> Elements {
         Elements::EBMLMaxSizeLength(element)
-    }
-}
-
-impl EBMLMaxSizeLength {
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
     }
 }
 
@@ -830,21 +835,10 @@ impl Element for Files {
     const RECURRING: Option<bool> = None;
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
-}
 
-impl MasterElement for Files {
-    const UNKNOWN_SIZE_ALLOWED: Option<bool> = None;
-    const RECURSIVE: Option<bool> = None;
-}
+    type Elements = Elements;
 
-impl From<Files> for Elements {
-    fn from(element: Files) -> Elements {
-        Elements::Files(element)
-    }
-}
-
-impl Files {
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
         match self {
             Self {
                 bytes_left: 0,
@@ -883,6 +877,17 @@ impl Files {
     }
 }
 
+impl MasterElement for Files {
+    const UNKNOWN_SIZE_ALLOWED: Option<bool> = None;
+    const RECURSIVE: Option<bool> = None;
+}
+
+impl From<Files> for Elements {
+    fn from(element: Files) -> Elements {
+        Elements::Files(element)
+    }
+}
+
 // parent: Files
 #[derive(Debug, Clone, PartialEq)]
 struct File {
@@ -899,21 +904,10 @@ impl Element for File {
     const RECURRING: Option<bool> = None;
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
-}
 
-impl MasterElement for File {
-    const UNKNOWN_SIZE_ALLOWED: Option<bool> = None;
-    const RECURSIVE: Option<bool> = None;
-}
+    type Elements = Elements;
 
-impl From<File> for Elements {
-    fn from(element: File) -> Elements {
-        Elements::File(element)
-    }
-}
-
-impl File {
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
         match self {
             Self {
                 bytes_left: 0,
@@ -967,6 +961,17 @@ impl File {
     }
 }
 
+impl MasterElement for File {
+    const UNKNOWN_SIZE_ALLOWED: Option<bool> = None;
+    const RECURSIVE: Option<bool> = None;
+}
+
+impl From<File> for Elements {
+    fn from(element: File) -> Elements {
+        Elements::File(element)
+    }
+}
+
 // parent: File
 #[derive(Debug, Clone, PartialEq)]
 struct FileName {
@@ -983,6 +988,17 @@ impl Element for FileName {
     const RECURRING: Option<bool> = None;
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
+
+    type Elements = Elements;
+
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
 }
 
 impl UTF8Element for FileName {
@@ -992,17 +1008,6 @@ impl UTF8Element for FileName {
 impl From<FileName> for Elements {
     fn from(element: FileName) -> Elements {
         Elements::FileName(element)
-    }
-}
-
-impl FileName {
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
     }
 }
 
@@ -1022,6 +1027,17 @@ impl Element for MimeType {
     const RECURRING: Option<bool> = None;
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
+
+    type Elements = Elements;
+
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
 }
 
 impl StringElement for MimeType {
@@ -1031,17 +1047,6 @@ impl StringElement for MimeType {
 impl From<MimeType> for Elements {
     fn from(element: MimeType) -> Elements {
         Elements::MimeType(element)
-    }
-}
-
-impl MimeType {
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
     }
 }
 
@@ -1061,6 +1066,17 @@ impl Element for ModificationTimestamp {
     const RECURRING: Option<bool> = None;
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
+
+    type Elements = Elements;
+
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
 }
 
 impl DateElement for ModificationTimestamp {
@@ -1071,17 +1087,6 @@ impl DateElement for ModificationTimestamp {
 impl From<ModificationTimestamp> for Elements {
     fn from(element: ModificationTimestamp) -> Elements {
         Elements::ModificationTimestamp(element)
-    }
-}
-
-impl ModificationTimestamp {
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
     }
 }
 
@@ -1101,6 +1106,17 @@ impl Element for Data {
     const RECURRING: Option<bool> = None;
     const MIN_VERSION: Option<u64> = None;
     const MAX_VERSION: Option<u64> = None;
+
+    type Elements = Elements;
+
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Self::Elements, ()> {
+        self.skip(stream)
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
+    }
 }
 
 impl BinaryElement for Data {
@@ -1110,17 +1126,6 @@ impl BinaryElement for Data {
 impl From<Data> for Elements {
     fn from(element: Data) -> Elements {
         Elements::Data(element)
-    }
-}
-
-impl Data {
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        self.skip(stream)
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent.into()))
     }
 }
 
