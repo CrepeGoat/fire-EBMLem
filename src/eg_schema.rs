@@ -130,12 +130,6 @@ impl MasterElement for Document {
     const RECURSIVE: Option<bool> = None;
 }
 
-impl From<Document> for Elements {
-    fn from(element: Document) -> Elements {
-        Elements::Document(element)
-    }
-}
-
 // parent: None
 #[derive(Debug, Clone, PartialEq)]
 struct EBML {
@@ -173,12 +167,6 @@ impl MasterElement for EBML {
     const RECURSIVE: Option<bool> = None;
 }
 
-impl From<EBML> for Elements {
-    fn from(element: EBML) -> Elements {
-        Elements::EBML(element)
-    }
-}
-
 impl EBML {}
 
 // parent: EBML
@@ -209,12 +197,6 @@ impl UIntElement for EBMLVersion {
     const DEFAULT: Option<u64> = Some(1);
 }
 
-impl From<EBMLVersion> for Elements {
-    fn from(element: EBMLVersion) -> Elements {
-        Elements::EBMLVersion(element)
-    }
-}
-
 /*
 // parent: EBML
 #[derive(Debug, Clone, PartialEq)]
@@ -243,11 +225,6 @@ impl UIntElement for EBMLReadVersion {
     const DEFAULT: Option<u64> = Some(1);
 }
 
-impl From<EBMLReadVersion> for Elements {
-    fn from(element: EBMLReadVersion) -> Elements {
-        Elements::EBMLReadVersion(element)
-    }
-}
 */
 
 // parent: EBML
@@ -278,12 +255,6 @@ impl UIntElement for EBMLMaxIDLength {
     const DEFAULT: Option<u64> = Some(4);
 }
 
-impl From<EBMLMaxIDLength> for Elements {
-    fn from(element: EBMLMaxIDLength) -> Elements {
-        Elements::EBMLMaxIDLength(element)
-    }
-}
-
 /*
 // parent: EBML
 #[derive(Debug, Clone, PartialEq)]
@@ -312,11 +283,6 @@ impl UIntElement for EBMLMaxSizeLength {
     const DEFAULT: Option<u64> = Some(8);
 }
 
-impl From<EBMLMaxSizeLength> for Elements {
-    fn from(element: EBMLMaxSizeLength) -> Elements {
-        Elements::EBMLMaxSizeLength(element)
-    }
-}
 */
 
 // parent: EBML
@@ -346,12 +312,6 @@ impl StringElement for DocType {
     const DEFAULT: Option<&'static str> = None;
 }
 
-impl From<DocType> for Elements {
-    fn from(element: DocType) -> Elements {
-        Elements::DocType(element)
-    }
-}
-
 // parent: EBML
 #[derive(Debug, Clone, PartialEq)]
 struct DocTypeVersion {
@@ -377,12 +337,6 @@ impl Element for DocTypeVersion {
 impl UIntElement for DocTypeVersion {
     const RANGE: Option<RangeDef<u64>> = Some(RangeDef::Excludes(0));
     const DEFAULT: Option<u64> = Some(1);
-}
-
-impl From<DocTypeVersion> for Elements {
-    fn from(element: DocTypeVersion) -> Elements {
-        Elements::DocTypeVersion(element)
-    }
 }
 
 // parent: EBML
@@ -412,12 +366,6 @@ impl UIntElement for DocTypeReadVersion {
     const DEFAULT: Option<u64> = Some(1);
 }
 
-impl From<DocTypeReadVersion> for Elements {
-    fn from(element: DocTypeReadVersion) -> Elements {
-        Elements::DocTypeReadVersion(element)
-    }
-}
-
 // parent: EBML
 #[derive(Debug, Clone, PartialEq)]
 struct DocTypeExtension {
@@ -443,12 +391,6 @@ impl Element for DocTypeExtension {
 impl MasterElement for DocTypeExtension {
     const UNKNOWN_SIZE_ALLOWED: Option<bool> = None;
     const RECURSIVE: Option<bool> = None;
-}
-
-impl From<DocTypeExtension> for Elements {
-    fn from(element: DocTypeExtension) -> Elements {
-        Elements::DocTypeExtension(element)
-    }
 }
 
 // parent: DocTypeExtension
@@ -478,12 +420,6 @@ impl StringElement for DocTypeExtensionName {
     const DEFAULT: Option<&'static str> = None;
 }
 
-impl From<DocTypeExtensionName> for Elements {
-    fn from(element: DocTypeExtensionName) -> Elements {
-        Elements::DocTypeExtensionName(element)
-    }
-}
-
 // parent: DocTypeExtension
 #[derive(Debug, Clone, PartialEq)]
 struct DocTypeExtensionVersion {
@@ -511,12 +447,6 @@ impl UIntElement for DocTypeExtensionVersion {
     const DEFAULT: Option<u64> = None;
 }
 
-impl From<DocTypeExtensionVersion> for Elements {
-    fn from(element: DocTypeExtensionVersion) -> Elements {
-        Elements::DocTypeExtensionVersion(element)
-    }
-}
-
 /*
 #[derive(Debug, Clone, PartialEq)]
 struct CRC32 {}
@@ -538,11 +468,6 @@ impl BinaryElement for CRC32 {
     const DEFAULT: Option<&'static [u8]> = None;
 }
 
-impl From<CRC32> for Elements {
-    fn from(element: CRC32) -> Elements {
-        Elements::CRC32(element)
-    }
-}
 
 
 #[derive(Debug, Clone, PartialEq)]
@@ -565,11 +490,6 @@ impl BinaryElement for Void {
     const DEFAULT: Option<&'static [u8]> = None;
 }
 
-impl From<Void> for Elements {
-    fn from(element: Void) -> Elements {
-        Elements::Void(element)
-    }
-}
 */
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -602,12 +522,6 @@ impl UIntElement for EBMLReadVersion {
     const DEFAULT: Option<u64> = Some(1);
 }
 
-impl From<EBMLReadVersion> for Elements {
-    fn from(element: EBMLReadVersion) -> Elements {
-        Elements::EBMLReadVersion(element)
-    }
-}
-
 // parent: EBML
 #[derive(Debug, Clone, PartialEq)]
 struct EBMLMaxSizeLength {
@@ -633,12 +547,6 @@ impl Element for EBMLMaxSizeLength {
 impl UIntElement for EBMLMaxSizeLength {
     const RANGE: Option<RangeDef<u64>> = Some(RangeDef::IsExactly(8));
     const DEFAULT: Option<u64> = Some(8);
-}
-
-impl From<EBMLMaxSizeLength> for Elements {
-    fn from(element: EBMLMaxSizeLength) -> Elements {
-        Elements::EBMLMaxSizeLength(element)
-    }
 }
 
 // parent: (None)
@@ -668,12 +576,6 @@ impl MasterElement for Files {
     const RECURSIVE: Option<bool> = None;
 }
 
-impl From<Files> for Elements {
-    fn from(element: Files) -> Elements {
-        Elements::Files(element)
-    }
-}
-
 // parent: Files
 #[derive(Debug, Clone, PartialEq)]
 struct File {
@@ -699,12 +601,6 @@ impl Element for File {
 impl MasterElement for File {
     const UNKNOWN_SIZE_ALLOWED: Option<bool> = None;
     const RECURSIVE: Option<bool> = None;
-}
-
-impl From<File> for Elements {
-    fn from(element: File) -> Elements {
-        Elements::File(element)
-    }
 }
 
 // parent: File
@@ -733,12 +629,6 @@ impl UTF8Element for FileName {
     const DEFAULT: Option<&'static str> = None;
 }
 
-impl From<FileName> for Elements {
-    fn from(element: FileName) -> Elements {
-        Elements::FileName(element)
-    }
-}
-
 // parent: File
 #[derive(Debug, Clone, PartialEq)]
 struct MimeType {
@@ -763,12 +653,6 @@ impl Element for MimeType {
 
 impl StringElement for MimeType {
     const DEFAULT: Option<&'static str> = None;
-}
-
-impl From<MimeType> for Elements {
-    fn from(element: MimeType) -> Elements {
-        Elements::MimeType(element)
-    }
 }
 
 // parent: File
@@ -798,12 +682,6 @@ impl DateElement for ModificationTimestamp {
     const DEFAULT: Option<i64> = None;
 }
 
-impl From<ModificationTimestamp> for Elements {
-    fn from(element: ModificationTimestamp) -> Elements {
-        Elements::ModificationTimestamp(element)
-    }
-}
-
 // parent: File
 #[derive(Debug, Clone, PartialEq)]
 struct Data {
@@ -830,36 +708,26 @@ impl BinaryElement for Data {
     const DEFAULT: Option<&'static [u8]> = None;
 }
 
-impl From<Data> for Elements {
-    fn from(element: Data) -> Elements {
-        Elements::Data(element)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-enum Elements {
-    None,
-    Document(Document),
-
-    EBML(EBML),
-    EBMLVersion(EBMLVersion),
-    EBMLReadVersion(EBMLReadVersion),
-    EBMLMaxIDLength(EBMLMaxIDLength),
-    EBMLMaxSizeLength(EBMLMaxSizeLength),
-    DocType(DocType),
-    DocTypeVersion(DocTypeVersion),
-    DocTypeReadVersion(DocTypeReadVersion),
-    DocTypeExtension(DocTypeExtension),
-    DocTypeExtensionName(DocTypeExtensionName),
-    DocTypeExtensionVersion(DocTypeExtensionVersion),
-
-    Files(Files),
-    File(File),
-    FileName(FileName),
-    MimeType(MimeType),
-    ModificationTimestamp(ModificationTimestamp),
-    Data(Data),
-}
+Elements!(
+    Document,
+    EBML,
+    EBMLVersion,
+    EBMLReadVersion,
+    EBMLMaxIDLength,
+    EBMLMaxSizeLength,
+    DocType,
+    DocTypeVersion,
+    DocTypeReadVersion,
+    DocTypeExtension,
+    DocTypeExtensionName,
+    DocTypeExtensionVersion,
+    Files,
+    File,
+    FileName,
+    MimeType,
+    ModificationTimestamp,
+    Data
+);
 
 #[cfg(test)]
 mod tests {

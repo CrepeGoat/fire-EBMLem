@@ -166,3 +166,24 @@ pub trait BinaryElement: Element {
         todo!()
     }
 }
+
+#[macro_export]
+macro_rules! Elements {
+    ( $( $element_type:ident ),* ) => {
+        #[derive(Debug, Clone, PartialEq)]
+        enum Elements {
+            None,
+            $(
+                $element_type($element_type),
+            )*
+        }
+
+        $(
+            impl From<$element_type> for Elements {
+                fn from(element: $element_type) -> Elements {
+                    Elements::$element_type(element)
+                }
+            }
+        )*
+    };
+}
