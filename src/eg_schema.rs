@@ -94,6 +94,48 @@ impl From<Document> for Elements {
     }
 }
 
+impl Document {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        match self {
+            Self { bytes_left: 0 } => Ok((stream, Elements::None)),
+            _ => {
+                let orig_stream = stream;
+
+                let (stream, id) = parse::element_id(stream)?;
+                let (stream, len) = parse::element_len(stream)?;
+                let len: usize = len
+                    .expect("todo: handle optionally unsized elements")
+                    .try_into()
+                    .expect("overflow in storing element bytelength");
+
+                self.bytes_left -= len + stream_diff(orig_stream, stream);
+
+                Ok((
+                    stream,
+                    match id {
+                        EBML::ID => EBML {
+                            bytes_left: len,
+                            parent: self,
+                        }
+                        .into(),
+                        Files::ID => Files {
+                            bytes_left: len,
+                            parent: self,
+                        }
+                        .into(),
+                        _ => return Err(nom::Err::Failure(())),
+                    },
+                ))
+            }
+        }
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, Elements::None))
+    }
+}
+
 // parent: None
 #[derive(Debug, Clone, PartialEq)]
 struct EBML {
@@ -120,6 +162,81 @@ impl MasterElement for EBML {
 impl From<EBML> for Elements {
     fn from(element: EBML) -> Elements {
         Elements::EBML(element)
+    }
+}
+
+impl EBML {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        match self {
+            Self {
+                bytes_left: 0,
+                parent: _,
+            } => Ok((stream, self.parent.into())),
+            _ => {
+                let orig_stream = stream;
+
+                let (stream, id) = parse::element_id(stream)?;
+                let (stream, len) = parse::element_len(stream)?;
+                let len: usize = len
+                    .expect("todo: handle optionally unsized elements")
+                    .try_into()
+                    .expect("overflow in storing element bytelength");
+
+                self.bytes_left -= len + stream_diff(orig_stream, stream);
+
+                Ok((
+                    stream,
+                    match id {
+                        EBMLVersion::ID => EBMLVersion {
+                            bytes_left: len,
+                            parent: self,
+                        }
+                        .into(),
+                        EBMLReadVersion::ID => EBMLReadVersion {
+                            bytes_left: len,
+                            parent: self,
+                        }
+                        .into(),
+                        EBMLMaxIDLength::ID => EBMLMaxIDLength {
+                            bytes_left: len,
+                            parent: self,
+                        }
+                        .into(),
+                        EBMLMaxSizeLength::ID => EBMLMaxSizeLength {
+                            bytes_left: len,
+                            parent: self,
+                        }
+                        .into(),
+                        DocType::ID => DocType {
+                            bytes_left: len,
+                            parent: self,
+                        }
+                        .into(),
+                        DocTypeVersion::ID => DocTypeVersion {
+                            bytes_left: len,
+                            parent: self,
+                        }
+                        .into(),
+                        DocTypeReadVersion::ID => DocTypeReadVersion {
+                            bytes_left: len,
+                            parent: self,
+                        }
+                        .into(),
+                        DocTypeExtension::ID => DocTypeExtension {
+                            bytes_left: len,
+                            parent: self,
+                        }
+                        .into(),
+                        _ => return Err(nom::Err::Failure(())),
+                    },
+                ))
+            }
+        }
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
     }
 }
 
@@ -435,6 +552,51 @@ impl MasterElement for DocTypeExtension {
 impl From<DocTypeExtension> for Elements {
     fn from(element: DocTypeExtension) -> Elements {
         Elements::DocTypeExtension(element)
+    }
+}
+
+impl DocTypeExtension {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        match self {
+            Self {
+                bytes_left: 0,
+                parent: _,
+            } => Ok((stream, self.parent.into())),
+            _ => {
+                let orig_stream = stream;
+
+                let (stream, id) = parse::element_id(stream)?;
+                let (stream, len) = parse::element_len(stream)?;
+                let len: usize = len
+                    .expect("todo: handle optionally unsized elements")
+                    .try_into()
+                    .expect("overflow in storing element bytelength");
+
+                self.bytes_left -= len + stream_diff(orig_stream, stream);
+
+                Ok((
+                    stream,
+                    match id {
+                        DocTypeExtensionName::ID => DocTypeExtensionName {
+                            bytes_left: len,
+                            parent: self,
+                        }
+                        .into(),
+                        DocTypeExtensionVersion::ID => DocTypeExtensionVersion {
+                            bytes_left: len,
+                            parent: self,
+                        }
+                        .into(),
+                        _ => return Err(nom::Err::Failure(())),
+                    },
+                ))
+            }
+        }
+    }
+
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], Elements, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent.into()))
     }
 }
 
@@ -964,6 +1126,7 @@ impl Data {
 
 #[derive(Debug, Clone, PartialEq)]
 enum Elements {
+    None,
     Document(Document),
 
     EBML(EBML),
@@ -990,6 +1153,436 @@ enum Elements {
 mod tests {
     use super::*;
     use rstest::*;
+
+    mod document {
+        use super::*;
+
+        #[rstest(element, source, expt_result,
+            case(
+                Document{bytes_left: 7},
+                &[0x1A, 0x45, 0xDF, 0xA3, 0x82, 0xFF, 0xFF, 0xFF],
+                (&[0xFF, 0xFF, 0xFF][..], EBML{bytes_left: 2, parent: Document{bytes_left: 0}}.into())
+            ),
+            case(
+                Document{bytes_left: 7},
+                &[0x19, 0x46, 0x69, 0x6C, 0x82, 0xFF, 0xFF, 0xFF],
+                (&[0xFF, 0xFF, 0xFF][..], Files{bytes_left: 2, parent: Document{bytes_left: 0}}.into())
+            ),
+        )]
+        fn next(element: Document, source: &'static [u8], expt_result: (&'static [u8], Elements)) {
+            assert_eq!(element.next(source).unwrap(), expt_result);
+        }
+
+        #[rstest(element, source, expt_result,
+            case(
+                Document{bytes_left: 7},
+                &[0x1A, 0x45, 0xDF, 0xA3, 0x82, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], Elements::None)
+            ),
+        )]
+        fn skip(element: Document, source: &'static [u8], expt_result: (&'static [u8], Elements)) {
+            assert_eq!(element.skip(source).unwrap(), expt_result);
+        }
+    }
+
+    mod ebml {
+        use super::*;
+
+        #[rstest(element, source, expt_result,
+            case(
+                EBML{bytes_left: 5, parent: Document{bytes_left: 0}},
+                &[0x42, 0x86, 0x82, 0xFF, 0xFF, 0xFF],
+                (&[0xFF, 0xFF, 0xFF][..], EBMLVersion{bytes_left: 2, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}}.into())
+            ),
+            case(
+                EBML{bytes_left: 5, parent: Document{bytes_left: 0}},
+                &[0x42, 0xF7, 0x82, 0xFF, 0xFF, 0xFF],
+                (&[0xFF, 0xFF, 0xFF][..], EBMLReadVersion{bytes_left: 2, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}}.into())
+            ),
+            case(
+                EBML{bytes_left: 5, parent: Document{bytes_left: 0}},
+                &[0x42, 0xF2, 0x82, 0xFF, 0xFF, 0xFF],
+                (&[0xFF, 0xFF, 0xFF][..], EBMLMaxIDLength{bytes_left: 2, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}}.into())
+            ),
+            case(
+                EBML{bytes_left: 5, parent: Document{bytes_left: 0}},
+                &[0x42, 0xF3, 0x82, 0xFF, 0xFF, 0xFF],
+                (&[0xFF, 0xFF, 0xFF][..], EBMLMaxSizeLength{bytes_left: 2, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}}.into())
+            ),
+
+            case(
+                EBML{bytes_left: 5, parent: Document{bytes_left: 0}},
+                &[0x42, 0x82, 0x82, 0xFF, 0xFF, 0xFF],
+                (&[0xFF, 0xFF, 0xFF][..], DocType{bytes_left: 2, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}}.into())
+            ),
+            case(
+                EBML{bytes_left: 5, parent: Document{bytes_left: 0}},
+                &[0x42, 0x87, 0x82, 0xFF, 0xFF, 0xFF],
+                (&[0xFF, 0xFF, 0xFF][..], DocTypeVersion{bytes_left: 2, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}}.into())
+            ),
+            case(
+                EBML{bytes_left: 5, parent: Document{bytes_left: 0}},
+                &[0x42, 0x85, 0x82, 0xFF, 0xFF, 0xFF],
+                (&[0xFF, 0xFF, 0xFF][..], DocTypeReadVersion{bytes_left: 2, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}}.into())
+            ),
+            case(
+                EBML{bytes_left: 5, parent: Document{bytes_left: 0}},
+                &[0x42, 0x81, 0x82, 0xFF, 0xFF, 0xFF],
+                (&[0xFF, 0xFF, 0xFF][..], DocTypeExtension{bytes_left: 2, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}}.into())
+            ),
+        )]
+        fn next(element: EBML, source: &'static [u8], expt_result: (&'static [u8], Elements)) {
+            assert_eq!(element.next(source).unwrap(), expt_result);
+        }
+
+        #[rstest(element, source, expt_result,
+            case(
+                EBML{bytes_left: 5, parent: Document{bytes_left: 0}},
+                &[0x42, 0x86, 0x82, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], Document{bytes_left: 0}.into())
+            ),
+        )]
+        fn skip(element: EBML, source: &'static [u8], expt_result: (&'static [u8], Elements)) {
+            assert_eq!(element.skip(source).unwrap(), expt_result);
+        }
+    }
+
+    mod ebmlversion {
+        use super::*;
+
+        #[rstest(element, source, expt_result,
+            case(
+                EBMLVersion{bytes_left: 3, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], EBML{bytes_left: 0, parent: Document{bytes_left: 0}}.into()),
+            ),
+        )]
+        fn next(
+            element: EBMLVersion,
+            source: &'static [u8],
+            expt_result: (&'static [u8], Elements),
+        ) {
+            assert_eq!(element.next(source).unwrap(), expt_result);
+        }
+
+        #[rstest(element, source, expt_result,
+            case(
+                EBMLVersion{bytes_left: 3, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], EBML{bytes_left: 0, parent: Document{bytes_left: 0}}.into()),
+            ),
+        )]
+        fn skip(
+            element: EBMLVersion,
+            source: &'static [u8],
+            expt_result: (&'static [u8], Elements),
+        ) {
+            assert_eq!(element.skip(source).unwrap(), expt_result);
+        }
+    }
+
+    mod ebmlreadversion {
+        use super::*;
+
+        #[rstest(element, source, expt_result,
+            case(
+                EBMLReadVersion{bytes_left: 3, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], EBML{bytes_left: 0, parent: Document{bytes_left: 0}}.into()),
+            ),
+        )]
+        fn next(
+            element: EBMLReadVersion,
+            source: &'static [u8],
+            expt_result: (&'static [u8], Elements),
+        ) {
+            assert_eq!(element.next(source).unwrap(), expt_result);
+        }
+
+        #[rstest(element, source, expt_result,
+            case(
+                EBMLReadVersion{bytes_left: 3, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], EBML{bytes_left: 0, parent: Document{bytes_left: 0}}.into()),
+            ),
+        )]
+        fn skip(
+            element: EBMLReadVersion,
+            source: &'static [u8],
+            expt_result: (&'static [u8], Elements),
+        ) {
+            assert_eq!(element.skip(source).unwrap(), expt_result);
+        }
+    }
+
+    mod ebmlmaxidlength {
+        use super::*;
+
+        #[rstest(element, source, expt_result,
+            case(
+                EBMLMaxIDLength{bytes_left: 3, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], EBML{bytes_left: 0, parent: Document{bytes_left: 0}}.into()),
+            ),
+        )]
+        fn next(
+            element: EBMLMaxIDLength,
+            source: &'static [u8],
+            expt_result: (&'static [u8], Elements),
+        ) {
+            assert_eq!(element.next(source).unwrap(), expt_result);
+        }
+
+        #[rstest(element, source, expt_result,
+            case(
+                EBMLMaxIDLength{bytes_left: 3, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], EBML{bytes_left: 0, parent: Document{bytes_left: 0}}.into()),
+            ),
+        )]
+        fn skip(
+            element: EBMLMaxIDLength,
+            source: &'static [u8],
+            expt_result: (&'static [u8], Elements),
+        ) {
+            assert_eq!(element.skip(source).unwrap(), expt_result);
+        }
+    }
+
+    mod ebmlmaxsizelength {
+        use super::*;
+
+        #[rstest(element, source, expt_result,
+            case(
+                EBMLMaxSizeLength{bytes_left: 3, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], EBML{bytes_left: 0, parent: Document{bytes_left: 0}}.into()),
+            ),
+        )]
+        fn next(
+            element: EBMLMaxSizeLength,
+            source: &'static [u8],
+            expt_result: (&'static [u8], Elements),
+        ) {
+            assert_eq!(element.next(source).unwrap(), expt_result);
+        }
+
+        #[rstest(element, source, expt_result,
+            case(
+                EBMLMaxSizeLength{bytes_left: 3, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], EBML{bytes_left: 0, parent: Document{bytes_left: 0}}.into()),
+            ),
+        )]
+        fn skip(
+            element: EBMLMaxSizeLength,
+            source: &'static [u8],
+            expt_result: (&'static [u8], Elements),
+        ) {
+            assert_eq!(element.skip(source).unwrap(), expt_result);
+        }
+    }
+
+    mod doctype {
+        use super::*;
+
+        #[rstest(element, source, expt_result,
+            case(
+                DocType{bytes_left: 3, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], EBML{bytes_left: 0, parent: Document{bytes_left: 0}}.into()),
+            ),
+        )]
+        fn next(element: DocType, source: &'static [u8], expt_result: (&'static [u8], Elements)) {
+            assert_eq!(element.next(source).unwrap(), expt_result);
+        }
+
+        #[rstest(element, source, expt_result,
+            case(
+                DocType{bytes_left: 3, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], EBML{bytes_left: 0, parent: Document{bytes_left: 0}}.into()),
+            ),
+        )]
+        fn skip(element: DocType, source: &'static [u8], expt_result: (&'static [u8], Elements)) {
+            assert_eq!(element.skip(source).unwrap(), expt_result);
+        }
+    }
+
+    mod doctypeversion {
+        use super::*;
+
+        #[rstest(element, source, expt_result,
+            case(
+                DocTypeVersion{bytes_left: 3, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], EBML{bytes_left: 0, parent: Document{bytes_left: 0}}.into()),
+            ),
+        )]
+        fn next(
+            element: DocTypeVersion,
+            source: &'static [u8],
+            expt_result: (&'static [u8], Elements),
+        ) {
+            assert_eq!(element.next(source).unwrap(), expt_result);
+        }
+
+        #[rstest(element, source, expt_result,
+            case(
+                DocTypeVersion{bytes_left: 3, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], EBML{bytes_left: 0, parent: Document{bytes_left: 0}}.into()),
+            ),
+        )]
+        fn skip(
+            element: DocTypeVersion,
+            source: &'static [u8],
+            expt_result: (&'static [u8], Elements),
+        ) {
+            assert_eq!(element.skip(source).unwrap(), expt_result);
+        }
+    }
+
+    mod doctypereadversion {
+        use super::*;
+
+        #[rstest(element, source, expt_result,
+            case(
+                DocTypeReadVersion{bytes_left: 3, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], EBML{bytes_left: 0, parent: Document{bytes_left: 0}}.into()),
+            ),
+        )]
+        fn next(
+            element: DocTypeReadVersion,
+            source: &'static [u8],
+            expt_result: (&'static [u8], Elements),
+        ) {
+            assert_eq!(element.next(source).unwrap(), expt_result);
+        }
+
+        #[rstest(element, source, expt_result,
+            case(
+                DocTypeReadVersion{bytes_left: 3, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], EBML{bytes_left: 0, parent: Document{bytes_left: 0}}.into()),
+            ),
+        )]
+        fn skip(
+            element: DocTypeReadVersion,
+            source: &'static [u8],
+            expt_result: (&'static [u8], Elements),
+        ) {
+            assert_eq!(element.skip(source).unwrap(), expt_result);
+        }
+    }
+
+    mod doctypeextension {
+        use super::*;
+
+        #[rstest(element, source, expt_result,
+            case(
+                DocTypeExtension{bytes_left: 5, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}},
+                &[0x42, 0x83, 0x82, 0xFF, 0xFF, 0xFF],
+                (&[0xFF, 0xFF, 0xFF][..], DocTypeExtensionName{bytes_left: 2, parent: DocTypeExtension{bytes_left: 0, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}}}.into())
+            ),
+            case(
+                DocTypeExtension{bytes_left: 5, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}},
+                &[0x42, 0x84, 0x82, 0xFF, 0xFF, 0xFF],
+                (&[0xFF, 0xFF, 0xFF][..], DocTypeExtensionVersion{bytes_left: 2, parent: DocTypeExtension{bytes_left: 0, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}}}.into())
+            ),
+        )]
+        fn next(
+            element: DocTypeExtension,
+            source: &'static [u8],
+            expt_result: (&'static [u8], Elements),
+        ) {
+            assert_eq!(element.next(source).unwrap(), expt_result);
+        }
+
+        #[rstest(element, source, expt_result,
+            case(
+                DocTypeExtension{bytes_left: 5, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}},
+                &[0x42, 0x83, 0x82, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], EBML{bytes_left: 0, parent: Document{bytes_left: 0}}.into())
+            ),
+        )]
+        fn skip(
+            element: DocTypeExtension,
+            source: &'static [u8],
+            expt_result: (&'static [u8], Elements),
+        ) {
+            assert_eq!(element.skip(source).unwrap(), expt_result);
+        }
+    }
+
+    mod doctypeextensionname {
+        use super::*;
+
+        #[rstest(element, source, expt_result,
+            case(
+                DocTypeExtensionName{bytes_left: 3, parent: DocTypeExtension{bytes_left: 0, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], DocTypeExtension{bytes_left: 0, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}}.into()),
+            ),
+        )]
+        fn next(
+            element: DocTypeExtensionName,
+            source: &'static [u8],
+            expt_result: (&'static [u8], Elements),
+        ) {
+            assert_eq!(element.next(source).unwrap(), expt_result);
+        }
+
+        #[rstest(element, source, expt_result,
+            case(
+                DocTypeExtensionName{bytes_left: 3, parent: DocTypeExtension{bytes_left: 0, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], DocTypeExtension{bytes_left: 0, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}}.into()),
+            ),
+        )]
+        fn skip(
+            element: DocTypeExtensionName,
+            source: &'static [u8],
+            expt_result: (&'static [u8], Elements),
+        ) {
+            assert_eq!(element.skip(source).unwrap(), expt_result);
+        }
+    }
+
+    mod doctypeextensionversion {
+        use super::*;
+
+        #[rstest(element, source, expt_result,
+            case(
+                DocTypeExtensionVersion{bytes_left: 3, parent: DocTypeExtension{bytes_left: 0, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], DocTypeExtension{bytes_left: 0, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}}.into()),
+            ),
+        )]
+        fn next(
+            element: DocTypeExtensionVersion,
+            source: &'static [u8],
+            expt_result: (&'static [u8], Elements),
+        ) {
+            assert_eq!(element.next(source).unwrap(), expt_result);
+        }
+
+        #[rstest(element, source, expt_result,
+            case(
+                DocTypeExtensionVersion{bytes_left: 3, parent: DocTypeExtension{bytes_left: 0, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], DocTypeExtension{bytes_left: 0, parent: EBML{bytes_left: 0, parent: Document{bytes_left: 0}}}.into()),
+            ),
+        )]
+        fn skip(
+            element: DocTypeExtensionVersion,
+            source: &'static [u8],
+            expt_result: (&'static [u8], Elements),
+        ) {
+            assert_eq!(element.skip(source).unwrap(), expt_result);
+        }
+    }
 
     mod files {
         use super::*;
