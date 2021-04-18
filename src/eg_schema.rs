@@ -991,198 +991,182 @@ mod tests {
     use super::*;
     use rstest::*;
 
-    #[rstest(element, source, expt_result,
-        case(
-            Files{bytes_left: 5, parent: Document{bytes_left: 0}},
-            &[0x61, 0x46, 0x82, 0xFF, 0xFF, 0xFF],
-            (&[0xFF, 0xFF, 0xFF][..], File{bytes_left: 2, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into())
-        ),
-    )]
-    fn test_files_next(
-        element: Files,
-        source: &'static [u8],
-        expt_result: (&'static [u8], Elements),
-    ) {
-        assert_eq!(element.next(source).unwrap(), expt_result);
+    mod files {
+        use super::*;
+
+        #[rstest(element, source, expt_result,
+            case(
+                Files{bytes_left: 5, parent: Document{bytes_left: 0}},
+                &[0x61, 0x46, 0x82, 0xFF, 0xFF, 0xFF],
+                (&[0xFF, 0xFF, 0xFF][..], File{bytes_left: 2, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into())
+            ),
+        )]
+        fn next(element: Files, source: &'static [u8], expt_result: (&'static [u8], Elements)) {
+            assert_eq!(element.next(source).unwrap(), expt_result);
+        }
+
+        #[rstest(element, source, expt_result,
+            case(
+                Files{bytes_left: 5, parent: Document{bytes_left: 0}},
+                &[0x61, 0x4E, 0x82, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], Document{bytes_left: 0}.into())
+            ),
+        )]
+        fn skip(element: Files, source: &'static [u8], expt_result: (&'static [u8], Elements)) {
+            assert_eq!(element.skip(source).unwrap(), expt_result);
+        }
     }
 
-    #[rstest(element, source, expt_result,
-        case(
-            Files{bytes_left: 5, parent: Document{bytes_left: 0}},
-            &[0x61, 0x4E, 0x82, 0xFF, 0xFF, 0xFF],
-            (&[0xFF][..], Document{bytes_left: 0}.into())
-        ),
-    )]
-    fn test_files_skip(
-        element: Files,
-        source: &'static [u8],
-        expt_result: (&'static [u8], Elements),
-    ) {
-        assert_eq!(element.skip(source).unwrap(), expt_result);
+    mod file {
+        use super::*;
+
+        #[rstest(element, source, expt_result,
+            case(
+                File{bytes_left: 5, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}},
+                &[0x61, 0x4E, 0x82, 0xFF, 0xFF],
+                (&[0xFF, 0xFF][..], FileName{bytes_left: 2, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}}.into())
+            ),
+            case(
+                File{bytes_left: 5, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}},
+                &[0x46, 0x4D, 0x82, 0xFF, 0xFF],
+                (&[0xFF, 0xFF][..], MimeType{bytes_left: 2, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}}.into())
+            ),
+            case(
+                File{bytes_left: 5, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}},
+                &[0x46, 0x54, 0x82, 0xFF, 0xFF],
+                (&[0xFF, 0xFF][..], ModificationTimestamp{bytes_left: 2, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}}.into())
+            ),
+            case(
+                File{bytes_left: 5, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}},
+                &[0x46, 0x64, 0x82, 0xFF, 0xFF],
+                (&[0xFF, 0xFF][..], Data{bytes_left: 2, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}}.into())
+            ),
+        )]
+        fn next(element: File, source: &'static [u8], expt_result: (&'static [u8], Elements)) {
+            assert_eq!(element.next(source).unwrap(), expt_result);
+        }
+
+        #[rstest(element, source, expt_result,
+            case(
+                File{bytes_left: 5, parent: Files{bytes_left: 1, parent: Document{bytes_left: 0}}},
+                &[0x61, 0x4E, 0x82, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], Files{bytes_left: 1, parent: Document{bytes_left: 0}}.into())
+            ),
+        )]
+        fn skip(element: File, source: &'static [u8], expt_result: (&'static [u8], Elements)) {
+            assert_eq!(element.skip(source).unwrap(), expt_result);
+        }
     }
 
-    #[rstest(element, source, expt_result,
-        case(
-            File{bytes_left: 5, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}},
-            &[0x61, 0x4E, 0x82, 0xFF, 0xFF],
-            (&[0xFF, 0xFF][..], FileName{bytes_left: 2, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}}.into())
-        ),
-        case(
-            File{bytes_left: 5, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}},
-            &[0x46, 0x4D, 0x82, 0xFF, 0xFF],
-            (&[0xFF, 0xFF][..], MimeType{bytes_left: 2, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}}.into())
-        ),
-        case(
-            File{bytes_left: 5, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}},
-            &[0x46, 0x54, 0x82, 0xFF, 0xFF],
-            (&[0xFF, 0xFF][..], ModificationTimestamp{bytes_left: 2, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}}.into())
-        ),
-        case(
-            File{bytes_left: 5, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}},
-            &[0x46, 0x64, 0x82, 0xFF, 0xFF],
-            (&[0xFF, 0xFF][..], Data{bytes_left: 2, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}}.into())
-        ),
-    )]
-    fn test_file_next(
-        element: File,
-        source: &'static [u8],
-        expt_result: (&'static [u8], Elements),
-    ) {
-        assert_eq!(element.next(source).unwrap(), expt_result);
+    mod filename {
+        use super::*;
+
+        #[rstest(element, source, expt_result,
+            case(
+                FileName{bytes_left: 3, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into()),
+            ),
+        )]
+        fn next(element: FileName, source: &'static [u8], expt_result: (&'static [u8], Elements)) {
+            assert_eq!(element.next(source).unwrap(), expt_result);
+        }
+
+        #[rstest(element, source, expt_result,
+            case(
+                FileName{bytes_left: 3, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into())
+            ),
+        )]
+        fn skip(element: FileName, source: &'static [u8], expt_result: (&'static [u8], Elements)) {
+            assert_eq!(element.skip(source).unwrap(), expt_result);
+        }
     }
 
-    #[rstest(element, source, expt_result,
-        case(
-            File{bytes_left: 5, parent: Files{bytes_left: 1, parent: Document{bytes_left: 0}}},
-            &[0x61, 0x4E, 0x82, 0xFF, 0xFF, 0xFF],
-            (&[0xFF][..], Files{bytes_left: 1, parent: Document{bytes_left: 0}}.into())
-        ),
-    )]
-    fn test_file_skip(
-        element: File,
-        source: &'static [u8],
-        expt_result: (&'static [u8], Elements),
-    ) {
-        assert_eq!(element.skip(source).unwrap(), expt_result);
+    mod mimetype {
+        use super::*;
+
+        #[rstest(element, source, expt_result,
+            case(
+                MimeType{bytes_left: 3, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into()),
+            ),
+        )]
+        fn next(element: MimeType, source: &'static [u8], expt_result: (&'static [u8], Elements)) {
+            assert_eq!(element.next(source).unwrap(), expt_result);
+        }
+
+        #[rstest(element, source, expt_result,
+            case(
+                MimeType{bytes_left: 3, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into())
+            ),
+        )]
+        fn skip(element: MimeType, source: &'static [u8], expt_result: (&'static [u8], Elements)) {
+            assert_eq!(element.skip(source).unwrap(), expt_result);
+        }
     }
 
-    #[rstest(element, source, expt_result,
-        case(
-            FileName{bytes_left: 3, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}},
-            &[0xFF, 0xFF, 0xFF, 0xFF],
-            (&[0xFF][..], File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into()),
-        ),
-    )]
-    fn test_filename_next(
-        element: FileName,
-        source: &'static [u8],
-        expt_result: (&'static [u8], Elements),
-    ) {
-        assert_eq!(element.next(source).unwrap(), expt_result);
+    mod modificationtimestamp {
+        use super::*;
+
+        #[rstest(element, source, expt_result,
+            case(
+                ModificationTimestamp{bytes_left: 3, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into()),
+            ),
+        )]
+        fn next(
+            element: ModificationTimestamp,
+            source: &'static [u8],
+            expt_result: (&'static [u8], Elements),
+        ) {
+            assert_eq!(element.next(source).unwrap(), expt_result);
+        }
+
+        #[rstest(element, source, expt_result,
+            case(
+                ModificationTimestamp{bytes_left: 3, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into())
+            ),
+        )]
+        fn skip(
+            element: ModificationTimestamp,
+            source: &'static [u8],
+            expt_result: (&'static [u8], Elements),
+        ) {
+            assert_eq!(element.skip(source).unwrap(), expt_result);
+        }
     }
 
-    #[rstest(element, source, expt_result,
-        case(
-            FileName{bytes_left: 3, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}},
-            &[0xFF, 0xFF, 0xFF, 0xFF],
-            (&[0xFF][..], File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into())
-        ),
-    )]
-    fn test_filename_skip(
-        element: FileName,
-        source: &'static [u8],
-        expt_result: (&'static [u8], Elements),
-    ) {
-        assert_eq!(element.skip(source).unwrap(), expt_result);
-    }
+    mod data {
+        use super::*;
 
-    #[rstest(element, source, expt_result,
-        case(
-            MimeType{bytes_left: 3, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}},
-            &[0xFF, 0xFF, 0xFF, 0xFF],
-            (&[0xFF][..], File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into()),
-        ),
-    )]
-    fn test_mimetype_next(
-        element: MimeType,
-        source: &'static [u8],
-        expt_result: (&'static [u8], Elements),
-    ) {
-        assert_eq!(element.next(source).unwrap(), expt_result);
-    }
+        #[rstest(element, source, expt_result,
+            case(
+                Data{bytes_left: 3, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into()),
+            ),
+        )]
+        fn next(element: Data, source: &'static [u8], expt_result: (&'static [u8], Elements)) {
+            assert_eq!(element.next(source).unwrap(), expt_result);
+        }
 
-    #[rstest(element, source, expt_result,
-        case(
-            MimeType{bytes_left: 3, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}},
-            &[0xFF, 0xFF, 0xFF, 0xFF],
-            (&[0xFF][..], File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into())
-        ),
-    )]
-    fn test_mimetype_skip(
-        element: MimeType,
-        source: &'static [u8],
-        expt_result: (&'static [u8], Elements),
-    ) {
-        assert_eq!(element.skip(source).unwrap(), expt_result);
-    }
-
-    #[rstest(element, source, expt_result,
-        case(
-            ModificationTimestamp{bytes_left: 3, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}},
-            &[0xFF, 0xFF, 0xFF, 0xFF],
-            (&[0xFF][..], File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into()),
-        ),
-    )]
-    fn test_modificationtimestamp_next(
-        element: ModificationTimestamp,
-        source: &'static [u8],
-        expt_result: (&'static [u8], Elements),
-    ) {
-        assert_eq!(element.next(source).unwrap(), expt_result);
-    }
-
-    #[rstest(element, source, expt_result,
-        case(
-            ModificationTimestamp{bytes_left: 3, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}},
-            &[0xFF, 0xFF, 0xFF, 0xFF],
-            (&[0xFF][..], File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into())
-        ),
-    )]
-    fn test_modificationtimestamp_skip(
-        element: ModificationTimestamp,
-        source: &'static [u8],
-        expt_result: (&'static [u8], Elements),
-    ) {
-        assert_eq!(element.skip(source).unwrap(), expt_result);
-    }
-
-    #[rstest(element, source, expt_result,
-        case(
-            Data{bytes_left: 3, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}},
-            &[0xFF, 0xFF, 0xFF, 0xFF],
-            (&[0xFF][..], File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into()),
-        ),
-    )]
-    fn test_data_next(
-        element: Data,
-        source: &'static [u8],
-        expt_result: (&'static [u8], Elements),
-    ) {
-        assert_eq!(element.next(source).unwrap(), expt_result);
-    }
-
-    #[rstest(element, source, expt_result,
-        case(
-            Data{bytes_left: 3, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}},
-            &[0xFF, 0xFF, 0xFF, 0xFF],
-            (&[0xFF][..], File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into())
-        ),
-    )]
-    fn test_data_skip(
-        element: Data,
-        source: &'static [u8],
-        expt_result: (&'static [u8], Elements),
-    ) {
-        assert_eq!(element.skip(source).unwrap(), expt_result);
+        #[rstest(element, source, expt_result,
+            case(
+                Data{bytes_left: 3, parent: File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}},
+                &[0xFF, 0xFF, 0xFF, 0xFF],
+                (&[0xFF][..], File{bytes_left: 0, parent: Files{bytes_left: 0, parent: Document{bytes_left: 0}}}.into())
+            ),
+        )]
+        fn skip(element: Data, source: &'static [u8], expt_result: (&'static [u8], Elements)) {
+            assert_eq!(element.skip(source).unwrap(), expt_result);
+        }
     }
 }
