@@ -340,7 +340,7 @@ pub mod parse {
             case(&[0xDF, 0xFF], (&source[1..], 0xDF)),
         )]
         fn test_element_id(source: &'static [u8], expt_result: (&'static [u8], u32)) {
-            assert_eq!(element_id(&source[..]), Ok(expt_result));
+            assert_eq!(element_id(source), Ok(expt_result));
         }
 
         #[rstest(source,
@@ -354,7 +354,7 @@ pub mod parse {
             case(&[0x1F, 0xFF, 0xFF, 0xFF]),
         )]
         fn test_element_id_err(source: &'static [u8]) {
-            assert_eq!(element_id(&source[..]), Err(nom::Err::Error(())));
+            assert_eq!(element_id(source), Err(nom::Err::Error(())));
         }
 
         #[test]
@@ -403,7 +403,7 @@ pub mod parse {
             let s = "知ら ない の か ？ 死神 の 霊 絡 は 色 が 違う って こと ｡";
             let source = s.as_bytes();
             assert_eq!(
-                unicode_str(&source[..], 25),
+                unicode_str(source, 25),
                 Ok((&source[25..], "知ら ない の か ？"))
             );
         }
