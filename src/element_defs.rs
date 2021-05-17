@@ -10,12 +10,15 @@ pub trait ElementDef {
     // name
     const ID: u32;
 
+    type LastParent;
+    const GLOBAL_PARENT_OCCURENCE: (usize, usize); //defaults to (0, 0)
+
     const MIN_OCCURS: usize; // defaults to 0
-    const MAX_OCCURS: Option<usize>;
-    const LENGTH: Option<Range<usize>>;
+    const MAX_OCCURS: usize; // defaults to usize::MAX
+    const LENGTH: Range<usize>; // defaults to type-defined length limits
     const RECURRING: bool; // defaults to false
     const MIN_VERSION: u64; // defaults to 1
-    const MAX_VERSION: u64; // defaults to "EBMLSchema" version
+    const MAX_VERSION: u64; // defaults to "EBMLSchema"'s "version" attribute
 }
 
 pub trait MasterElementDef: ElementDef {
@@ -24,22 +27,22 @@ pub trait MasterElementDef: ElementDef {
 }
 
 pub trait UIntElementDef: ElementDef {
-    const RANGE: Option<Range<u64>>;
+    const RANGE: Range<u64>; // defaults to (Unbounded, Unbounded)
     const DEFAULT: Option<u64>;
 }
 
 pub trait IntElementDef: ElementDef {
-    const RANGE: Option<Range<i64>>;
+    const RANGE: Range<i64>; // defaults to (Unbounded, Unbounded)
     const DEFAULT: Option<i64>;
 }
 
 pub trait FloatElementDef: ElementDef {
-    const RANGE: Option<Range<f64>>;
+    const RANGE: Range<f64>; // defaults to (Unbounded, Unbounded)
     const DEFAULT: Option<f64>;
 }
 
 pub trait DateElementDef: ElementDef {
-    const RANGE: Option<Range<i64>>;
+    const RANGE: Range<i64>; // defaults to (Unbounded, Unbounded)
     const DEFAULT: Option<i64>;
 }
 
