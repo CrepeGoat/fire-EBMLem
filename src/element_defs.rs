@@ -57,3 +57,5 @@ pub trait UTF8ElementDef: ElementDef {
 pub trait BinaryElementDef: ElementDef {
     const DEFAULT: Option<&'static [u8]>;
 }
+
+pub trait ParentOf<E: ElementDef> {}
