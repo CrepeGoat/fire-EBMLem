@@ -1,4 +1,4 @@
-pub use std::ops::Bound;
+pub use core::ops::Bound;
 
 pub enum Range<T> {
     IsExactly(T),

@@ -1,11 +1,8 @@
-use std::convert::{From, TryInto};
-
-use crate::schema_types::Bound;
-use crate::schema_types::{
+use crate::element_defs::{
     BinaryElementDef, DateElementDef, ElementDef, FloatElementDef, IntElementDef, MasterElementDef,
     Range, StringElementDef, UIntElementDef, UTF8ElementDef,
 };
-use crate::stream::{parse, stream_diff};
+use crate::element_defs::{Bound, ParentOf};
 
 // parent: (None)
 #[derive(Debug, Clone, PartialEq)]
@@ -26,15 +23,17 @@ impl ElementDef for FilesDef {
 }
 
 impl MasterElementDef for FilesDef {
-    const UNKNOWN_SIZE_ALLOWED: bool = False;
-    const RECURSIVE: bool = False;
+    const UNKNOWN_SIZE_ALLOWED: bool = false;
+    const RECURSIVE: bool = false;
 }
+
+impl ParentOf<FileDef> for () {}
 
 // parent: Files
 #[derive(Debug, Clone, PartialEq)]
 struct FileDef;
 
-impl Element for FileDef {
+impl ElementDef for FileDef {
     const ID: u32 = 0x6146;
 
     type LastParent = FilesDef;
@@ -48,16 +47,18 @@ impl Element for FileDef {
     const MAX_VERSION: u64 = 1;
 }
 
-impl MasterElement for FileDef {
-    const UNKNOWN_SIZE_ALLOWED: bool = False;
-    const RECURSIVE: bool = False;
+impl MasterElementDef for FileDef {
+    const UNKNOWN_SIZE_ALLOWED: bool = false;
+    const RECURSIVE: bool = false;
 }
+
+impl ParentOf<FileDef> for FilesDef {}
 
 // parent: File
 #[derive(Debug, Clone, PartialEq)]
 struct FileNameDef;
 
-impl Element for FileNameDef {
+impl ElementDef for FileNameDef {
     const ID: u32 = 0x614E;
 
     type LastParent = FileDef;
@@ -71,15 +72,17 @@ impl Element for FileNameDef {
     const MAX_VERSION: u64 = 1;
 }
 
-impl UTF8Element for FileNameDef {
+impl UTF8ElementDef for FileNameDef {
     const DEFAULT: Option<&'static str> = None;
 }
+
+impl ParentOf<FileNameDef> for FileDef {}
 
 // parent: File
 #[derive(Debug, Clone, PartialEq)]
 struct MimeTypeDef;
 
-impl Element for MimeTypeDef {
+impl ElementDef for MimeTypeDef {
     const ID: u32 = 0x464D;
 
     type LastParent = FileDef;
@@ -93,15 +96,17 @@ impl Element for MimeTypeDef {
     const MAX_VERSION: u64 = 1;
 }
 
-impl StringElement for MimeTypeDef {
+impl StringElementDef for MimeTypeDef {
     const DEFAULT: Option<&'static str> = None;
 }
+
+impl ParentOf<MimeTypeDef> for FileDef {}
 
 // parent: File
 #[derive(Debug, Clone, PartialEq)]
 struct ModificationTimestampDef;
 
-impl Element for ModificationTimestampDef {
+impl ElementDef for ModificationTimestampDef {
     const ID: u32 = 0x4654;
 
     type LastParent = FileDef;
@@ -115,16 +120,19 @@ impl Element for ModificationTimestampDef {
     const MAX_VERSION: u64 = 1;
 }
 
-impl DateElement for ModificationTimestampDef {
-    const RANGE: Option<RangeDef<i64>> = None;
+impl DateElementDef for ModificationTimestampDef {
+    const RANGE: Range<i64> =
+        Range::IsWithin(core::ops::Bound::Unbounded, core::ops::Bound::Unbounded);
     const DEFAULT: Option<i64> = None;
 }
+
+impl ParentOf<ModificationTimestampDef> for FileDef {}
 
 // parent: File
 #[derive(Debug, Clone, PartialEq)]
 struct DataDef;
 
-impl Element for DataDef {
+impl ElementDef for DataDef {
     const ID: u32 = 0x4664;
 
     type LastParent = FileDef;
@@ -138,6 +146,8 @@ impl Element for DataDef {
     const MAX_VERSION: u64 = 1;
 }
 
-impl BinaryElement for DataDef {
+impl BinaryElementDef for DataDef {
     const DEFAULT: Option<&'static [u8]> = None;
 }
+
+impl ParentOf<DataDef> for FileDef {}

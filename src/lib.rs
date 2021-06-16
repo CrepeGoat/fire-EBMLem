@@ -1,4 +1,9 @@
+mod element_defs;
 mod stream;
+
+mod eg_codegen {
+    mod element_defs;
+}
 
 #[cfg(test)]
 mod tests {
