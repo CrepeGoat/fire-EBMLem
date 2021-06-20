@@ -103,7 +103,7 @@ pub mod parse {
         buffer[(size_of::<u32>() - bytes.len())..].copy_from_slice(bytes);
         let result = u32::from_be_bytes(buffer);
 
-        let result_data = result ^ (1u32 << (7*bytelen));
+        let result_data = result ^ (1u32 << (7 * bytelen));
         if result_data == 0 || result_data.count_ones() == 7 * (bytelen as u32) {
             // if all non-length bits are 0's or 1's
             // corner-case: reserved ID's
@@ -224,7 +224,7 @@ pub mod parse {
                     // Error on non-ASCII
                     Some((_, byte)) if !byte.is_ascii() => Err(nom::Err::Error(())),
                     // Ignore valid ASCII
-                    _ => Ok(())
+                    _ => Ok(()),
                 }?;
             }
         };
@@ -256,7 +256,9 @@ pub mod parse {
                     }
                     // Validate bytes in character width
                     for _ in 0..leading_1s.saturating_sub(1) {
-                        iter.next().filter(|(_i, x)| x.leading_ones() == 1).ok_or(nom::Err::Error(()))?;
+                        iter.next()
+                            .filter(|(_i, x)| x.leading_ones() == 1)
+                            .ok_or(nom::Err::Error(()))?;
                     }
                 } else {
                     break length;
@@ -491,8 +493,10 @@ pub mod serialize {
 
         let source = value.to_be_bytes();
         let byte_offset = size_of::<u64>() - vint_len;
-        let ((output, bit_offset), _) =
-            give_bits((output, bit_offset), (source[byte_offset], bit_offset.wrapping_neg() % 8))?; // write nothing for bit_offset = 0
+        let ((output, bit_offset), _) = give_bits(
+            (output, bit_offset),
+            (source[byte_offset], bit_offset.wrapping_neg() % 8),
+        )?; // write nothing for bit_offset = 0
         assert_eq!(bit_offset, 0); // -> safe to operate on the byte-level
         let (output, _) = give_bytes(output, &source[byte_offset + 1..])?;
 
@@ -511,7 +515,7 @@ pub mod serialize {
         };
         let buffer = &value.to_be_bytes()[size_of::<u32>() - bytelen..];
         let (output, _) = give_bytes(&mut output[..buffer.len()], buffer)?;
-        
+
         Ok((output, bytelen))
     }
 
@@ -526,12 +530,17 @@ pub mod serialize {
                 let value = !(u64::MAX << (7 * bytelen));
 
                 vlen_int(output, value, Some(bytelen), Some(8))
-            },
+            }
             Some(value) => {
                 let min_bytelen = (value.count_ones() / 7 + 1) as usize; // ensures that VINT_DATA of len's are not all 1's
 
-                vlen_int(output, value, Some(bytelen.map_or(min_bytelen, |x| max(x, min_bytelen))), Some(8))
-            },
+                vlen_int(
+                    output,
+                    value,
+                    Some(bytelen.map_or(min_bytelen, |x| max(x, min_bytelen))),
+                    Some(8),
+                )
+            }
         }
     }
 
@@ -650,7 +659,7 @@ pub mod serialize {
             case(Some(0x7F), None, &[0x40, 0x7F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
             case(Some(0x7F), Some(3), &[0x20, 0x00, 0x7F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
             case(Some(0x0001_FFFF_FFFF_FFFF), None, &[0x01, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00]),
-            
+
             case(None, None, &[0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
             case(None, Some(1), &[0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
             case(None, Some(2), &[0x7F, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
