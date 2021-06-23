@@ -140,11 +140,9 @@ pub mod parse {
     pub fn uint(input: &[u8], length: usize) -> IResult<&[u8], u64, ()> {
         assert!(
             length <= size_of::<u64>(),
-            format!(
-                "invalid length for uint (expected n<{:?}, found {:?})",
-                size_of::<u64>(),
-                length,
-            )
+            "invalid length for uint (expected n<{:?}, found {:?})",
+            size_of::<u64>(),
+            length,
         );
 
         let mut buffer = [0u8; size_of::<u64>()];
@@ -157,11 +155,9 @@ pub mod parse {
     pub fn int(input: &[u8], length: usize) -> IResult<&[u8], i64, ()> {
         assert!(
             length <= size_of::<i64>(),
-            format!(
-                "invalid length for int (expected n<{:?}, found {:?})",
-                size_of::<i64>(),
-                length,
-            )
+            "invalid length for int (expected n<{:?}, found {:?})",
+            size_of::<i64>(),
+            length,
         );
 
         let buffer_fill: u8 = match take_bits(1usize)((input, 0))? {
@@ -179,11 +175,9 @@ pub mod parse {
     pub fn float32(input: &[u8], length: usize) -> IResult<&[u8], f32, ()> {
         assert!(
             length == size_of::<f32>(),
-            format!(
-                "invalid length for f32 (expected {:?}, found {:?})",
-                size_of::<f32>(),
-                length,
-            )
+            "invalid length for f32 (expected {:?}, found {:?})",
+            size_of::<f32>(),
+            length,
         );
 
         let mut buffer = [0u8; size_of::<f32>()];
@@ -195,11 +189,9 @@ pub mod parse {
     pub fn float64(input: &[u8], length: usize) -> IResult<&[u8], f64, ()> {
         assert!(
             length == size_of::<f64>(),
-            format!(
-                "invalid length for f64 (expected {:?}, found {:?})",
-                size_of::<f64>(),
-                length,
-            )
+            "invalid length for f64 (expected {:?}, found {:?})",
+            size_of::<f64>(),
+            length,
         );
 
         let mut buffer = [0u8; size_of::<f64>()];
@@ -273,11 +265,9 @@ pub mod parse {
     pub fn date(input: &[u8], length: usize) -> IResult<&[u8], i64, ()> {
         assert!(
             length == size_of::<i64>(),
-            format!(
-                "invalid length for timestamp (expected {:?}, found {:?})",
-                size_of::<i64>(),
-                length,
-            )
+            "invalid length for timestamp (expected {:?}, found {:?})",
+            size_of::<i64>(),
+            length,
         );
 
         int(input, length)
