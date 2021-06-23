@@ -6,7 +6,7 @@ use crate::element_defs::{Bound, ParentOf};
 
 // parent: (None)
 #[derive(Debug, Clone, PartialEq)]
-struct FilesDef;
+pub struct FilesDef;
 
 impl ElementDef for FilesDef {
     const ID: u32 = 0x1946696C;
@@ -31,7 +31,7 @@ impl ParentOf<FileDef> for () {}
 
 // parent: Files
 #[derive(Debug, Clone, PartialEq)]
-struct FileDef;
+pub struct FileDef;
 
 impl ElementDef for FileDef {
     const ID: u32 = 0x6146;
@@ -56,7 +56,7 @@ impl ParentOf<FileDef> for FilesDef {}
 
 // parent: File
 #[derive(Debug, Clone, PartialEq)]
-struct FileNameDef;
+pub struct FileNameDef;
 
 impl ElementDef for FileNameDef {
     const ID: u32 = 0x614E;
@@ -80,7 +80,7 @@ impl ParentOf<FileNameDef> for FileDef {}
 
 // parent: File
 #[derive(Debug, Clone, PartialEq)]
-struct MimeTypeDef;
+pub struct MimeTypeDef;
 
 impl ElementDef for MimeTypeDef {
     const ID: u32 = 0x464D;
@@ -104,7 +104,7 @@ impl ParentOf<MimeTypeDef> for FileDef {}
 
 // parent: File
 #[derive(Debug, Clone, PartialEq)]
-struct ModificationTimestampDef;
+pub struct ModificationTimestampDef;
 
 impl ElementDef for ModificationTimestampDef {
     const ID: u32 = 0x4654;
@@ -130,7 +130,7 @@ impl ParentOf<ModificationTimestampDef> for FileDef {}
 
 // parent: File
 #[derive(Debug, Clone, PartialEq)]
-struct DataDef;
+pub struct DataDef;
 
 impl ElementDef for DataDef {
     const ID: u32 = 0x4664;

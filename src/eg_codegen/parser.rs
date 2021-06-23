@@ -1,70 +1,81 @@
 use crate::eg_codegen::element_defs;
 use crate::element_defs::ParentOf;
-use crate::parser;
+use crate::parser::{ElementState, StateOf};
 
 // State Objects
-type FilesState = parser::NestedElementStates![gen_element_defs::FilesDef];
+type FilesState = NestedElementStates!(element_defs::FilesDef);
 
-impl<P> parser::ElementState<gen_element_defs::FilesDef, P> where
-    P: parser::StateOf<ParentOf<gen_element_defs::FilesDef>>
+impl<P, S> ElementState<element_defs::FilesDef, S>
+where
+    S: StateOf<Element=P>,
+    P: ParentOf<element_defs::FilesDef>,
 {
 }
-
-//impl<P, S> FilesState<P, S> where P: element_defs::ParentOf<gen_element_defs::FilesDef> {}
 
 type FileState =
-    parser::NestedElementStates![gen_element_defs::FileDef, gen_element_defs::FilesDef,];
+    NestedElementStates!(element_defs::FileDef, element_defs::FilesDef);
 
-impl<P> parser::ElementState<gen_element_defs::FileDef, P> where
-    P: parser::StateOf<ParentOf<gen_element_defs::FileDef>>
+impl<P, S> ElementState<element_defs::FileDef, S>
+where
+    S: StateOf<Element=P>,
+    P: ParentOf<element_defs::FileDef>,
 {
 }
 
-type FileNameState = parser::NestedElementStates![
-    gen_element_defs::FileNameDef,
-    gen_element_defs::FileDef,
-    gen_element_defs::FilesDef
-];
+type FileNameState = NestedElementStates!(
+    element_defs::FileNameDef,
+    element_defs::FileDef,
+    element_defs::FilesDef
+);
 
-impl<P> parser::ElementState<gen_element_defs::FileNameDef, P> where
-    P: parser::StateOf<ParentOf<gen_element_defs::FileNameDef>>
+impl<P, S> ElementState<element_defs::FileNameDef, S>
+where
+    S: StateOf<Element=P>,
+    P: ParentOf<element_defs::FileNameDef>,
 {
 }
 
-type MimeTypeState = parser::NestedElementStates![
-    gen_element_defs::MimeTypeDef
-    gen_element_defs::FileDef,
-    gen_element_defs::FilesDef,
-];
+type MimeTypeState = NestedElementStates!(
+    element_defs::MimeTypeDef,
+    element_defs::FileDef,
+    element_defs::FilesDef
+);
 
-impl<P> parser::ElementState<gen_element_defs::MimeTypeDef, P> where
-    P: parser::StateOf<ParentOf<gen_element_defs::MimeTypeDef>>
+impl<P, S> ElementState<element_defs::MimeTypeDef, S>
+where
+    S: StateOf<Element=P>,
+    P: ParentOf<element_defs::MimeTypeDef>,
 {
 }
 
-type ModificationTimestampState = parser::NestedElementStates![
-    gen_element_defs::ModificationTimestampDef
-    gen_element_defs::FileDef,
-    gen_element_defs::FilesDef,
-];
+type ModificationTimestampState = NestedElementStates!(
+    element_defs::ModificationTimestampDef,
+    element_defs::FileDef,
+    element_defs::FilesDef
+);
 
-impl<P> parser::ElementState<gen_element_defs::ModificationTimestampDef, P> where
-    P: parser::StateOf<ParentOf<gen_element_defs::ModificationTimestampDef>>
+impl<P, S> ElementState<element_defs::ModificationTimestampDef, S>
+where
+    S: StateOf<Element=P>,
+    P: ParentOf<element_defs::ModificationTimestampDef>,
 {
 }
 
-type DataState = parser::NestedElementStates![
-    gen_element_defs::DataDef
-    gen_element_defs::FileDef,
-    gen_element_defs::FilesDef,
-];
+type DataState = NestedElementStates!(
+    element_defs::DataDef,
+    element_defs::FileDef,
+    element_defs::FilesDef
+);
 
-impl<P> parser::ElementState<gen_element_defs::DataDef, P> where
-    P: parser::StateOf<ParentOf<gen_element_defs::DataDef>>
+impl<P, S> ElementState<element_defs::DataDef, S>
+where
+    S: StateOf<Element=P>,
+    P: ParentOf<element_defs::DataDef>,
 {
 }
 
 // Reader Objects
+/*
 enum FilesReaderNext<P> {
     Parent(P),
     File(FilesReader<FilesState>),
@@ -72,3 +83,4 @@ enum FilesReaderNext<P> {
 struct Reader<S> {
     state: S,
 }
+*/
