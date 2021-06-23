@@ -1,5 +1,3 @@
-use crate::element_defs;
-
 use core::marker::PhantomData;
 
 pub struct ElementState<E, S> {

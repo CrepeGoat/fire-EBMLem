@@ -7,17 +7,16 @@ type FilesState = NestedElementStates!(element_defs::FilesDef);
 
 impl<P, S> ElementState<element_defs::FilesDef, S>
 where
-    S: StateOf<Element=P>,
+    S: StateOf<Element = P>,
     P: ParentOf<element_defs::FilesDef>,
 {
 }
 
-type FileState =
-    NestedElementStates!(element_defs::FileDef, element_defs::FilesDef);
+type FileState = NestedElementStates!(element_defs::FileDef, element_defs::FilesDef);
 
 impl<P, S> ElementState<element_defs::FileDef, S>
 where
-    S: StateOf<Element=P>,
+    S: StateOf<Element = P>,
     P: ParentOf<element_defs::FileDef>,
 {
 }
@@ -30,7 +29,7 @@ type FileNameState = NestedElementStates!(
 
 impl<P, S> ElementState<element_defs::FileNameDef, S>
 where
-    S: StateOf<Element=P>,
+    S: StateOf<Element = P>,
     P: ParentOf<element_defs::FileNameDef>,
 {
 }
@@ -43,7 +42,7 @@ type MimeTypeState = NestedElementStates!(
 
 impl<P, S> ElementState<element_defs::MimeTypeDef, S>
 where
-    S: StateOf<Element=P>,
+    S: StateOf<Element = P>,
     P: ParentOf<element_defs::MimeTypeDef>,
 {
 }
@@ -56,7 +55,7 @@ type ModificationTimestampState = NestedElementStates!(
 
 impl<P, S> ElementState<element_defs::ModificationTimestampDef, S>
 where
-    S: StateOf<Element=P>,
+    S: StateOf<Element = P>,
     P: ParentOf<element_defs::ModificationTimestampDef>,
 {
 }
@@ -69,7 +68,7 @@ type DataState = NestedElementStates!(
 
 impl<P, S> ElementState<element_defs::DataDef, S>
 where
-    S: StateOf<Element=P>,
+    S: StateOf<Element = P>,
     P: ParentOf<element_defs::DataDef>,
 {
 }
