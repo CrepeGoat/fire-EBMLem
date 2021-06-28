@@ -27,7 +27,7 @@ impl MasterElementDef for FilesDef {
     const RECURSIVE: bool = false;
 }
 
-impl ParentOf<FileDef> for () {}
+impl ParentOf<FilesDef> for () {}
 
 // parent: Files
 #[derive(Debug, Clone, PartialEq)]
