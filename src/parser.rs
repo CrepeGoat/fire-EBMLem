@@ -1,10 +1,9 @@
 use core::marker::PhantomData;
 
 pub struct ElementState<E, S> {
-    stream_start: usize,
-    stream_end: usize,
-    parent_state: S,
-    _phantom: PhantomData<E>,
+    pub bytes_left: usize,
+    pub parent_state: S,
+    pub _phantom: PhantomData<E>,
 }
 
 // marks a state; binds a state type to a single element type
