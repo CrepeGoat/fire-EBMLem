@@ -1,5 +1,6 @@
 use core::marker::PhantomData;
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct ElementState<E, S> {
     pub bytes_left: usize,
     pub parent_state: S,
