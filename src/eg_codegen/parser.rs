@@ -11,11 +11,11 @@ type _DocumentState = NestedElementStates!();
 
 #[derive(Debug, Clone, PartialEq)]
 enum _DocumentNextStates {
-    Files(ElementState<element_defs::FilesDef, ElementState<(), ()>>),
+    Files(FilesState<_DocumentState>),
     None,
 }
 
-impl ElementState<(), ()> {
+impl _DocumentState {
     fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], _DocumentNextStates, ()> {
         match self {
             Self {
@@ -58,15 +58,15 @@ impl ElementState<(), ()> {
     }
 }
 
-type FilesState = NestedElementStates!(element_defs::FilesDef);
+type FilesState<S> = ElementState<element_defs::FilesDef, S>;
 
 #[derive(Debug, Clone, PartialEq)]
 enum FilesNextStates<S> {
-    File(ElementState<element_defs::FileDef, ElementState<element_defs::FilesDef, S>>),
+    File(FileState<FilesState<S>>),
     Parent(S),
 }
 
-impl<P, S> ElementState<element_defs::FilesDef, S>
+impl<P, S> FilesState<S>
 where
     S: StateOf<Element = P>,
     P: ParentOf<element_defs::FilesDef>,
@@ -113,23 +113,18 @@ where
     }
 }
 
-type FileState = NestedElementStates!(element_defs::FileDef, element_defs::FilesDef);
+type FileState<S> = ElementState<element_defs::FileDef, S>;
 
 #[derive(Debug, Clone, PartialEq)]
 enum FileNextStates<S> {
-    FileName(ElementState<element_defs::FileNameDef, ElementState<element_defs::FileDef, S>>),
-    MimeType(ElementState<element_defs::MimeTypeDef, ElementState<element_defs::FileDef, S>>),
-    ModificationTimestamp(
-        ElementState<
-            element_defs::ModificationTimestampDef,
-            ElementState<element_defs::FileDef, S>,
-        >,
-    ),
-    Data(ElementState<element_defs::DataDef, ElementState<element_defs::FileDef, S>>),
+    FileName(FileNameState<FileState<S>>),
+    MimeType(MimeTypeState<FileState<S>>),
+    ModificationTimestamp(ModificationTimestampState<FileState<S>>),
+    Data(DataState<FileState<S>>),
     Parent(S),
 }
 
-impl<P, S> ElementState<element_defs::FileDef, S>
+impl<P, S> FileState<S>
 where
     S: StateOf<Element = P>,
     P: ParentOf<element_defs::FileDef>,
@@ -197,13 +192,9 @@ where
     }
 }
 
-type FileNameState = NestedElementStates!(
-    element_defs::FileNameDef,
-    element_defs::FileDef,
-    element_defs::FilesDef
-);
+type FileNameState<S> = ElementState<element_defs::FileNameDef, S>;
 
-impl<P, S> ElementState<element_defs::FileNameDef, S>
+impl<P, S> FileNameState<S>
 where
     S: StateOf<Element = P>,
     P: ParentOf<element_defs::FileNameDef>,
@@ -218,13 +209,9 @@ where
     }
 }
 
-type MimeTypeState = NestedElementStates!(
-    element_defs::MimeTypeDef,
-    element_defs::FileDef,
-    element_defs::FilesDef
-);
+type MimeTypeState<S> = ElementState<element_defs::MimeTypeDef, S>;
 
-impl<P, S> ElementState<element_defs::MimeTypeDef, S>
+impl<P, S> MimeTypeState<S>
 where
     S: StateOf<Element = P>,
     P: ParentOf<element_defs::MimeTypeDef>,
@@ -239,13 +226,9 @@ where
     }
 }
 
-type ModificationTimestampState = NestedElementStates!(
-    element_defs::ModificationTimestampDef,
-    element_defs::FileDef,
-    element_defs::FilesDef
-);
+type ModificationTimestampState<S> = ElementState<element_defs::ModificationTimestampDef, S>;
 
-impl<P, S> ElementState<element_defs::ModificationTimestampDef, S>
+impl<P, S> ModificationTimestampState<S>
 where
     S: StateOf<Element = P>,
     P: ParentOf<element_defs::ModificationTimestampDef>,
@@ -260,13 +243,9 @@ where
     }
 }
 
-type DataState = NestedElementStates!(
-    element_defs::DataDef,
-    element_defs::FileDef,
-    element_defs::FilesDef
-);
+type DataState<S> = ElementState<element_defs::DataDef, S>;
 
-impl<P, S> ElementState<element_defs::DataDef, S>
+impl<P, S> DataState<S>
 where
     S: StateOf<Element = P>,
     P: ParentOf<element_defs::DataDef>,
