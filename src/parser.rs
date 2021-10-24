@@ -18,3 +18,9 @@ impl<E, S> StateOf for ElementState<E, S> {
 impl StateOf for () {
     type Element = ();
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ElementReader<R, S> {
+    pub reader: R,
+    pub state: S,
+}

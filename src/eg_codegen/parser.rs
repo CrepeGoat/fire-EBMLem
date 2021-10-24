@@ -1,9 +1,9 @@
-use core::convert::TryInto;
+use core::convert::{From, TryInto};
 use core::marker::PhantomData;
 
 use crate::eg_codegen::element_defs;
 use crate::element_defs::{ElementDef, ParentOf};
-use crate::parser::{ElementState, StateOf};
+use crate::parser::{ElementReader, ElementState, StateOf};
 use crate::stream::{parse, serialize, stream_diff};
 
 // State Objects
@@ -13,6 +13,24 @@ type _DocumentState = ElementState<(), ()>;
 enum _DocumentNextStates {
     Files(FilesState),
     None,
+}
+
+impl _DocumentNextStates {
+    fn to_reader<R>(self, reader: R) -> _DocumentNextReaders<R> {
+        match self {
+            _DocumentNextStates::Files(state) => _DocumentNextReaders::Files(reader, state),
+            _DocumentNextStates::None => _DocumentNextReaders::None(reader),
+        }
+    }
+}
+
+impl<R> From<_DocumentNextReaders<R>> for _DocumentNextStates {
+    fn from(enumed_reader: _DocumentNextReaders<R>) -> _DocumentNextStates {
+        match enumed_reader {
+            _DocumentNextReaders::Files(reader) => _DocumentNextStates::Files(reader.state),
+            _DocumentNextReaders::None(_) => _DocumentNextStates::None,
+        }
+    }
 }
 
 impl _DocumentState {
@@ -64,6 +82,24 @@ type FilesState = ElementState<element_defs::FilesDef, _DocumentState>;
 enum FilesNextStates {
     File(FileState),
     Parent(_DocumentState),
+}
+
+impl FilesNextStates {
+    fn to_reader<R>(self, reader: R) -> FilesNextReaders<R> {
+        match self {
+            FilesNextStates::File(state) => FilesNextReaders::File(reader, state),
+            FilesNextStates::Parent(state) => FilesNextReaders::Parent(reader, state),
+        }
+    }
+}
+
+impl<R> From<FilesNextReaders<R>> for FilesNextStates {
+    fn from(enumed_reader: FilesNextReaders<R>) -> FilesNextStates {
+        match enumed_reader {
+            FilesNextReaders::File(reader) => FilesNextStates::File(reader.state),
+            FilesNextReaders::Parent(reader) => FilesNextStates::Parent(reader.state),
+        }
+    }
 }
 
 impl FilesState {
@@ -195,6 +231,10 @@ impl FileNameState {
         let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
         Ok((stream, self.parent_state))
     }
+
+    fn read<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], (FileState, &'a str), ()> {
+        self.skip(stream)
+    }
 }
 
 type MimeTypeState = ElementState<element_defs::MimeTypeDef, FileState>;
@@ -236,16 +276,69 @@ impl DataState {
     }
 }
 
-// Reader Objects
-/*
-enum FilesReaderNext<P> {
-    Parent(P),
-    File(FilesReader<FilesState>),
+// Reader Objects #########################################################################
+
+type _DocumentReader<R> = ElementReader<R, _DocumentState>;
+
+enum _DocumentNextReaders<R> {
+    Files(FilesReader<R>),
+    None(R),
 }
-struct Reader<S> {
-    state: S,
+
+impl<R: std::io::BufRead> _DocumentReader<R> {
+    fn skip(self) -> std::io::Result<_DocumentNextReaders<R>> {
+        let stream = self.reader.fill_buf()?;
+
+        let (next_stream, next_state) = self.state.skip(stream)?;
+        self.reader.consume(next_stream.len() - stream.len());
+
+        Ok(_DocumentNextReaders::None(self.reader))
+    }
+
+    fn read(self) -> std::io::Result<_DocumentNextReaders<R>> {
+        let stream = self.reader.fill_buf()?;
+
+        let (next_stream, next_state) = self.state.next(stream)?;
+        self.reader.consume(next_stream.len() - stream.len());
+
+        Ok(next_state.to_reader(self.reader))
+    }
 }
-*/
+
+type FilesReader<R> = ElementReader<R, FileState>;
+
+enum FilesNextReaders<R> {
+    File(FileReader<R>),
+    _Document(_DocumentReader<R>),
+}
+impl<R> FilesNextReaders<R> {
+    fn new(reader: R, enumed_state: FilesNextStates) -> Self {
+        match enumed_state {
+            FilesNextStates::Files(state) => Self::Files(FilesReader::new(reader, state)),
+            FilesNextStates::None => Self::None(reader),
+        }
+    }
+}
+
+impl<R: std::io::BufRead> FilesReader<R> {
+    fn skip(self) -> std::io::Result<FilesNextReaders<R>> {
+        let stream = self.reader.fill_buf()?;
+
+        let (next_stream, next_state) = self.state.skip(stream)?;
+        self.reader.consume(next_stream.len() - stream.len());
+
+        Ok(FilesNextReaders::new(self.reader, next_state))
+    }
+
+    fn read(self) -> std::io::Result<FilesNextReaders<R>> {
+        let stream = self.reader.fill_buf()?;
+
+        let (next_stream, next_state) = self.state.next(stream)?;
+        self.reader.consume(next_stream.len() - stream.len());
+
+        Ok(FilesNextReaders::new(self.reader, next_state))
+    }
+}
 
 #[cfg(test)]
 mod tests {
