@@ -11,11 +11,11 @@ type _DocumentState = ElementState<(), ()>;
 
 #[derive(Debug, Clone, PartialEq)]
 enum _DocumentNextStates {
-    Files(ElementState<element_defs::FilesDef, ElementState<(), ()>>),
+    Files(FilesState),
     None,
 }
 
-impl ElementState<(), ()> {
+impl _DocumentState {
     fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], _DocumentNextStates, ()> {
         match self {
             Self {
@@ -61,25 +61,19 @@ impl ElementState<(), ()> {
 type FilesState = ElementState<element_defs::FilesDef, _DocumentState>;
 
 #[derive(Debug, Clone, PartialEq)]
-enum FilesNextStates<S> {
-    File(ElementState<element_defs::FileDef, ElementState<element_defs::FilesDef, S>>),
-    Parent(S),
+enum FilesNextStates {
+    File(FileState),
+    Parent(_DocumentState),
 }
 
 impl FilesState {
-    fn next<'a>(
-        mut self,
-        stream: &'a [u8],
-    ) -> nom::IResult<&'a [u8], FilesNextStates<_DocumentState>, ()> {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FilesNextStates, ()> {
         match self {
             Self {
                 bytes_left: 0,
                 parent_state: _,
                 _phantom: _,
-            } => Ok((
-                stream,
-                FilesNextStates::<_DocumentState>::Parent(self.parent_state),
-            )),
+            } => Ok((stream, FilesNextStates::Parent(self.parent_state))),
             _ => {
                 let orig_stream = stream;
 
@@ -96,7 +90,7 @@ impl FilesState {
                     stream,
                     match id {
                         <element_defs::FileDef as ElementDef>::ID => {
-                            FilesNextStates::<_DocumentState>::File(ElementState {
+                            FilesNextStates::File(ElementState {
                                 bytes_left: len,
                                 parent_state: self,
                                 _phantom: PhantomData,
@@ -118,33 +112,22 @@ impl FilesState {
 type FileState = ElementState<element_defs::FileDef, FilesState>;
 
 #[derive(Debug, Clone, PartialEq)]
-enum FileNextStates<S> {
-    FileName(ElementState<element_defs::FileNameDef, ElementState<element_defs::FileDef, S>>),
-    MimeType(ElementState<element_defs::MimeTypeDef, ElementState<element_defs::FileDef, S>>),
-    ModificationTimestamp(
-        ElementState<
-            element_defs::ModificationTimestampDef,
-            ElementState<element_defs::FileDef, S>,
-        >,
-    ),
-    Data(ElementState<element_defs::DataDef, ElementState<element_defs::FileDef, S>>),
-    Parent(S),
+enum FileNextStates {
+    FileName(FileNameState),
+    MimeType(MimeTypeState),
+    ModificationTimestamp(ModificationTimestampState),
+    Data(DataState),
+    Parent(FilesState),
 }
 
 impl FileState {
-    fn next<'a>(
-        mut self,
-        stream: &'a [u8],
-    ) -> nom::IResult<&'a [u8], FileNextStates<FilesState>, ()> {
+    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileNextStates, ()> {
         match self {
             Self {
                 bytes_left: 0,
                 parent_state: _,
                 _phantom: _,
-            } => Ok((
-                stream,
-                FileNextStates::<FilesState>::Parent(self.parent_state),
-            )),
+            } => Ok((stream, FileNextStates::Parent(self.parent_state))),
             _ => {
                 let orig_stream = stream;
 
@@ -161,28 +144,28 @@ impl FileState {
                     stream,
                     match id {
                         <element_defs::FileNameDef as ElementDef>::ID => {
-                            FileNextStates::<FilesState>::FileName(ElementState {
+                            FileNextStates::FileName(ElementState {
                                 bytes_left: len,
                                 parent_state: self,
                                 _phantom: PhantomData,
                             })
                         }
                         <element_defs::MimeTypeDef as ElementDef>::ID => {
-                            FileNextStates::<FilesState>::MimeType(ElementState {
+                            FileNextStates::MimeType(ElementState {
                                 bytes_left: len,
                                 parent_state: self,
                                 _phantom: PhantomData,
                             })
                         }
                         <element_defs::ModificationTimestampDef as ElementDef>::ID => {
-                            FileNextStates::<FilesState>::ModificationTimestamp(ElementState {
+                            FileNextStates::ModificationTimestamp(ElementState {
                                 bytes_left: len,
                                 parent_state: self,
                                 _phantom: PhantomData,
                             })
                         }
                         <element_defs::DataDef as ElementDef>::ID => {
-                            FileNextStates::<FilesState>::Data(ElementState {
+                            FileNextStates::Data(ElementState {
                                 bytes_left: len,
                                 parent_state: self,
                                 _phantom: PhantomData,
@@ -322,7 +305,7 @@ mod tests {
         fn next(
             element: FilesState,
             source: &'static [u8],
-            expt_result: (&'static [u8], FilesNextStates<_DocumentState>),
+            expt_result: (&'static [u8], FilesNextStates),
         ) {
             assert_eq!(element.next(source).unwrap(), expt_result);
         }
@@ -376,7 +359,7 @@ mod tests {
         fn next(
             element: FileState,
             source: &'static [u8],
-            expt_result: (&'static [u8], FileNextStates<FilesState>),
+            expt_result: (&'static [u8], FileNextStates),
         ) {
             assert_eq!(element.next(source).unwrap(), expt_result);
         }
