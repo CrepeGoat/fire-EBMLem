@@ -66,18 +66,20 @@ enum FilesNextStates<S> {
     Parent(S),
 }
 
-impl<P, S> ElementState<element_defs::FilesDef, S>
-where
-    S: StateOf<Element = P>,
-    P: ParentOf<element_defs::FilesDef>,
-{
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FilesNextStates<S>, ()> {
+impl FilesState {
+    fn next<'a>(
+        mut self,
+        stream: &'a [u8],
+    ) -> nom::IResult<&'a [u8], FilesNextStates<_DocumentState>, ()> {
         match self {
             Self {
                 bytes_left: 0,
                 parent_state: _,
                 _phantom: _,
-            } => Ok((stream, FilesNextStates::<S>::Parent(self.parent_state))),
+            } => Ok((
+                stream,
+                FilesNextStates::<_DocumentState>::Parent(self.parent_state),
+            )),
             _ => {
                 let orig_stream = stream;
 
@@ -94,7 +96,7 @@ where
                     stream,
                     match id {
                         <element_defs::FileDef as ElementDef>::ID => {
-                            FilesNextStates::<S>::File(ElementState {
+                            FilesNextStates::<_DocumentState>::File(ElementState {
                                 bytes_left: len,
                                 parent_state: self,
                                 _phantom: PhantomData,
@@ -107,7 +109,7 @@ where
         }
     }
 
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], S, ()> {
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], _DocumentState, ()> {
         let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
         Ok((stream, self.parent_state))
     }
@@ -129,18 +131,20 @@ enum FileNextStates<S> {
     Parent(S),
 }
 
-impl<P, S> ElementState<element_defs::FileDef, S>
-where
-    S: StateOf<Element = P>,
-    P: ParentOf<element_defs::FileDef>,
-{
-    fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileNextStates<S>, ()> {
+impl FileState {
+    fn next<'a>(
+        mut self,
+        stream: &'a [u8],
+    ) -> nom::IResult<&'a [u8], FileNextStates<FilesState>, ()> {
         match self {
             Self {
                 bytes_left: 0,
                 parent_state: _,
                 _phantom: _,
-            } => Ok((stream, FileNextStates::<S>::Parent(self.parent_state))),
+            } => Ok((
+                stream,
+                FileNextStates::<FilesState>::Parent(self.parent_state),
+            )),
             _ => {
                 let orig_stream = stream;
 
@@ -157,28 +161,28 @@ where
                     stream,
                     match id {
                         <element_defs::FileNameDef as ElementDef>::ID => {
-                            FileNextStates::<S>::FileName(ElementState {
+                            FileNextStates::<FilesState>::FileName(ElementState {
                                 bytes_left: len,
                                 parent_state: self,
                                 _phantom: PhantomData,
                             })
                         }
                         <element_defs::MimeTypeDef as ElementDef>::ID => {
-                            FileNextStates::<S>::MimeType(ElementState {
+                            FileNextStates::<FilesState>::MimeType(ElementState {
                                 bytes_left: len,
                                 parent_state: self,
                                 _phantom: PhantomData,
                             })
                         }
                         <element_defs::ModificationTimestampDef as ElementDef>::ID => {
-                            FileNextStates::<S>::ModificationTimestamp(ElementState {
+                            FileNextStates::<FilesState>::ModificationTimestamp(ElementState {
                                 bytes_left: len,
                                 parent_state: self,
                                 _phantom: PhantomData,
                             })
                         }
                         <element_defs::DataDef as ElementDef>::ID => {
-                            FileNextStates::<S>::Data(ElementState {
+                            FileNextStates::<FilesState>::Data(ElementState {
                                 bytes_left: len,
                                 parent_state: self,
                                 _phantom: PhantomData,
@@ -191,7 +195,7 @@ where
         }
     }
 
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], S, ()> {
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FilesState, ()> {
         let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
         Ok((stream, self.parent_state))
     }
@@ -203,16 +207,12 @@ type FileNameState = NestedElementStates!(
     element_defs::FilesDef
 );
 
-impl<P, S> ElementState<element_defs::FileNameDef, S>
-where
-    S: StateOf<Element = P>,
-    P: ParentOf<element_defs::FileNameDef>,
-{
-    fn next<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], S, ()> {
+impl FileNameState {
+    fn next<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileState, ()> {
         self.skip(stream)
     }
 
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], S, ()> {
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileState, ()> {
         let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
         Ok((stream, self.parent_state))
     }
@@ -224,16 +224,12 @@ type MimeTypeState = NestedElementStates!(
     element_defs::FilesDef
 );
 
-impl<P, S> ElementState<element_defs::MimeTypeDef, S>
-where
-    S: StateOf<Element = P>,
-    P: ParentOf<element_defs::MimeTypeDef>,
-{
-    fn next<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], S, ()> {
+impl MimeTypeState {
+    fn next<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileState, ()> {
         self.skip(stream)
     }
 
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], S, ()> {
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileState, ()> {
         let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
         Ok((stream, self.parent_state))
     }
@@ -245,16 +241,12 @@ type ModificationTimestampState = NestedElementStates!(
     element_defs::FilesDef
 );
 
-impl<P, S> ElementState<element_defs::ModificationTimestampDef, S>
-where
-    S: StateOf<Element = P>,
-    P: ParentOf<element_defs::ModificationTimestampDef>,
-{
-    fn next<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], S, ()> {
+impl ModificationTimestampState {
+    fn next<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileState, ()> {
         self.skip(stream)
     }
 
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], S, ()> {
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileState, ()> {
         let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
         Ok((stream, self.parent_state))
     }
@@ -266,16 +258,12 @@ type DataState = NestedElementStates!(
     element_defs::FilesDef
 );
 
-impl<P, S> ElementState<element_defs::DataDef, S>
-where
-    S: StateOf<Element = P>,
-    P: ParentOf<element_defs::DataDef>,
-{
-    fn next<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], S, ()> {
+impl DataState {
+    fn next<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileState, ()> {
         self.skip(stream)
     }
 
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], S, ()> {
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileState, ()> {
         let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
         Ok((stream, self.parent_state))
     }
