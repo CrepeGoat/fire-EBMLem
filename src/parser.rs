@@ -18,10 +18,3 @@ impl<E, S> StateOf for ElementState<E, S> {
 impl StateOf for () {
     type Element = ();
 }
-
-#[macro_export]
-macro_rules! NestedElementStates {
-    ($e:ty, $( $e_list:ty ),+) => {ElementState<$e, NestedElementStates!($($e_list),+)>};
-    ($e:ty) => {ElementState<$e, NestedElementStates!()>};
-    () => {ElementState<(), ()>};
-}

@@ -7,7 +7,7 @@ use crate::parser::{ElementState, StateOf};
 use crate::stream::{parse, serialize, stream_diff};
 
 // State Objects
-type _DocumentState = NestedElementStates!();
+type _DocumentState = ElementState<(), ()>;
 
 #[derive(Debug, Clone, PartialEq)]
 enum _DocumentNextStates {
@@ -58,7 +58,7 @@ impl ElementState<(), ()> {
     }
 }
 
-type FilesState = NestedElementStates!(element_defs::FilesDef);
+type FilesState = ElementState<element_defs::FilesDef, _DocumentState>;
 
 #[derive(Debug, Clone, PartialEq)]
 enum FilesNextStates<S> {
@@ -115,7 +115,7 @@ impl FilesState {
     }
 }
 
-type FileState = NestedElementStates!(element_defs::FileDef, element_defs::FilesDef);
+type FileState = ElementState<element_defs::FileDef, FilesState>;
 
 #[derive(Debug, Clone, PartialEq)]
 enum FileNextStates<S> {
@@ -201,11 +201,7 @@ impl FileState {
     }
 }
 
-type FileNameState = NestedElementStates!(
-    element_defs::FileNameDef,
-    element_defs::FileDef,
-    element_defs::FilesDef
-);
+type FileNameState = ElementState<element_defs::FileNameDef, FileState>;
 
 impl FileNameState {
     fn next<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileState, ()> {
@@ -218,11 +214,7 @@ impl FileNameState {
     }
 }
 
-type MimeTypeState = NestedElementStates!(
-    element_defs::MimeTypeDef,
-    element_defs::FileDef,
-    element_defs::FilesDef
-);
+type MimeTypeState = ElementState<element_defs::MimeTypeDef, FileState>;
 
 impl MimeTypeState {
     fn next<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileState, ()> {
@@ -235,11 +227,7 @@ impl MimeTypeState {
     }
 }
 
-type ModificationTimestampState = NestedElementStates!(
-    element_defs::ModificationTimestampDef,
-    element_defs::FileDef,
-    element_defs::FilesDef
-);
+type ModificationTimestampState = ElementState<element_defs::ModificationTimestampDef, FileState>;
 
 impl ModificationTimestampState {
     fn next<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileState, ()> {
@@ -252,11 +240,7 @@ impl ModificationTimestampState {
     }
 }
 
-type DataState = NestedElementStates!(
-    element_defs::DataDef,
-    element_defs::FileDef,
-    element_defs::FilesDef
-);
+type DataState = ElementState<element_defs::DataDef, FileState>;
 
 impl DataState {
     fn next<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileState, ()> {
