@@ -473,6 +473,65 @@ impl<R: std::io::BufRead> DataReader<R> {
 }
 
 
+// Void Objects #########################################################################
+
+enum VoidPrevStates {
+    Files(FilesState),
+    File(FileState),
+}
+enum VoidPrevReaders<R> {
+    Files(FilesReader<R>),
+    File(FileReader<R>),
+}
+
+impl VoidPrevStates {
+    fn to_reader<R>(self, reader: R) -> VoidPrevReaders<R> {
+        match self {
+            VoidPrevStates::Files(state) => VoidPrevReaders::Files(reader, state),
+            VoidPrevStates::File(state) => VoidPrevReaders::File(reader, state),
+        }
+    }
+}
+
+impl<R> From<VoidPrevReaders<R>> for VoidPrevStates {
+    fn from(enumed_reader: VoidPrevReaders<R>) -> VoidPrevStates {
+        match enumed_reader {
+            VoidPrevReaders::Files(reader) => VoidPrevStates::Files(reader.state),
+            VoidPrevReaders::File(reader) => VoidPrevStates::File(reader.state),
+        }
+    }
+}
+
+type VoidState = ElementState<element_defs::DataDef, VoidPrevStates>;
+type VoidReader<R> = ElementReader<R, VoidState>;
+
+impl VoidState {
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], VoidPrevStates, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent_state))
+    }
+
+    fn next<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], VoidPrevStates, ()> {
+        self.skip(stream)
+    }
+}
+
+impl<R: std::io::BufRead> VoidReader<R> {
+    fn skip(self) -> std::io::Result<FileReader<R>> {
+        let stream = self.reader.fill_buf()?;
+
+        let (next_stream, next_state) = self.state.skip(stream)?;
+        self.reader.consume(next_stream.len() - stream.len());
+
+        Ok(FileReader<R>{self.reader, next_state})
+    }
+
+    fn next(self) -> std::io::Result<FileReader<R>> {
+        self.skip()
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
