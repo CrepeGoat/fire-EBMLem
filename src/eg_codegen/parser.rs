@@ -43,6 +43,11 @@ impl<R> From<_DocumentNextReaders<R>> for _DocumentNextStates {
 }
 
 impl _DocumentState {
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], (), ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent_state))
+    }
+
     fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], _DocumentNextStates, ()> {
         match self {
             Self {
@@ -77,11 +82,6 @@ impl _DocumentState {
                 ))
             }
         }
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], (), ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent_state))
     }
 }
 
@@ -142,6 +142,11 @@ impl<R> From<FilesNextReaders<R>> for FilesNextStates {
 }
 
 impl FilesState {
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], _DocumentState, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent_state))
+    }
+
     fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FilesNextStates, ()> {
         match self {
             Self {
@@ -176,11 +181,6 @@ impl FilesState {
                 ))
             }
         }
-    }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], _DocumentState, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent_state))
     }
 }
 
@@ -257,6 +257,11 @@ impl FileNextStates {
 }
 
 impl FileState {
+    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FilesState, ()> {
+        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+        Ok((stream, self.parent_state))
+    }
+
     fn next<'a>(mut self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileNextStates, ()> {
         match self {
             Self {
@@ -313,11 +318,6 @@ impl FileState {
             }
         }
     }
-
-    fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FilesState, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
-        Ok((stream, self.parent_state))
-    }
 }
 
 impl<R: std::io::BufRead> FileReader<R> {
@@ -347,13 +347,13 @@ type FileNameState = ElementState<element_defs::FileNameDef, FileState>;
 type FileNameReader<R> = ElementReader<R, FileNameState>;
 
 impl FileNameState {
-    fn next<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileState, ()> {
-        self.skip(stream)
-    }
-
     fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileState, ()> {
         let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
         Ok((stream, self.parent_state))
+    }
+
+    fn next<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileState, ()> {
+        self.skip(stream)
     }
 
     fn read<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], (FileState, &'a str), ()> {
@@ -383,13 +383,13 @@ type MimeTypeState = ElementState<element_defs::MimeTypeDef, FileState>;
 type MimeTypeReader<R> = ElementReader<R, MimeTypeState>;
 
 impl MimeTypeState {
-    fn next<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileState, ()> {
-        self.skip(stream)
-    }
-
     fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileState, ()> {
         let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
         Ok((stream, self.parent_state))
+    }
+
+    fn next<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileState, ()> {
+        self.skip(stream)
     }
 }
 
@@ -415,13 +415,13 @@ type ModificationTimestampState = ElementState<element_defs::ModificationTimesta
 type ModificationTimestampReader<R> = ElementReader<R, ModificationTimestampState>;
 
 impl ModificationTimestampState {
-    fn next<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileState, ()> {
-        self.skip(stream)
-    }
-
     fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileState, ()> {
         let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
         Ok((stream, self.parent_state))
+    }
+
+    fn next<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileState, ()> {
+        self.skip(stream)
     }
 }
 
@@ -447,13 +447,13 @@ type DataState = ElementState<element_defs::DataDef, FileState>;
 type DataReader<R> = ElementReader<R, DataState>;
 
 impl DataState {
-    fn next<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileState, ()> {
-        self.skip(stream)
-    }
-
     fn skip<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileState, ()> {
         let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
         Ok((stream, self.parent_state))
+    }
+
+    fn next<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileState, ()> {
+        self.skip(stream)
     }
 }
 
@@ -471,7 +471,6 @@ impl<R: std::io::BufRead> DataReader<R> {
         self.skip()
     }
 }
-
 
 
 #[cfg(test)]
