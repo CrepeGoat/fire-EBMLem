@@ -19,7 +19,7 @@ impl StateOf for () {
     type Element = ();
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct ElementReader<R, S> {
     pub reader: R,
     pub state: S,
