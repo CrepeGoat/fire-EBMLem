@@ -25,9 +25,9 @@ enum _DocumentNextReaders<R> {
 }
 
 impl _DocumentNextStates {
-    fn to_reader<R>(self, reader: R) -> _DocumentNextReaders<R> {
+    fn to_reader<R: std::io::BufRead>(self, reader: R) -> _DocumentNextReaders<R> {
         match self {
-            _DocumentNextStates::Files(state) => _DocumentNextReaders::Files(reader, state),
+            _DocumentNextStates::Files(state) => _DocumentNextReaders::Files(FilesReader::<R>{reader, state}),
             _DocumentNextStates::None => _DocumentNextReaders::None(reader),
         }
     }
@@ -86,6 +86,10 @@ impl _DocumentState {
 }
 
 impl<R: std::io::BufRead> _DocumentReader<R> {
+    fn new(reader: R, state: _DocumentState) -> Self {
+        Self {reader, state}
+    }
+
     fn skip(self) -> std::io::Result<R> {
         let stream = self.reader.fill_buf()?;
 
@@ -124,10 +128,10 @@ enum FilesNextReaders<R> {
 }
 
 impl FilesNextStates {
-    fn to_reader<R>(self, reader: R) -> FilesNextReaders<R> {
+    fn to_reader<R: std::io::BufRead>(self, reader: R) -> FilesNextReaders<R> {
         match self {
-            FilesNextStates::File(state) => FilesNextReaders::File(reader, state),
-            FilesNextStates::Parent(state) => FilesNextReaders::Parent(reader, state),
+            FilesNextStates::File(state) => FilesNextReaders::File(FileReader{reader, state}),
+            FilesNextStates::Parent(state) => FilesNextReaders::Parent(_DocumentReader{reader, state}),
         }
     }
 }
@@ -185,13 +189,17 @@ impl FilesState {
 }
 
 impl<R: std::io::BufRead> FilesReader<R> {
+    fn new(reader: R, state: FilesState) -> Self {
+        Self {reader, state}
+    }
+
     fn skip(self) -> std::io::Result<_DocumentReader<R>> {
         let stream = self.reader.fill_buf()?;
 
         let (next_stream, next_state) = self.state.skip(stream)?;
         self.reader.consume(next_stream.len() - stream.len());
 
-        Ok(_DocumentReader<R>{self.reader, next_state})
+        Ok(_DocumentReader::<R>{reader: self.reader, state: next_state})
     }
 
     fn next(self) -> std::io::Result<FilesNextReaders<R>> {
@@ -229,29 +237,29 @@ enum FileNextReaders<R> {
 }
 
 impl<R> From<FileNextReaders<R>> for FileNextStates {
-    fn from(enumed_reader: FileNextReaders) -> Self {
+    fn from(enumed_reader: FileNextReaders<R>) -> Self {
         match enumed_reader {
-            FileNextReaders::FileName(_, state) => Self::FileName(state),
-            FileNextReaders::MimeType(_, state) => Self::MimeType(state),
-            FileNextReaders::ModificationTimestamp(_, state) => Self::ModificationTimestamp(state),
-            FileNextReaders::Data(_, state) => Self::Data(state),
-            FileNextReaders::Parent(_, state) => Self::Parent(state),
+            FileNextReaders::FileName(reader) => Self::FileName(reader.state),
+            FileNextReaders::MimeType(reader) => Self::MimeType(reader.state),
+            FileNextReaders::ModificationTimestamp(reader) => Self::ModificationTimestamp(reader.state),
+            FileNextReaders::Data(reader) => Self::Data(reader.state),
+            FileNextReaders::Parent(reader) => Self::Parent(reader.state),
         }
     }
 }
 
 impl FileNextStates {
-    fn to_reader<R>(self, reader: R) -> FileNextReaders<R> {
+    fn to_reader<R: std::io::BufRead>(self, reader: R) -> FileNextReaders<R> {
         match self {
             Self::FileName(state) => {
                 FileNextReaders::<R>::FileName(FileNameReader::new(reader, state))
             }
-            Self::MimeType(state) => FileNextReaders::<R>::MimeType(FileReader::new(reader, state)),
+            Self::MimeType(state) => FileNextReaders::<R>::MimeType(MimeTypeReader::new(reader, state)),
             Self::ModificationTimestamp(state) => {
-                FileNextReaders::<R>::ModificationTimestamp(FileReader::new(reader, state))
+                FileNextReaders::<R>::ModificationTimestamp(ModificationTimestampReader::new(reader, state))
             }
-            Self::Data(state) => FileNextReaders::<R>::Data(FileReader::new(reader, state)),
-            Self::Parent(state) => FileNextReaders::<R>::Parent(reader, state),
+            Self::Data(state) => FileNextReaders::<R>::Data(DataReader::new(reader, state)),
+            Self::Parent(state) => FileNextReaders::<R>::Parent(FilesReader::new(reader, state)),
         }
     }
 }
@@ -321,13 +329,17 @@ impl FileState {
 }
 
 impl<R: std::io::BufRead> FileReader<R> {
+    fn new(reader: R, state: FileState) -> Self {
+        Self {reader, state}
+    }
+
     fn skip(self) -> std::io::Result<FilesReader<R>> {
         let stream = self.reader.fill_buf()?;
 
         let (next_stream, next_state) = self.state.skip(stream)?;
         self.reader.consume(next_stream.len() - stream.len());
 
-        Ok(FilesReader<R>{self.reader, next_state})
+        Ok(FilesReader::<R>{reader: self.reader, state: next_state})
     }
 
     fn next(self) -> std::io::Result<FileNextReaders<R>> {
@@ -355,20 +367,20 @@ impl FileNameState {
     fn next<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], FileState, ()> {
         self.skip(stream)
     }
-
-    fn read<'a>(self, stream: &'a [u8]) -> nom::IResult<&'a [u8], (FileState, &'a str), ()> {
-        self.skip(stream)
-    }
 }
 
 impl<R: std::io::BufRead> FileNameReader<R> {
+    fn new(reader: R, state: FileNameState) -> Self {
+        Self {reader, state}
+    }
+
     fn skip(self) -> std::io::Result<FileReader<R>> {
         let stream = self.reader.fill_buf()?;
 
         let (next_stream, next_state) = self.state.skip(stream)?;
         self.reader.consume(next_stream.len() - stream.len());
 
-        Ok(FileReader<R>{self.reader, next_state})
+        Ok(FileReader::<R>{reader: self.reader, state: next_state})
     }
 
     fn next(self) -> std::io::Result<FileReader<R>> {
@@ -394,13 +406,17 @@ impl MimeTypeState {
 }
 
 impl<R: std::io::BufRead> MimeTypeReader<R> {
+    fn new(reader: R, state: MimeTypeState) -> Self {
+        Self {reader, state}
+    }
+
     fn skip(self) -> std::io::Result<FileReader<R>> {
         let stream = self.reader.fill_buf()?;
 
         let (next_stream, next_state) = self.state.skip(stream)?;
         self.reader.consume(next_stream.len() - stream.len());
 
-        Ok(FileReader<R>{self.reader, next_state})
+        Ok(FileReader::<R>{reader: self.reader, state: next_state})
     }
 
     fn next(self) -> std::io::Result<FileReader<R>> {
@@ -426,13 +442,17 @@ impl ModificationTimestampState {
 }
 
 impl<R: std::io::BufRead> ModificationTimestampReader<R> {
+    fn new(reader: R, state: ModificationTimestampState) -> Self {
+        Self {reader, state}
+    }
+
     fn skip(self) -> std::io::Result<FileReader<R>> {
         let stream = self.reader.fill_buf()?;
 
         let (next_stream, next_state) = self.state.skip(stream)?;
         self.reader.consume(next_stream.len() - stream.len());
 
-        Ok(FileReader<R>{self.reader, next_state})
+        Ok(FileReader::<R>{reader: self.reader, state: next_state})
     }
 
     fn next(self) -> std::io::Result<FileReader<R>> {
@@ -458,13 +478,17 @@ impl DataState {
 }
 
 impl<R: std::io::BufRead> DataReader<R> {
+    fn new(reader: R, state: DataState) -> Self {
+        Self {reader, state}
+    }
+
     fn skip(self) -> std::io::Result<FileReader<R>> {
         let stream = self.reader.fill_buf()?;
 
         let (next_stream, next_state) = self.state.skip(stream)?;
         self.reader.consume(next_stream.len() - stream.len());
 
-        Ok(FileReader<R>{self.reader, next_state})
+        Ok(FileReader::<R>{reader: self.reader, state: next_state})
     }
 
     fn next(self) -> std::io::Result<FileReader<R>> {
@@ -485,10 +509,10 @@ enum VoidPrevReaders<R> {
 }
 
 impl VoidPrevStates {
-    fn to_reader<R>(self, reader: R) -> VoidPrevReaders<R> {
+    fn to_reader<R: std::io::BufRead>(self, reader: R) -> VoidPrevReaders<R> {
         match self {
-            VoidPrevStates::Files(state) => VoidPrevReaders::Files(reader, state),
-            VoidPrevStates::File(state) => VoidPrevReaders::File(reader, state),
+            VoidPrevStates::Files(state) => VoidPrevReaders::Files(FilesReader::new(reader, state)),
+            VoidPrevStates::File(state) => VoidPrevReaders::File(FileReader::new(reader, state)),
         }
     }
 }
@@ -517,16 +541,20 @@ impl VoidState {
 }
 
 impl<R: std::io::BufRead> VoidReader<R> {
-    fn skip(self) -> std::io::Result<FileReader<R>> {
+    fn new(reader: R, state: VoidState) -> Self {
+        Self {reader, state}
+    }
+
+    fn skip(self) -> std::io::Result<VoidPrevReaders<R>> {
         let stream = self.reader.fill_buf()?;
 
         let (next_stream, next_state) = self.state.skip(stream)?;
         self.reader.consume(next_stream.len() - stream.len());
 
-        Ok(FileReader<R>{self.reader, next_state})
+        Ok(next_state.to_reader(reader))
     }
 
-    fn next(self) -> std::io::Result<FileReader<R>> {
+    fn next(self) -> std::io::Result<VoidPrevReaders<R>> {
         self.skip()
     }
 }
