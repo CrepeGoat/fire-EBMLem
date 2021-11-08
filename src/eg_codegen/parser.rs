@@ -517,10 +517,12 @@ impl<R: std::io::BufRead> DataReader<R> {
 
 // Void Objects #########################################################################
 
+#[derive(Debug, Clone, PartialEq)]
 enum VoidPrevStates {
     Files(FilesState),
     File(FileState),
 }
+#[derive(Debug, PartialEq)]
 enum VoidPrevReaders<R> {
     Files(FilesReader<R>),
     File(FileReader<R>),
