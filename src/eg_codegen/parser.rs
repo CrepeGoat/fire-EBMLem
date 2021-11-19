@@ -27,7 +27,7 @@ impl _DocumentNextStates {
     fn to_reader<R: std::io::BufRead>(self, reader: R) -> _DocumentNextReaders<R> {
         match self {
             _DocumentNextStates::Files(state) => {
-                _DocumentNextReaders::Files(FilesReader::<R> { reader, state })
+                _DocumentNextReaders::Files(state.to_reader(reader))
             }
             _DocumentNextStates::None => _DocumentNextReaders::None(reader),
         }
@@ -134,10 +134,8 @@ enum FilesNextReaders<R> {
 impl FilesNextStates {
     fn to_reader<R: std::io::BufRead>(self, reader: R) -> FilesNextReaders<R> {
         match self {
-            FilesNextStates::File(state) => FilesNextReaders::File(FileReader { reader, state }),
-            FilesNextStates::Parent(state) => {
-                FilesNextReaders::Parent(_DocumentReader { reader, state })
-            }
+            FilesNextStates::File(state) => FilesNextReaders::File(state.to_reader(reader)),
+            FilesNextStates::Parent(state) => FilesNextReaders::Parent(state.to_reader(reader)),
         }
     }
 }
@@ -262,17 +260,13 @@ impl<R> From<FileNextReaders<R>> for FileNextStates {
 impl FileNextStates {
     fn to_reader<R: std::io::BufRead>(self, reader: R) -> FileNextReaders<R> {
         match self {
-            Self::FileName(state) => {
-                FileNextReaders::<R>::FileName(FileNameReader::new(reader, state))
+            Self::FileName(state) => FileNextReaders::<R>::FileName(state.to_reader(reader)),
+            Self::MimeType(state) => FileNextReaders::<R>::MimeType(state.to_reader(reader)),
+            Self::ModificationTimestamp(state) => {
+                FileNextReaders::<R>::ModificationTimestamp(state.to_reader(reader))
             }
-            Self::MimeType(state) => {
-                FileNextReaders::<R>::MimeType(MimeTypeReader::new(reader, state))
-            }
-            Self::ModificationTimestamp(state) => FileNextReaders::<R>::ModificationTimestamp(
-                ModificationTimestampReader::new(reader, state),
-            ),
-            Self::Data(state) => FileNextReaders::<R>::Data(DataReader::new(reader, state)),
-            Self::Parent(state) => FileNextReaders::<R>::Parent(FilesReader::new(reader, state)),
+            Self::Data(state) => FileNextReaders::<R>::Data(state.to_reader(reader)),
+            Self::Parent(state) => FileNextReaders::<R>::Parent(state.to_reader(reader)),
         }
     }
 }
@@ -541,8 +535,8 @@ enum VoidPrevReaders<R> {
 impl VoidPrevStates {
     fn to_reader<R: std::io::BufRead>(self, reader: R) -> VoidPrevReaders<R> {
         match self {
-            VoidPrevStates::Files(state) => VoidPrevReaders::Files(FilesReader::new(reader, state)),
-            VoidPrevStates::File(state) => VoidPrevReaders::File(FileReader::new(reader, state)),
+            VoidPrevStates::Files(state) => VoidPrevReaders::Files(state.to_reader(reader)),
+            VoidPrevStates::File(state) => VoidPrevReaders::File(state.to_reader(reader)),
         }
     }
 }
