@@ -3,7 +3,7 @@ use core::marker::PhantomData;
 
 use crate::eg_codegen::element_defs;
 use crate::element_defs::{ElementDef, ParentOf};
-use crate::parser::{ElementReader, ElementState, StateOf};
+use crate::parser::{ElementReader, ElementState, ReaderError, StateOf};
 use crate::stream::{parse, serialize, stream_diff};
 
 // _Document Objects #########################################################################
@@ -95,20 +95,22 @@ impl<R: std::io::BufRead> _DocumentReader<R> {
         Self { reader, state }
     }
 
-    fn skip(self) -> std::io::Result<R> {
+    fn skip(mut self) -> Result<R, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.skip(stream)?;
-        self.reader.consume(next_stream.len() - stream.len());
+        let (next_stream, _next_state) = self.state.skip(stream).map_err(ReaderError::from)?;
+        let stream_dist = stream.len() - next_stream.len();
+        self.reader.consume(stream_dist);
 
         Ok(self.reader)
     }
 
-    fn next(self) -> std::io::Result<_DocumentNextReaders<R>> {
+    fn next(mut self) -> Result<_DocumentNextReaders<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.next(stream)?;
-        self.reader.consume(next_stream.len() - stream.len());
+        let (next_stream, next_state) = self.state.next(stream).map_err(ReaderError::from)?;
+        let stream_dist = stream.len() - next_stream.len();
+        self.reader.consume(stream_dist);
 
         Ok(next_state.to_reader(self.reader))
     }
@@ -201,20 +203,22 @@ impl<R: std::io::BufRead> FilesReader<R> {
         Self { reader, state }
     }
 
-    fn skip(self) -> std::io::Result<_DocumentReader<R>> {
+    fn skip(mut self) -> Result<_DocumentReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.skip(stream)?;
-        self.reader.consume(next_stream.len() - stream.len());
+        let (next_stream, next_state) = self.state.skip(stream).map_err(ReaderError::from)?;
+        let stream_dist = stream.len() - next_stream.len();
+        self.reader.consume(stream_dist);
 
         Ok(next_state.to_reader(self.reader))
     }
 
-    fn next(self) -> std::io::Result<FilesNextReaders<R>> {
+    fn next(mut self) -> Result<FilesNextReaders<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.next(stream)?;
-        self.reader.consume(next_stream.len() - stream.len());
+        let (next_stream, next_state) = self.state.next(stream).map_err(ReaderError::from)?;
+        let stream_dist = stream.len() - next_stream.len();
+        self.reader.consume(stream_dist);
 
         Ok(next_state.to_reader(self.reader))
     }
@@ -344,20 +348,22 @@ impl<R: std::io::BufRead> FileReader<R> {
         Self { reader, state }
     }
 
-    fn skip(self) -> std::io::Result<FilesReader<R>> {
+    fn skip(mut self) -> Result<FilesReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.skip(stream)?;
-        self.reader.consume(next_stream.len() - stream.len());
+        let (next_stream, next_state) = self.state.skip(stream).map_err(ReaderError::from)?;
+        let stream_dist = stream.len() - next_stream.len();
+        self.reader.consume(stream_dist);
 
         Ok(next_state.to_reader(self.reader))
     }
 
-    fn next(self) -> std::io::Result<FileNextReaders<R>> {
+    fn next(mut self) -> Result<FileNextReaders<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.next(stream)?;
-        self.reader.consume(next_stream.len() - stream.len());
+        let (next_stream, next_state) = self.state.next(stream).map_err(ReaderError::from)?;
+        let stream_dist = stream.len() - next_stream.len();
+        self.reader.consume(stream_dist);
 
         Ok(next_state.to_reader(self.reader))
     }
@@ -388,20 +394,22 @@ impl<R: std::io::BufRead> FileNameReader<R> {
         Self { reader, state }
     }
 
-    fn skip(self) -> std::io::Result<FileReader<R>> {
+    fn skip(mut self) -> Result<FileReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.skip(stream)?;
-        self.reader.consume(next_stream.len() - stream.len());
+        let (next_stream, next_state) = self.state.skip(stream).map_err(ReaderError::from)?;
+        let stream_dist = stream.len() - next_stream.len();
+        self.reader.consume(stream_dist);
 
         Ok(next_state.to_reader(self.reader))
     }
 
-    fn next(self) -> std::io::Result<FileReader<R>> {
+    fn next(mut self) -> Result<FileReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.next(stream)?;
-        self.reader.consume(next_stream.len() - stream.len());
+        let (next_stream, next_state) = self.state.next(stream).map_err(ReaderError::from)?;
+        let stream_dist = stream.len() - next_stream.len();
+        self.reader.consume(stream_dist);
 
         Ok(next_state.to_reader(self.reader))
     }
@@ -432,20 +440,22 @@ impl<R: std::io::BufRead> MimeTypeReader<R> {
         Self { reader, state }
     }
 
-    fn skip(self) -> std::io::Result<FileReader<R>> {
+    fn skip(mut self) -> Result<FileReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.skip(stream)?;
-        self.reader.consume(next_stream.len() - stream.len());
+        let (next_stream, next_state) = self.state.skip(stream).map_err(ReaderError::from)?;
+        let stream_dist = stream.len() - next_stream.len();
+        self.reader.consume(stream_dist);
 
         Ok(next_state.to_reader(self.reader))
     }
 
-    fn next(self) -> std::io::Result<FileReader<R>> {
+    fn next(mut self) -> Result<FileReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.next(stream)?;
-        self.reader.consume(next_stream.len() - stream.len());
+        let (next_stream, next_state) = self.state.next(stream).map_err(ReaderError::from)?;
+        let stream_dist = stream.len() - next_stream.len();
+        self.reader.consume(stream_dist);
 
         Ok(next_state.to_reader(self.reader))
     }
@@ -476,20 +486,22 @@ impl<R: std::io::BufRead> ModificationTimestampReader<R> {
         Self { reader, state }
     }
 
-    fn skip(self) -> std::io::Result<FileReader<R>> {
+    fn skip(mut self) -> Result<FileReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.skip(stream)?;
-        self.reader.consume(next_stream.len() - stream.len());
+        let (next_stream, next_state) = self.state.skip(stream).map_err(ReaderError::from)?;
+        let stream_dist = stream.len() - next_stream.len();
+        self.reader.consume(stream_dist);
 
         Ok(next_state.to_reader(self.reader))
     }
 
-    fn next(self) -> std::io::Result<FileReader<R>> {
+    fn next(mut self) -> Result<FileReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.next(stream)?;
-        self.reader.consume(next_stream.len() - stream.len());
+        let (next_stream, next_state) = self.state.next(stream).map_err(ReaderError::from)?;
+        let stream_dist = stream.len() - next_stream.len();
+        self.reader.consume(stream_dist);
 
         Ok(next_state.to_reader(self.reader))
     }
@@ -520,20 +532,22 @@ impl<R: std::io::BufRead> DataReader<R> {
         Self { reader, state }
     }
 
-    fn skip(self) -> std::io::Result<FileReader<R>> {
+    fn skip(mut self) -> Result<FileReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.skip(stream)?;
-        self.reader.consume(next_stream.len() - stream.len());
+        let (next_stream, next_state) = self.state.skip(stream).map_err(ReaderError::from)?;
+        let stream_dist = stream.len() - next_stream.len();
+        self.reader.consume(stream_dist);
 
         Ok(next_state.to_reader(self.reader))
     }
 
-    fn next(self) -> std::io::Result<FileReader<R>> {
+    fn next(mut self) -> Result<FileReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.next(stream)?;
-        self.reader.consume(next_stream.len() - stream.len());
+        let (next_stream, next_state) = self.state.next(stream).map_err(ReaderError::from)?;
+        let stream_dist = stream.len() - next_stream.len();
+        self.reader.consume(stream_dist);
 
         Ok(next_state.to_reader(self.reader))
     }
@@ -593,20 +607,22 @@ impl<R: std::io::BufRead> VoidReader<R> {
         Self { reader, state }
     }
 
-    fn skip(self) -> std::io::Result<VoidPrevReaders<R>> {
+    fn skip(mut self) -> Result<VoidPrevReaders<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.skip(stream)?;
-        self.reader.consume(next_stream.len() - stream.len());
+        let (next_stream, next_state) = self.state.skip(stream).map_err(ReaderError::from)?;
+        let stream_dist = stream.len() - next_stream.len();
+        self.reader.consume(stream_dist);
 
         Ok(next_state.to_reader(self.reader))
     }
 
-    fn next(self) -> std::io::Result<VoidPrevReaders<R>> {
+    fn next(mut self) -> Result<VoidPrevReaders<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.next(stream)?;
-        self.reader.consume(next_stream.len() - stream.len());
+        let (next_stream, next_state) = self.state.next(stream).map_err(ReaderError::from)?;
+        let stream_dist = stream.len() - next_stream.len();
+        self.reader.consume(stream_dist);
 
         Ok(next_state.to_reader(self.reader))
     }

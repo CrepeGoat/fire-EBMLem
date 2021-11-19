@@ -1,3 +1,6 @@
+use core::convert::From;
+use core::fmt;
+use core::fmt::Debug;
 use core::marker::PhantomData;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -23,4 +26,31 @@ impl StateOf for () {
 pub struct ElementReader<R, S> {
     pub reader: R,
     pub state: S,
+}
+
+#[derive(Debug)]
+pub enum ReaderError {
+    IO(std::io::Error),
+    Parse(nom::Err<()>),
+}
+
+impl fmt::Display for ReaderError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::IO(error) => write!(f, "IOError: {}", error),
+            Self::Parse(error) => write!(f, "ParseError"), // TODO: properly print error
+        }
+    }
+}
+
+impl From<std::io::Error> for ReaderError {
+    fn from(err: std::io::Error) -> Self {
+        Self::IO(err)
+    }
+}
+
+impl From<nom::Err<()>> for ReaderError {
+    fn from(err: nom::Err<()>) -> Self {
+        Self::Parse(err)
+    }
 }
