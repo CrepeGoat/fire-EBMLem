@@ -585,7 +585,7 @@ impl<R: std::io::BufRead> VoidReader<R> {
         let (next_stream, next_state) = self.state.skip(stream)?;
         self.reader.consume(next_stream.len() - stream.len());
 
-        Ok(next_state.to_reader(reader))
+        Ok(next_state.to_reader(self.reader))
     }
 
     fn next(self) -> std::io::Result<VoidPrevReaders<R>> {
