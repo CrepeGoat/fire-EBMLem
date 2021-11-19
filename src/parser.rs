@@ -38,7 +38,7 @@ impl fmt::Display for ReaderError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::IO(error) => write!(f, "IOError: {}", error),
-            Self::Parse(error) => write!(f, "ParseError"), // TODO: properly print error
+            Self::Parse(error) => write!(f, "ParseError: {}", error),
         }
     }
 }
