@@ -3,7 +3,7 @@ use core::marker::PhantomData;
 
 use crate::eg_codegen::element_defs;
 use crate::element_defs::{ElementDef, ParentOf};
-use crate::parser::{ElementReader, ElementState, ReaderError, StateOf};
+use crate::parser::{ElementReader, ElementState, ReaderError, StateError, StateOf};
 use crate::stream::{parse, serialize, stream_diff};
 
 // _Document Objects #########################################################################
@@ -53,7 +53,7 @@ impl _DocumentState {
         Ok((stream, self.parent_state))
     }
 
-    fn next(mut self, stream: &[u8]) -> nom::IResult<&[u8], _DocumentNextStates, ()> {
+    fn next(mut self, stream: &[u8]) -> nom::IResult<&[u8], _DocumentNextStates, StateError> {
         match self {
             Self {
                 bytes_left: 0,
@@ -66,7 +66,9 @@ impl _DocumentState {
                 let (stream, id) = parse::element_id(stream)?;
                 let (stream, len) = parse::element_len(stream)?;
                 let len: usize = len
-                    .expect("todo: handle optionally unsized elements")
+                    .ok_or(StateError::Unimplemented(
+                        "TODO: handle optionally unsized elements",
+                    ))?
                     .try_into()
                     .expect("overflow in storing element bytelength");
 
@@ -82,7 +84,7 @@ impl _DocumentState {
                                 _phantom: PhantomData,
                             })
                         }
-                        _ => return Err(nom::Err::Failure(())),
+                        id => return Err(nom::Err::Failure(StateError::InvalidChildID(None, id))),
                     },
                 ))
             }
@@ -161,7 +163,7 @@ impl FilesState {
         Ok((stream, self.parent_state))
     }
 
-    fn next(mut self, stream: &[u8]) -> nom::IResult<&[u8], FilesNextStates, ()> {
+    fn next(mut self, stream: &[u8]) -> nom::IResult<&[u8], FilesNextStates, StateError> {
         match self {
             Self {
                 bytes_left: 0,
@@ -174,7 +176,9 @@ impl FilesState {
                 let (stream, id) = parse::element_id(stream)?;
                 let (stream, len) = parse::element_len(stream)?;
                 let len: usize = len
-                    .expect("todo: handle optionally unsized elements")
+                    .ok_or(StateError::Unimplemented(
+                        "TODO: handle optionally unsized elements",
+                    ))?
                     .try_into()
                     .expect("overflow in storing element bytelength");
 
@@ -190,7 +194,12 @@ impl FilesState {
                                 _phantom: PhantomData,
                             })
                         }
-                        _ => return Err(nom::Err::Failure(())),
+                        id => {
+                            return Err(nom::Err::Failure(StateError::InvalidChildID(
+                                Some(<<Self as StateOf>::Element as ElementDef>::ID),
+                                id,
+                            )))
+                        }
                     },
                 ))
             }
@@ -280,7 +289,7 @@ impl FileState {
         FileReader::new(reader, self)
     }
 
-    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FilesState, ()> {
+    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FilesState, StateError> {
         let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
         Ok((stream, self.parent_state))
     }
@@ -298,7 +307,9 @@ impl FileState {
                 let (stream, id) = parse::element_id(stream)?;
                 let (stream, len) = parse::element_len(stream)?;
                 let len: usize = len
-                    .expect("todo: handle optionally unsized elements")
+                    .ok_or(StateError::Unimplemented(
+                        "TODO: handle optionally unsized elements",
+                    ))?
                     .try_into()
                     .expect("overflow in storing element bytelength");
 
@@ -335,7 +346,12 @@ impl FileState {
                                 _phantom: PhantomData,
                             })
                         }
-                        _ => return Err(nom::Err::Failure(())),
+                        id => {
+                            return Err(nom::Err::Failure(StateError::InvalidChildID(
+                                Some(<<Self as StateOf>::Element as ElementDef>::ID),
+                                id,
+                            )))
+                        }
                     },
                 ))
             }

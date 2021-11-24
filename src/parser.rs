@@ -22,6 +22,23 @@ impl StateOf for () {
     type Element = ();
 }
 
+pub #[derive(Debug)]
+enum StateError {
+    InvalidChildID(Option<u32>, u32),
+    Unimplemented(&'static str),
+}
+
+impl fmt::Display for StateError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidChildID(super_id, sub_id) => write!(
+                f, "invalid subelement id {} for superelement id {}", sub_id, super_id
+            ),
+            Self::Unimplemented(string) => write!(f, "Unimplemented feature: {}", id),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct ElementReader<R, S> {
     pub reader: R,
@@ -31,7 +48,7 @@ pub struct ElementReader<R, S> {
 #[derive(Debug)]
 pub enum ReaderError {
     IO(std::io::Error),
-    Parse(nom::Err<()>),
+    Parse(nom::Err<StateError>),
 }
 
 impl fmt::Display for ReaderError {
