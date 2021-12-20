@@ -22,8 +22,8 @@ impl StateOf for () {
     type Element = ();
 }
 
-pub #[derive(Debug)]
-enum StateError {
+#[derive(Debug)]
+pub enum StateError {
     InvalidChildID(Option<u32>, u32),
     Unimplemented(&'static str),
 }
@@ -31,13 +31,18 @@ enum StateError {
 impl fmt::Display for StateError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidChildID(super_id, sub_id) => write!(
-                f, "invalid subelement id {} for superelement id {}", sub_id, super_id
+            Self::InvalidChildID(Some(super_id), sub_id) => write!(
+                f,
+                "invalid subelement id {} for superelement id {}",
+                sub_id, super_id
             ),
-            Self::Unimplemented(string) => write!(f, "Unimplemented feature: {}", id),
+            Self::InvalidChildID(None, sub_id) => write!(f, "invalid root element id {}", sub_id),
+            Self::Unimplemented(string) => write!(f, "Unimplemented feature: {}", string),
         }
     }
 }
+
+impl std::error::Error for StateError {}
 
 #[derive(Debug, PartialEq)]
 pub struct ElementReader<R, S> {
