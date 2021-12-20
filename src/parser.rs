@@ -22,27 +22,13 @@ impl StateOf for () {
     type Element = ();
 }
 
-#[derive(Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum StateError {
+    #[error("invalid subelement id {1} (parent id = {:?})", *.0)]
     InvalidChildID(Option<u32>, u32),
+    #[error("unimplemeted feature: {0}")]
     Unimplemented(&'static str),
 }
-
-impl fmt::Display for StateError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::InvalidChildID(Some(super_id), sub_id) => write!(
-                f,
-                "invalid subelement id {} for superelement id {}",
-                sub_id, super_id
-            ),
-            Self::InvalidChildID(None, sub_id) => write!(f, "invalid root element id {}", sub_id),
-            Self::Unimplemented(string) => write!(f, "Unimplemented feature: {}", string),
-        }
-    }
-}
-
-impl std::error::Error for StateError {}
 
 #[derive(Debug, PartialEq)]
 pub struct ElementReader<R, S> {
@@ -50,29 +36,10 @@ pub struct ElementReader<R, S> {
     pub state: S,
 }
 
-#[derive(Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum ReaderError {
-    IO(std::io::Error),
-    Parse(nom::Err<StateError>),
-}
-
-impl fmt::Display for ReaderError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::IO(error) => write!(f, "IOError: {}", error),
-            Self::Parse(error) => write!(f, "ParseError: {}", error),
-        }
-    }
-}
-
-impl From<std::io::Error> for ReaderError {
-    fn from(err: std::io::Error) -> Self {
-        Self::IO(err)
-    }
-}
-
-impl From<nom::Err<()>> for ReaderError {
-    fn from(err: nom::Err<()>) -> Self {
-        Self::Parse(err)
-    }
+    #[error("IOError: {0}")]
+    IO(#[from] std::io::Error),
+    #[error("ParseError: {0}")]
+    Parse(#[from] nom::Err<StateError>),
 }
