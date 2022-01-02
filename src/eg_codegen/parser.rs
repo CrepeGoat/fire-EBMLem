@@ -110,7 +110,7 @@ impl<R: std::io::BufRead> _DocumentReader<R> {
     fn next(mut self) -> Result<_DocumentNextReaders<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.next(stream).map_err(ReaderError::from)?;
+        let (next_stream, next_state) = self.state.next(stream)?;
         let stream_dist = stream.len() - next_stream.len();
         self.reader.consume(stream_dist);
 
@@ -225,7 +225,7 @@ impl<R: std::io::BufRead> FilesReader<R> {
     fn next(mut self) -> Result<FilesNextReaders<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.next(stream).map_err(ReaderError::from)?;
+        let (next_stream, next_state) = self.state.next(stream)?;
         let stream_dist = stream.len() - next_stream.len();
         self.reader.consume(stream_dist);
 
@@ -400,8 +400,8 @@ impl FileNameState {
         Ok((stream, self.parent_state))
     }
 
-    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, ()> {
-        self.skip(stream)
+    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
+        self.skip(stream).map_err(nom::Err::convert)
     }
 }
 
@@ -446,8 +446,8 @@ impl MimeTypeState {
         Ok((stream, self.parent_state))
     }
 
-    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, ()> {
-        self.skip(stream)
+    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
+        self.skip(stream).map_err(nom::Err::convert)
     }
 }
 
@@ -492,8 +492,8 @@ impl ModificationTimestampState {
         Ok((stream, self.parent_state))
     }
 
-    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, ()> {
-        self.skip(stream)
+    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
+        self.skip(stream).map_err(nom::Err::convert)
     }
 }
 
@@ -538,8 +538,8 @@ impl DataState {
         Ok((stream, self.parent_state))
     }
 
-    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, ()> {
-        self.skip(stream)
+    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
+        self.skip(stream).map_err(nom::Err::convert)
     }
 }
 
@@ -613,8 +613,8 @@ impl VoidState {
         Ok((stream, self.parent_state))
     }
 
-    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], VoidPrevStates, ()> {
-        self.skip(stream)
+    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], VoidPrevStates, StateError> {
+        self.skip(stream).map_err(nom::Err::convert)
     }
 }
 
