@@ -28,6 +28,14 @@ pub enum StateError {
     InvalidChildID(Option<u32>, u32),
     #[error("unimplemeted feature: {0}")]
     Unimplemented(&'static str),
+    #[error("error parsing token")]
+    BadToken,
+}
+
+impl From<()> for StateError {
+    fn from(_value: ()) -> Self {
+        Self::BadToken
+    }
 }
 
 #[derive(Debug, PartialEq)]
