@@ -48,8 +48,9 @@ impl _DocumentState {
         _DocumentReader::new(reader, self)
     }
 
-    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], (), ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], (), StateError> {
+        let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
+            .map_err(nom::Err::convert)?;
         Ok((stream, self.parent_state))
     }
 
@@ -100,7 +101,7 @@ impl<R: std::io::BufRead> _DocumentReader<R> {
     fn skip(mut self) -> Result<R, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, _next_state) = self.state.skip(stream).map_err(nom::Err::convert)?;
+        let (next_stream, _next_state) = self.state.skip(stream)?;
         let stream_dist = stream.len() - next_stream.len();
         self.reader.consume(stream_dist);
 
@@ -158,8 +159,9 @@ impl FilesState {
         FilesReader::new(reader, self)
     }
 
-    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], _DocumentState, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], _DocumentState, StateError> {
+        let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
+            .map_err(nom::Err::convert)?;
         Ok((stream, self.parent_state))
     }
 
@@ -215,7 +217,7 @@ impl<R: std::io::BufRead> FilesReader<R> {
     fn skip(mut self) -> Result<_DocumentReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.skip(stream).map_err(nom::Err::convert)?;
+        let (next_stream, next_state) = self.state.skip(stream)?;
         let stream_dist = stream.len() - next_stream.len();
         self.reader.consume(stream_dist);
 
@@ -289,8 +291,9 @@ impl FileState {
         FileReader::new(reader, self)
     }
 
-    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FilesState, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FilesState, StateError> {
+        let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
+            .map_err(nom::Err::convert)?;
         Ok((stream, self.parent_state))
     }
 
@@ -367,7 +370,7 @@ impl<R: std::io::BufRead> FileReader<R> {
     fn skip(mut self) -> Result<FilesReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.skip(stream).map_err(nom::Err::convert)?;
+        let (next_stream, next_state) = self.state.skip(stream)?;
         let stream_dist = stream.len() - next_stream.len();
         self.reader.consume(stream_dist);
 
@@ -377,7 +380,7 @@ impl<R: std::io::BufRead> FileReader<R> {
     fn next(mut self) -> Result<FileNextReaders<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.next(stream).map_err(nom::Err::convert)?;
+        let (next_stream, next_state) = self.state.next(stream)?;
         let stream_dist = stream.len() - next_stream.len();
         self.reader.consume(stream_dist);
 
@@ -395,13 +398,14 @@ impl FileNameState {
         FileNameReader::new(reader, self)
     }
 
-    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
+        let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
+            .map_err(nom::Err::convert)?;
         Ok((stream, self.parent_state))
     }
 
     fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
-        self.skip(stream).map_err(nom::Err::convert)
+        self.skip(stream)
     }
 }
 
@@ -413,7 +417,7 @@ impl<R: std::io::BufRead> FileNameReader<R> {
     fn skip(mut self) -> Result<FileReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.skip(stream).map_err(nom::Err::convert)?;
+        let (next_stream, next_state) = self.state.skip(stream)?;
         let stream_dist = stream.len() - next_stream.len();
         self.reader.consume(stream_dist);
 
@@ -423,7 +427,7 @@ impl<R: std::io::BufRead> FileNameReader<R> {
     fn next(mut self) -> Result<FileReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.next(stream).map_err(nom::Err::convert)?;
+        let (next_stream, next_state) = self.state.next(stream)?;
         let stream_dist = stream.len() - next_stream.len();
         self.reader.consume(stream_dist);
 
@@ -441,13 +445,14 @@ impl MimeTypeState {
         MimeTypeReader::new(reader, self)
     }
 
-    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
+        let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
+            .map_err(nom::Err::convert)?;
         Ok((stream, self.parent_state))
     }
 
     fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
-        self.skip(stream).map_err(nom::Err::convert)
+        self.skip(stream)
     }
 }
 
@@ -459,7 +464,7 @@ impl<R: std::io::BufRead> MimeTypeReader<R> {
     fn skip(mut self) -> Result<FileReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.skip(stream).map_err(nom::Err::convert)?;
+        let (next_stream, next_state) = self.state.skip(stream)?;
         let stream_dist = stream.len() - next_stream.len();
         self.reader.consume(stream_dist);
 
@@ -469,7 +474,7 @@ impl<R: std::io::BufRead> MimeTypeReader<R> {
     fn next(mut self) -> Result<FileReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.next(stream).map_err(nom::Err::convert)?;
+        let (next_stream, next_state) = self.state.next(stream)?;
         let stream_dist = stream.len() - next_stream.len();
         self.reader.consume(stream_dist);
 
@@ -487,13 +492,14 @@ impl ModificationTimestampState {
         ModificationTimestampReader::new(reader, self)
     }
 
-    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
+        let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
+            .map_err(nom::Err::convert)?;
         Ok((stream, self.parent_state))
     }
 
     fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
-        self.skip(stream).map_err(nom::Err::convert)
+        self.skip(stream)
     }
 }
 
@@ -505,7 +511,7 @@ impl<R: std::io::BufRead> ModificationTimestampReader<R> {
     fn skip(mut self) -> Result<FileReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.skip(stream).map_err(nom::Err::convert)?;
+        let (next_stream, next_state) = self.state.skip(stream)?;
         let stream_dist = stream.len() - next_stream.len();
         self.reader.consume(stream_dist);
 
@@ -515,7 +521,7 @@ impl<R: std::io::BufRead> ModificationTimestampReader<R> {
     fn next(mut self) -> Result<FileReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.next(stream).map_err(nom::Err::convert)?;
+        let (next_stream, next_state) = self.state.next(stream)?;
         let stream_dist = stream.len() - next_stream.len();
         self.reader.consume(stream_dist);
 
@@ -533,13 +539,14 @@ impl DataState {
         DataReader::new(reader, self)
     }
 
-    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
+        let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
+            .map_err(nom::Err::convert)?;
         Ok((stream, self.parent_state))
     }
 
     fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
-        self.skip(stream).map_err(nom::Err::convert)
+        self.skip(stream)
     }
 }
 
@@ -551,7 +558,7 @@ impl<R: std::io::BufRead> DataReader<R> {
     fn skip(mut self) -> Result<FileReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.skip(stream).map_err(nom::Err::convert)?;
+        let (next_stream, next_state) = self.state.skip(stream)?;
         let stream_dist = stream.len() - next_stream.len();
         self.reader.consume(stream_dist);
 
@@ -561,7 +568,7 @@ impl<R: std::io::BufRead> DataReader<R> {
     fn next(mut self) -> Result<FileReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.next(stream).map_err(nom::Err::convert)?;
+        let (next_stream, next_state) = self.state.next(stream)?;
         let stream_dist = stream.len() - next_stream.len();
         self.reader.consume(stream_dist);
 
@@ -608,13 +615,14 @@ impl VoidState {
         VoidReader::new(reader, self)
     }
 
-    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], VoidPrevStates, ()> {
-        let (stream, _) = nom::bytes::streaming::take(self.bytes_left)(stream)?;
+    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], VoidPrevStates, StateError> {
+        let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
+            .map_err(nom::Err::convert)?;
         Ok((stream, self.parent_state))
     }
 
     fn next(self, stream: &[u8]) -> nom::IResult<&[u8], VoidPrevStates, StateError> {
-        self.skip(stream).map_err(nom::Err::convert)
+        self.skip(stream)
     }
 }
 
@@ -626,7 +634,7 @@ impl<R: std::io::BufRead> VoidReader<R> {
     fn skip(mut self) -> Result<VoidPrevReaders<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.skip(stream).map_err(nom::Err::convert)?;
+        let (next_stream, next_state) = self.state.skip(stream)?;
         let stream_dist = stream.len() - next_stream.len();
         self.reader.consume(stream_dist);
 
@@ -636,7 +644,7 @@ impl<R: std::io::BufRead> VoidReader<R> {
     fn next(mut self) -> Result<VoidPrevReaders<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
-        let (next_stream, next_state) = self.state.next(stream).map_err(nom::Err::convert)?;
+        let (next_stream, next_state) = self.state.next(stream)?;
         let stream_dist = stream.len() - next_stream.len();
         self.reader.consume(stream_dist);
 
