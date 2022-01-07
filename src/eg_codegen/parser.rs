@@ -85,7 +85,7 @@ impl _DocumentState {
                                 _phantom: PhantomData,
                             })
                         }
-                        id => return Err(nom::Err::Failure(StateError::InvalidChildID(None, id))),
+                        id => return Err(nom::Err::Failure(StateError::InvalidChildId(None, id))),
                     },
                 ))
             }
@@ -197,7 +197,7 @@ impl FilesState {
                             })
                         }
                         id => {
-                            return Err(nom::Err::Failure(StateError::InvalidChildID(
+                            return Err(nom::Err::Failure(StateError::InvalidChildId(
                                 Some(<<Self as StateOf>::Element as ElementDef>::ID),
                                 id,
                             )))
@@ -350,7 +350,7 @@ impl FileState {
                             })
                         }
                         id => {
-                            return Err(nom::Err::Failure(StateError::InvalidChildID(
+                            return Err(nom::Err::Failure(StateError::InvalidChildId(
                                 Some(<<Self as StateOf>::Element as ElementDef>::ID),
                                 id,
                             )))
