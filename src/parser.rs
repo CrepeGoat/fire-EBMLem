@@ -1,3 +1,6 @@
+use core::convert::From;
+use core::fmt;
+use core::fmt::Debug;
 use core::marker::PhantomData;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -19,8 +22,32 @@ impl StateOf for () {
     type Element = ();
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum StateError {
+    #[error("invalid subelement id {1} (parent id = {:?})", *.0)]
+    InvalidChildID(Option<u32>, u32),
+    #[error("unimplemeted feature: {0}")]
+    Unimplemented(&'static str),
+    #[error("error parsing token")]
+    BadToken,
+}
+
+impl From<()> for StateError {
+    fn from(_value: ()) -> Self {
+        Self::BadToken
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct ElementReader<R, S> {
     pub reader: R,
     pub state: S,
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum ReaderError {
+    #[error("IOError: {0}")]
+    IO(#[from] std::io::Error),
+    #[error("ParseError: {0}")]
+    Parse(#[from] nom::Err<StateError>),
 }
