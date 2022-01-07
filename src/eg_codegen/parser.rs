@@ -672,7 +672,7 @@ mod tests {
                 (&[0x19, 0x46, 0x69, 0x6C, 0x82, 0xFF, 0xFF, 0xFF][..], _DocumentNextStates::None)
             ),
         )]
-        fn next(
+        fn state_next(
             element: _DocumentState,
             source: &'static [u8],
             expt_result: (&'static [u8], _DocumentNextStates),
@@ -687,7 +687,11 @@ mod tests {
                 (&[0xFF][..], ())
             ),
         )]
-        fn skip(element: _DocumentState, source: &'static [u8], expt_result: (&'static [u8], ())) {
+        fn state_skip(
+            element: _DocumentState,
+            source: &'static [u8],
+            expt_result: (&'static [u8], ()),
+        ) {
             assert_eq!(element.skip(source).unwrap(), expt_result);
         }
     }
@@ -707,7 +711,7 @@ mod tests {
                 (&[0xFF, 0xFF, 0xFF][..], FilesNextStates::Parent(_DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}))
             ),
         )]
-        fn next(
+        fn state_next(
             element: FilesState,
             source: &'static [u8],
             expt_result: (&'static [u8], FilesNextStates),
@@ -722,7 +726,7 @@ mod tests {
                 (&[0xFF][..], _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData})
             ),
         )]
-        fn skip(
+        fn state_skip(
             element: FilesState,
             source: &'static [u8],
             expt_result: (&'static [u8], _DocumentState),
@@ -761,7 +765,7 @@ mod tests {
                 (&[0xFF, 0xFF][..], FileNextStates::Parent(FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}))
             ),
         )]
-        fn next(
+        fn state_next(
             element: FileState,
             source: &'static [u8],
             expt_result: (&'static [u8], FileNextStates),
@@ -776,7 +780,7 @@ mod tests {
                 (&[0xFF][..], FilesState{bytes_left: 1, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData})
             ),
         )]
-        fn skip(
+        fn state_skip(
             element: FileState,
             source: &'static [u8],
             expt_result: (&'static [u8], FilesState),
@@ -795,7 +799,7 @@ mod tests {
                 (&[0xFF][..], FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}),
             ),
         )]
-        fn next(
+        fn state_next(
             element: FileNameState,
             source: &'static [u8],
             expt_result: (&'static [u8], FileState),
@@ -810,7 +814,7 @@ mod tests {
                 (&[0xFF][..], FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData})
             ),
         )]
-        fn skip(
+        fn state_skip(
             element: FileNameState,
             source: &'static [u8],
             expt_result: (&'static [u8], FileState),
@@ -829,7 +833,7 @@ mod tests {
                 (&[0xFF][..], FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}),
             ),
         )]
-        fn next(
+        fn state_next(
             element: MimeTypeState,
             source: &'static [u8],
             expt_result: (&'static [u8], FileState),
@@ -844,7 +848,7 @@ mod tests {
                 (&[0xFF][..], FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData})
             ),
         )]
-        fn skip(
+        fn state_skip(
             element: MimeTypeState,
             source: &'static [u8],
             expt_result: (&'static [u8], FileState),
@@ -863,7 +867,7 @@ mod tests {
                 (&[0xFF][..], FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}),
             ),
         )]
-        fn next(
+        fn state_next(
             element: ModificationTimestampState,
             source: &'static [u8],
             expt_result: (&'static [u8], FileState),
@@ -878,7 +882,7 @@ mod tests {
                 (&[0xFF][..], FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData})
             ),
         )]
-        fn skip(
+        fn state_skip(
             element: ModificationTimestampState,
             source: &'static [u8],
             expt_result: (&'static [u8], FileState),
@@ -897,7 +901,7 @@ mod tests {
                 (&[0xFF][..], FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}),
             ),
         )]
-        fn next(
+        fn state_next(
             element: DataState,
             source: &'static [u8],
             expt_result: (&'static [u8], FileState),
@@ -912,7 +916,7 @@ mod tests {
                 (&[0xFF][..], FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData})
             ),
         )]
-        fn skip(
+        fn state_skip(
             element: DataState,
             source: &'static [u8],
             expt_result: (&'static [u8], FileState),
