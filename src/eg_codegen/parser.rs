@@ -129,6 +129,14 @@ impl<R> From<_DocumentNextReaders<R>> for _DocumentNextStates {
 }
 
 impl _DocumentState {
+    pub fn new(bytes_left: usize) -> Self {
+        Self {
+            bytes_left,
+            parent_state: (),
+            _phantom: PhantomData::<()>,
+        }
+    }
+
     fn into_reader<R: BufRead>(self, reader: R) -> _DocumentReader<R> {
         _DocumentReader::new(reader, self)
     }
@@ -164,11 +172,7 @@ impl _DocumentState {
                     stream,
                     match id {
                         <element_defs::FilesDef as ElementDef>::ID => {
-                            _DocumentNextStates::Files(ElementState {
-                                bytes_left: len,
-                                parent_state: self,
-                                _phantom: PhantomData,
-                            })
+                            _DocumentNextStates::Files(FilesState::new(len, self))
                         }
                         id => return Err(nom::Err::Failure(StateError::InvalidChildId(None, id))),
                     },
@@ -270,6 +274,14 @@ impl<R> From<FilesNextReaders<R>> for FilesNextStates {
 }
 
 impl FilesState {
+    pub fn new(bytes_left: usize, parent_state: _DocumentState) -> Self {
+        Self {
+            bytes_left,
+            parent_state,
+            _phantom: PhantomData::<element_defs::FilesDef>,
+        }
+    }
+
     fn into_reader<R: BufRead>(self, reader: R) -> FilesReader<R> {
         FilesReader::new(reader, self)
     }
@@ -305,11 +317,7 @@ impl FilesState {
                     stream,
                     match id {
                         <element_defs::FileDef as ElementDef>::ID => {
-                            FilesNextStates::File(ElementState {
-                                bytes_left: len,
-                                parent_state: self,
-                                _phantom: PhantomData,
-                            })
+                            FilesNextStates::File(FileState::new(len, self))
                         }
                         id => {
                             return Err(nom::Err::Failure(StateError::InvalidChildId(
@@ -438,6 +446,14 @@ impl FileNextStates {
 }
 
 impl FileState {
+    pub fn new(bytes_left: usize, parent_state: FilesState) -> Self {
+        Self {
+            bytes_left,
+            parent_state,
+            _phantom: PhantomData::<element_defs::FileDef>,
+        }
+    }
+
     fn into_reader<R: BufRead>(self, reader: R) -> FileReader<R> {
         FileReader::new(reader, self)
     }
@@ -473,32 +489,18 @@ impl FileState {
                     stream,
                     match id {
                         <element_defs::FileNameDef as ElementDef>::ID => {
-                            FileNextStates::FileName(ElementState {
-                                bytes_left: len,
-                                parent_state: self,
-                                _phantom: PhantomData,
-                            })
+                            FileNextStates::FileName(FileNameState::new(len, self))
                         }
                         <element_defs::MimeTypeDef as ElementDef>::ID => {
-                            FileNextStates::MimeType(ElementState {
-                                bytes_left: len,
-                                parent_state: self,
-                                _phantom: PhantomData,
-                            })
+                            FileNextStates::MimeType(MimeTypeState::new(len, self))
                         }
                         <element_defs::ModificationTimestampDef as ElementDef>::ID => {
-                            FileNextStates::ModificationTimestamp(ElementState {
-                                bytes_left: len,
-                                parent_state: self,
-                                _phantom: PhantomData,
-                            })
+                            FileNextStates::ModificationTimestamp(ModificationTimestampState::new(
+                                len, self,
+                            ))
                         }
                         <element_defs::DataDef as ElementDef>::ID => {
-                            FileNextStates::Data(ElementState {
-                                bytes_left: len,
-                                parent_state: self,
-                                _phantom: PhantomData,
-                            })
+                            FileNextStates::Data(DataState::new(len, self))
                         }
                         id => {
                             return Err(nom::Err::Failure(StateError::InvalidChildId(
@@ -557,6 +559,14 @@ impl<R: BufRead> From<FileNameReader<R>> for Readers<R> {
 }
 
 impl FileNameState {
+    pub fn new(bytes_left: usize, parent_state: FileState) -> Self {
+        Self {
+            bytes_left,
+            parent_state,
+            _phantom: PhantomData::<element_defs::FileNameDef>,
+        }
+    }
+
     fn into_reader<R: BufRead>(self, reader: R) -> FileNameReader<R> {
         FileNameReader::new(reader, self)
     }
@@ -616,6 +626,14 @@ impl<R: BufRead> From<MimeTypeReader<R>> for Readers<R> {
 }
 
 impl MimeTypeState {
+    pub fn new(bytes_left: usize, parent_state: FileState) -> Self {
+        Self {
+            bytes_left,
+            parent_state,
+            _phantom: PhantomData::<element_defs::MimeTypeDef>,
+        }
+    }
+
     fn into_reader<R: BufRead>(self, reader: R) -> MimeTypeReader<R> {
         MimeTypeReader::new(reader, self)
     }
@@ -676,6 +694,14 @@ impl<R: BufRead> From<ModificationTimestampReader<R>> for Readers<R> {
 }
 
 impl ModificationTimestampState {
+    pub fn new(bytes_left: usize, parent_state: FileState) -> Self {
+        Self {
+            bytes_left,
+            parent_state,
+            _phantom: PhantomData::<element_defs::ModificationTimestampDef>,
+        }
+    }
+
     fn into_reader<R: BufRead>(self, reader: R) -> ModificationTimestampReader<R> {
         ModificationTimestampReader::new(reader, self)
     }
@@ -735,6 +761,14 @@ impl<R: BufRead> From<DataReader<R>> for Readers<R> {
 }
 
 impl DataState {
+    pub fn new(bytes_left: usize, parent_state: FileState) -> Self {
+        Self {
+            bytes_left,
+            parent_state,
+            _phantom: PhantomData::<element_defs::DataDef>,
+        }
+    }
+
     fn into_reader<R: BufRead>(self, reader: R) -> DataReader<R> {
         DataReader::new(reader, self)
     }
