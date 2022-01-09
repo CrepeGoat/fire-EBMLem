@@ -9,7 +9,7 @@ use crate::stream::{parse, serialize, stream_diff};
 
 // Top-Level Reader/State Enums #########################################################################
 
-enum States {
+pub enum States {
     _Document(_DocumentState),
     Files(FilesState),
     File(FileState),
@@ -20,7 +20,7 @@ enum States {
     None,
 }
 
-enum Readers<R> {
+pub enum Readers<R> {
     _Document(_DocumentReader<R>),
     Files(FilesReader<R>),
     File(FileReader<R>),
@@ -65,8 +65,8 @@ impl<R> From<Readers<R>> for States {
 
 // _Document Objects #########################################################################
 
-type _DocumentState = ElementState<(), ()>;
-type _DocumentReader<R> = ElementReader<R, _DocumentState>;
+pub type _DocumentState = ElementState<(), ()>;
+pub type _DocumentReader<R> = ElementReader<R, _DocumentState>;
 
 impl From<_DocumentState> for States {
     fn from(state: _DocumentState) -> Self {
@@ -87,7 +87,7 @@ enum _DocumentNextStates {
 }
 
 #[derive(Debug, PartialEq)]
-enum _DocumentNextReaders<R> {
+pub enum _DocumentNextReaders<R> {
     Files(FilesReader<R>),
     None(R),
 }
@@ -179,11 +179,11 @@ impl _DocumentState {
 }
 
 impl<R: BufRead> _DocumentReader<R> {
-    fn new(reader: R, state: _DocumentState) -> Self {
+    pub fn new(reader: R, state: _DocumentState) -> Self {
         Self { reader, state }
     }
 
-    fn skip(mut self) -> Result<R, ReaderError> {
+    pub fn skip(mut self) -> Result<R, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
         let (next_stream, _next_state) = self.state.skip(stream)?;
@@ -193,7 +193,7 @@ impl<R: BufRead> _DocumentReader<R> {
         Ok(self.reader)
     }
 
-    fn next(mut self) -> Result<_DocumentNextReaders<R>, ReaderError> {
+    pub fn next(mut self) -> Result<_DocumentNextReaders<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
         let (next_stream, next_state) = self.state.next(stream)?;
@@ -206,8 +206,8 @@ impl<R: BufRead> _DocumentReader<R> {
 
 // Files Objects #########################################################################
 
-type FilesReader<R> = ElementReader<R, FilesState>;
-type FilesState = ElementState<element_defs::FilesDef, _DocumentState>;
+pub type FilesReader<R> = ElementReader<R, FilesState>;
+pub type FilesState = ElementState<element_defs::FilesDef, _DocumentState>;
 
 impl From<FilesState> for States {
     fn from(state: FilesState) -> Self {
@@ -228,7 +228,7 @@ enum FilesNextStates {
 }
 
 #[derive(Debug, PartialEq)]
-enum FilesNextReaders<R> {
+pub enum FilesNextReaders<R> {
     File(FileReader<R>),
     Parent(_DocumentReader<R>),
 }
@@ -325,11 +325,11 @@ impl FilesState {
 }
 
 impl<R: BufRead> FilesReader<R> {
-    fn new(reader: R, state: FilesState) -> Self {
+    pub fn new(reader: R, state: FilesState) -> Self {
         Self { reader, state }
     }
 
-    fn skip(mut self) -> Result<_DocumentReader<R>, ReaderError> {
+    pub fn skip(mut self) -> Result<_DocumentReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
         let (next_stream, next_state) = self.state.skip(stream)?;
@@ -339,7 +339,7 @@ impl<R: BufRead> FilesReader<R> {
         Ok(next_state.into_reader(self.reader))
     }
 
-    fn next(mut self) -> Result<FilesNextReaders<R>, ReaderError> {
+    pub fn next(mut self) -> Result<FilesNextReaders<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
         let (next_stream, next_state) = self.state.next(stream)?;
@@ -352,8 +352,8 @@ impl<R: BufRead> FilesReader<R> {
 
 // File Objects #########################################################################
 
-type FileState = ElementState<element_defs::FileDef, FilesState>;
-type FileReader<R> = ElementReader<R, FileState>;
+pub type FileState = ElementState<element_defs::FileDef, FilesState>;
+pub type FileReader<R> = ElementReader<R, FileState>;
 
 impl From<FileState> for States {
     fn from(state: FileState) -> Self {
@@ -377,7 +377,7 @@ enum FileNextStates {
 }
 
 #[derive(Debug, PartialEq)]
-enum FileNextReaders<R> {
+pub enum FileNextReaders<R> {
     FileName(FileNameReader<R>),
     MimeType(MimeTypeReader<R>),
     ModificationTimestamp(ModificationTimestampReader<R>),
@@ -514,11 +514,11 @@ impl FileState {
 }
 
 impl<R: BufRead> FileReader<R> {
-    fn new(reader: R, state: FileState) -> Self {
+    pub fn new(reader: R, state: FileState) -> Self {
         Self { reader, state }
     }
 
-    fn skip(mut self) -> Result<FilesReader<R>, ReaderError> {
+    pub fn skip(mut self) -> Result<FilesReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
         let (next_stream, next_state) = self.state.skip(stream)?;
@@ -528,7 +528,7 @@ impl<R: BufRead> FileReader<R> {
         Ok(next_state.into_reader(self.reader))
     }
 
-    fn next(mut self) -> Result<FileNextReaders<R>, ReaderError> {
+    pub fn next(mut self) -> Result<FileNextReaders<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
         let (next_stream, next_state) = self.state.next(stream)?;
@@ -541,8 +541,8 @@ impl<R: BufRead> FileReader<R> {
 
 // FileName Objects #########################################################################
 
-type FileNameState = ElementState<element_defs::FileNameDef, FileState>;
-type FileNameReader<R> = ElementReader<R, FileNameState>;
+pub type FileNameState = ElementState<element_defs::FileNameDef, FileState>;
+pub type FileNameReader<R> = ElementReader<R, FileNameState>;
 
 impl From<FileNameState> for States {
     fn from(state: FileNameState) -> Self {
@@ -573,11 +573,11 @@ impl FileNameState {
 }
 
 impl<R: BufRead> FileNameReader<R> {
-    fn new(reader: R, state: FileNameState) -> Self {
+    pub fn new(reader: R, state: FileNameState) -> Self {
         Self { reader, state }
     }
 
-    fn skip(mut self) -> Result<FileReader<R>, ReaderError> {
+    pub fn skip(mut self) -> Result<FileReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
         let (next_stream, next_state) = self.state.skip(stream)?;
@@ -587,7 +587,7 @@ impl<R: BufRead> FileNameReader<R> {
         Ok(next_state.into_reader(self.reader))
     }
 
-    fn next(mut self) -> Result<FileReader<R>, ReaderError> {
+    pub fn next(mut self) -> Result<FileReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
         let (next_stream, next_state) = self.state.next(stream)?;
@@ -600,8 +600,8 @@ impl<R: BufRead> FileNameReader<R> {
 
 // MimeType Objects #########################################################################
 
-type MimeTypeState = ElementState<element_defs::MimeTypeDef, FileState>;
-type MimeTypeReader<R> = ElementReader<R, MimeTypeState>;
+pub type MimeTypeState = ElementState<element_defs::MimeTypeDef, FileState>;
+pub type MimeTypeReader<R> = ElementReader<R, MimeTypeState>;
 
 impl From<MimeTypeState> for States {
     fn from(state: MimeTypeState) -> Self {
@@ -632,11 +632,11 @@ impl MimeTypeState {
 }
 
 impl<R: BufRead> MimeTypeReader<R> {
-    fn new(reader: R, state: MimeTypeState) -> Self {
+    pub fn new(reader: R, state: MimeTypeState) -> Self {
         Self { reader, state }
     }
 
-    fn skip(mut self) -> Result<FileReader<R>, ReaderError> {
+    pub fn skip(mut self) -> Result<FileReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
         let (next_stream, next_state) = self.state.skip(stream)?;
@@ -646,7 +646,7 @@ impl<R: BufRead> MimeTypeReader<R> {
         Ok(next_state.into_reader(self.reader))
     }
 
-    fn next(mut self) -> Result<FileReader<R>, ReaderError> {
+    pub fn next(mut self) -> Result<FileReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
         let (next_stream, next_state) = self.state.next(stream)?;
@@ -659,8 +659,9 @@ impl<R: BufRead> MimeTypeReader<R> {
 
 // ModificationTimestamp Objects #########################################################################
 
-type ModificationTimestampState = ElementState<element_defs::ModificationTimestampDef, FileState>;
-type ModificationTimestampReader<R> = ElementReader<R, ModificationTimestampState>;
+pub type ModificationTimestampState =
+    ElementState<element_defs::ModificationTimestampDef, FileState>;
+pub type ModificationTimestampReader<R> = ElementReader<R, ModificationTimestampState>;
 
 impl From<ModificationTimestampState> for States {
     fn from(state: ModificationTimestampState) -> Self {
@@ -691,11 +692,11 @@ impl ModificationTimestampState {
 }
 
 impl<R: BufRead> ModificationTimestampReader<R> {
-    fn new(reader: R, state: ModificationTimestampState) -> Self {
+    pub fn new(reader: R, state: ModificationTimestampState) -> Self {
         Self { reader, state }
     }
 
-    fn skip(mut self) -> Result<FileReader<R>, ReaderError> {
+    pub fn skip(mut self) -> Result<FileReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
         let (next_stream, next_state) = self.state.skip(stream)?;
@@ -705,7 +706,7 @@ impl<R: BufRead> ModificationTimestampReader<R> {
         Ok(next_state.into_reader(self.reader))
     }
 
-    fn next(mut self) -> Result<FileReader<R>, ReaderError> {
+    pub fn next(mut self) -> Result<FileReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
         let (next_stream, next_state) = self.state.next(stream)?;
@@ -718,8 +719,8 @@ impl<R: BufRead> ModificationTimestampReader<R> {
 
 // Data Objects #########################################################################
 
-type DataState = ElementState<element_defs::DataDef, FileState>;
-type DataReader<R> = ElementReader<R, DataState>;
+pub type DataState = ElementState<element_defs::DataDef, FileState>;
+pub type DataReader<R> = ElementReader<R, DataState>;
 
 impl From<DataState> for States {
     fn from(state: DataState) -> Self {
@@ -750,11 +751,11 @@ impl DataState {
 }
 
 impl<R: BufRead> DataReader<R> {
-    fn new(reader: R, state: DataState) -> Self {
+    pub fn new(reader: R, state: DataState) -> Self {
         Self { reader, state }
     }
 
-    fn skip(mut self) -> Result<FileReader<R>, ReaderError> {
+    pub fn skip(mut self) -> Result<FileReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
         let (next_stream, next_state) = self.state.skip(stream)?;
@@ -764,7 +765,7 @@ impl<R: BufRead> DataReader<R> {
         Ok(next_state.into_reader(self.reader))
     }
 
-    fn next(mut self) -> Result<FileReader<R>, ReaderError> {
+    pub fn next(mut self) -> Result<FileReader<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
         let (next_stream, next_state) = self.state.next(stream)?;
@@ -778,12 +779,12 @@ impl<R: BufRead> DataReader<R> {
 // Void Objects #########################################################################
 
 #[derive(Debug, Clone, PartialEq)]
-enum VoidPrevStates {
+pub enum VoidPrevStates {
     Files(FilesState),
     File(FileState),
 }
 #[derive(Debug, PartialEq)]
-enum VoidPrevReaders<R> {
+pub enum VoidPrevReaders<R> {
     Files(FilesReader<R>),
     File(FileReader<R>),
 }
@@ -824,8 +825,8 @@ impl<R> From<VoidPrevReaders<R>> for VoidPrevStates {
     }
 }
 
-type VoidState = ElementState<element_defs::DataDef, VoidPrevStates>;
-type VoidReader<R> = ElementReader<R, VoidState>;
+pub type VoidState = ElementState<element_defs::DataDef, VoidPrevStates>;
+pub type VoidReader<R> = ElementReader<R, VoidState>;
 
 impl VoidState {
     fn into_reader<R: BufRead>(self, reader: R) -> VoidReader<R> {
@@ -844,11 +845,11 @@ impl VoidState {
 }
 
 impl<R: BufRead> VoidReader<R> {
-    fn new(reader: R, state: VoidState) -> Self {
+    pub fn new(reader: R, state: VoidState) -> Self {
         Self { reader, state }
     }
 
-    fn skip(mut self) -> Result<VoidPrevReaders<R>, ReaderError> {
+    pub fn skip(mut self) -> Result<VoidPrevReaders<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
         let (next_stream, next_state) = self.state.skip(stream)?;
@@ -858,7 +859,7 @@ impl<R: BufRead> VoidReader<R> {
         Ok(next_state.into_reader(self.reader))
     }
 
-    fn next(mut self) -> Result<VoidPrevReaders<R>, ReaderError> {
+    pub fn next(mut self) -> Result<VoidPrevReaders<R>, ReaderError> {
         let stream = self.reader.fill_buf()?;
 
         let (next_stream, next_state) = self.state.next(stream)?;
