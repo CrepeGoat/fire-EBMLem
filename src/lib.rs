@@ -5,6 +5,7 @@ mod stream;
 
 mod eg_codegen {
     mod element_defs;
+    mod integration;
     mod parser;
 }
 
