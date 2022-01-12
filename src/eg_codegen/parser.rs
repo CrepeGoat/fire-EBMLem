@@ -580,6 +580,13 @@ impl FileNameState {
     fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
         self.skip(stream)
     }
+
+    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (FileState, &str), StateError> {
+        let (stream, data) =
+            parse::unicode_str(stream, self.bytes_left).map_err(nom::Err::convert)?;
+
+        Ok((stream, (self.parent_state, data)))
+    }
 }
 
 impl<R: BufRead> FileNameReader<R> {
@@ -605,6 +612,13 @@ impl<R: BufRead> FileNameReader<R> {
         self.reader.consume(stream_dist);
 
         Ok(next_state.into_reader(self.reader))
+    }
+
+    pub fn read(&mut self) -> Result<&str, ReaderError> {
+        let stream = self.reader.fill_buf()?;
+        let (_, (_, data)) = self.state.clone().read(stream)?;
+
+        Ok(data)
     }
 }
 
@@ -647,6 +661,13 @@ impl MimeTypeState {
     fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
         self.skip(stream)
     }
+
+    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (FileState, &str), StateError> {
+        let (stream, data) =
+            parse::ascii_str(stream, self.bytes_left).map_err(nom::Err::convert)?;
+
+        Ok((stream, (self.parent_state, data)))
+    }
 }
 
 impl<R: BufRead> MimeTypeReader<R> {
@@ -672,6 +693,13 @@ impl<R: BufRead> MimeTypeReader<R> {
         self.reader.consume(stream_dist);
 
         Ok(next_state.into_reader(self.reader))
+    }
+
+    pub fn read(&mut self) -> Result<&str, ReaderError> {
+        let stream = self.reader.fill_buf()?;
+        let (_, (_, data)) = self.state.clone().read(stream)?;
+
+        Ok(data)
     }
 }
 
@@ -715,6 +743,12 @@ impl ModificationTimestampState {
     fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
         self.skip(stream)
     }
+
+    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (FileState, i64), StateError> {
+        let (stream, data) = parse::date(stream, self.bytes_left).map_err(nom::Err::convert)?;
+
+        Ok((stream, (self.parent_state, data)))
+    }
 }
 
 impl<R: BufRead> ModificationTimestampReader<R> {
@@ -740,6 +774,13 @@ impl<R: BufRead> ModificationTimestampReader<R> {
         self.reader.consume(stream_dist);
 
         Ok(next_state.into_reader(self.reader))
+    }
+
+    pub fn read(&mut self) -> Result<i64, ReaderError> {
+        let stream = self.reader.fill_buf()?;
+        let (_, (_, data)) = self.state.clone().read(stream)?;
+
+        Ok(data)
     }
 }
 
@@ -782,6 +823,12 @@ impl DataState {
     fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
         self.skip(stream)
     }
+
+    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (FileState, &[u8]), StateError> {
+        let (stream, data) = parse::binary(stream, self.bytes_left).map_err(nom::Err::convert)?;
+
+        Ok((stream, (self.parent_state, data)))
+    }
 }
 
 impl<R: BufRead> DataReader<R> {
@@ -807,6 +854,13 @@ impl<R: BufRead> DataReader<R> {
         self.reader.consume(stream_dist);
 
         Ok(next_state.into_reader(self.reader))
+    }
+
+    pub fn read(&mut self) -> Result<&[u8], ReaderError> {
+        let stream = self.reader.fill_buf()?;
+        let (_, (_, data)) = self.state.clone().read(stream)?;
+
+        Ok(data)
     }
 }
 
