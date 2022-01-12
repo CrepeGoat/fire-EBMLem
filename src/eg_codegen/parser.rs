@@ -69,7 +69,8 @@ impl<R> From<Readers<R>> for States {
 
 // _Document Objects #########################################################################
 
-pub type _DocumentState = ElementState<(), ()>;
+#[derive(Debug, Clone, PartialEq)]
+pub struct _DocumentState;
 pub type _DocumentReader<R> = ElementReader<R, _DocumentState>;
 
 impl From<_DocumentState> for States {
@@ -139,75 +140,41 @@ impl<R> From<_DocumentNextReaders<R>> for _DocumentNextStates {
 }
 
 impl _DocumentState {
-    pub fn new(bytes_left: usize) -> Self {
-        Self {
-            bytes_left,
-            parent_state: (),
-            _phantom: PhantomData::<()>,
-        }
-    }
-
     fn into_reader<R: BufRead>(self, reader: R) -> _DocumentReader<R> {
-        _DocumentReader::new(reader, self)
+        _DocumentReader::new(reader)
     }
 
-    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], (), StateError> {
-        let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
-            .map_err(nom::Err::convert)?;
-        Ok((stream, self.parent_state))
-    }
+    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], _DocumentNextStates, StateError> {
+        let (stream, id) = parse::element_id(stream).map_err(nom::Err::convert)?;
+        let (stream, len) = parse::element_len(stream).map_err(nom::Err::convert)?;
+        let len: usize = len
+            .ok_or(nom::Err::Failure(StateError::Unimplemented(
+                "TODO: handle optionally unsized elements",
+            )))?
+            .try_into()
+            .expect("overflow in storing element bytelength");
 
-    fn next(mut self, stream: &[u8]) -> nom::IResult<&[u8], _DocumentNextStates, StateError> {
-        match self {
-            Self {
-                bytes_left: 0,
-                parent_state: _,
-                _phantom: _,
-            } => Ok((stream, _DocumentNextStates::None)),
-            _ => {
-                let orig_stream = stream;
-
-                let (stream, id) = parse::element_id(stream).map_err(nom::Err::convert)?;
-                let (stream, len) = parse::element_len(stream).map_err(nom::Err::convert)?;
-                let len: usize = len
-                    .ok_or(nom::Err::Failure(StateError::Unimplemented(
-                        "TODO: handle optionally unsized elements",
-                    )))?
-                    .try_into()
-                    .expect("overflow in storing element bytelength");
-
-                self.bytes_left -= len + stream_diff(orig_stream, stream);
-
-                Ok((
-                    stream,
-                    match id {
-                        <element_defs::FilesDef as ElementDef>::ID => {
-                            _DocumentNextStates::Files(FilesState::new(len, self))
-                        }
-                        <element_defs::VoidDef as ElementDef>::ID => {
-                            _DocumentNextStates::Void(VoidState::new(len, self.into()))
-                        }
-                        id => return Err(nom::Err::Failure(StateError::InvalidChildId(None, id))),
-                    },
-                ))
-            }
-        }
+        Ok((
+            stream,
+            match id {
+                <element_defs::VoidDef as ElementDef>::ID => {
+                    _DocumentNextStates::Void(VoidState::new(len, self.into()))
+                }
+                <element_defs::FilesDef as ElementDef>::ID => {
+                    _DocumentNextStates::Files(FilesState::new(len, self))
+                }
+                id => return Err(nom::Err::Failure(StateError::InvalidChildId(None, id))),
+            },
+        ))
     }
 }
 
 impl<R: BufRead> _DocumentReader<R> {
-    pub fn new(reader: R, state: _DocumentState) -> Self {
-        Self { reader, state }
-    }
-
-    pub fn skip(mut self) -> Result<R, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, _next_state) = self.state.skip(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(self.reader)
+    pub fn new(reader: R) -> Self {
+        Self {
+            reader,
+            state: _DocumentState,
+        }
     }
 
     pub fn next(mut self) -> Result<_DocumentNextReaders<R>, ReaderError> {
@@ -1043,14 +1010,9 @@ mod tests {
 
         #[rstest(element, source, expt_result,
             case(
-                _DocumentState{bytes_left: 7, parent_state: (), _phantom: PhantomData},
+                _DocumentState,
                 &[0x19, 0x46, 0x69, 0x6C, 0x82, 0xFF, 0xFF, 0xFF],
-                (&[0xFF, 0xFF, 0xFF][..], _DocumentNextStates::Files(FilesState{bytes_left: 2, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}))
-            ),
-            case(
-                _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData},
-                &[0x19, 0x46, 0x69, 0x6C, 0x82, 0xFF, 0xFF, 0xFF],
-                (&[0x19, 0x46, 0x69, 0x6C, 0x82, 0xFF, 0xFF, 0xFF][..], _DocumentNextStates::None)
+                (&[0xFF, 0xFF, 0xFF][..], _DocumentNextStates::Files(FilesState{bytes_left: 2, parent_state: _DocumentState, _phantom: PhantomData}))
             ),
         )]
         fn state_next(
@@ -1060,21 +1022,6 @@ mod tests {
         ) {
             assert_eq!(element.next(source).unwrap(), expt_result);
         }
-
-        #[rstest(element, source, expt_result,
-            case(
-                _DocumentState{bytes_left: 7, parent_state: (), _phantom: PhantomData},
-                &[0x19, 0x46, 0x69, 0x6C, 0x82, 0xFF, 0xFF, 0xFF],
-                (&[0xFF][..], ())
-            ),
-        )]
-        fn state_skip(
-            element: _DocumentState,
-            source: &'static [u8],
-            expt_result: (&'static [u8], ()),
-        ) {
-            assert_eq!(element.skip(source).unwrap(), expt_result);
-        }
     }
 
     mod files {
@@ -1082,14 +1029,14 @@ mod tests {
 
         #[rstest(element, source, expt_result,
             case(
-                FilesState{bytes_left: 5, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData},
+                FilesState{bytes_left: 5, parent_state: _DocumentState, _phantom: PhantomData},
                 &[0x61, 0x46, 0x82, 0xFF, 0xFF, 0xFF],
-                (&[0xFF, 0xFF, 0xFF][..], FilesNextStates::File(FileState{bytes_left: 2, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}))
+                (&[0xFF, 0xFF, 0xFF][..], FilesNextStates::File(FileState{bytes_left: 2, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData}))
             ),
             case(
-                FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData},
+                FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData},
                 &[0xFF, 0xFF, 0xFF],
-                (&[0xFF, 0xFF, 0xFF][..], FilesNextStates::Parent(_DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}))
+                (&[0xFF, 0xFF, 0xFF][..], FilesNextStates::Parent(_DocumentState))
             ),
         )]
         fn state_next(
@@ -1102,9 +1049,9 @@ mod tests {
 
         #[rstest(element, source, expt_result,
             case(
-                FilesState{bytes_left: 5, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData},
+                FilesState{bytes_left: 5, parent_state: _DocumentState, _phantom: PhantomData},
                 &[0x61, 0x4E, 0x82, 0xFF, 0xFF, 0xFF],
-                (&[0xFF][..], _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData})
+                (&[0xFF][..], _DocumentState)
             ),
         )]
         fn state_skip(
@@ -1121,29 +1068,29 @@ mod tests {
 
         #[rstest(element, source, expt_result,
             case(
-                FileState{bytes_left: 5, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData},
+                FileState{bytes_left: 5, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData},
                 &[0x61, 0x4E, 0x82, 0xFF, 0xFF],
-                (&[0xFF, 0xFF][..], FileNextStates::FileName(FileNameState{bytes_left: 2, parent_state: FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}))
+                (&[0xFF, 0xFF][..], FileNextStates::FileName(FileNameState{bytes_left: 2, parent_state: FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}))
             ),
             case(
-                FileState{bytes_left: 5, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData},
+                FileState{bytes_left: 5, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData},
                 &[0x46, 0x4D, 0x82, 0xFF, 0xFF],
-                (&[0xFF, 0xFF][..], FileNextStates::MimeType(MimeTypeState{bytes_left: 2, parent_state: FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}))
+                (&[0xFF, 0xFF][..], FileNextStates::MimeType(MimeTypeState{bytes_left: 2, parent_state: FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}))
             ),
             case(
-                FileState{bytes_left: 5, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData},
+                FileState{bytes_left: 5, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData},
                 &[0x46, 0x54, 0x82, 0xFF, 0xFF],
-                (&[0xFF, 0xFF][..], FileNextStates::ModificationTimestamp(ModificationTimestampState{bytes_left: 2, parent_state: FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}))
+                (&[0xFF, 0xFF][..], FileNextStates::ModificationTimestamp(ModificationTimestampState{bytes_left: 2, parent_state: FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}))
             ),
             case(
-                FileState{bytes_left: 5, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData},
+                FileState{bytes_left: 5, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData},
                 &[0x46, 0x64, 0x82, 0xFF, 0xFF],
-                (&[0xFF, 0xFF][..], FileNextStates::Data(DataState{bytes_left: 2, parent_state: FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}))
+                (&[0xFF, 0xFF][..], FileNextStates::Data(DataState{bytes_left: 2, parent_state: FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}))
             ),
             case(
-                FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData},
+                FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData},
                 &[0xFF, 0xFF],
-                (&[0xFF, 0xFF][..], FileNextStates::Parent(FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}))
+                (&[0xFF, 0xFF][..], FileNextStates::Parent(FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}))
             ),
         )]
         fn state_next(
@@ -1156,9 +1103,9 @@ mod tests {
 
         #[rstest(element, source, expt_result,
             case(
-                FileState{bytes_left: 5, parent_state: FilesState{bytes_left: 1, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData},
+                FileState{bytes_left: 5, parent_state: FilesState{bytes_left: 1, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData},
                 &[0x61, 0x4E, 0x82, 0xFF, 0xFF, 0xFF],
-                (&[0xFF][..], FilesState{bytes_left: 1, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData})
+                (&[0xFF][..], FilesState{bytes_left: 1, parent_state: _DocumentState, _phantom: PhantomData})
             ),
         )]
         fn state_skip(
@@ -1175,9 +1122,9 @@ mod tests {
 
         #[rstest(element, source, expt_result,
             case(
-                FileNameState{bytes_left: 3, parent_state: FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData},
+                FileNameState{bytes_left: 3, parent_state: FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData},
                 &[0xFF, 0xFF, 0xFF, 0xFF],
-                (&[0xFF][..], FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}),
+                (&[0xFF][..], FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData}),
             ),
         )]
         fn state_next(
@@ -1190,9 +1137,9 @@ mod tests {
 
         #[rstest(element, source, expt_result,
             case(
-                FileNameState{bytes_left: 3, parent_state: FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData},
+                FileNameState{bytes_left: 3, parent_state: FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData},
                 &[0xFF, 0xFF, 0xFF, 0xFF],
-                (&[0xFF][..], FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData})
+                (&[0xFF][..], FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData})
             ),
         )]
         fn state_skip(
@@ -1209,9 +1156,9 @@ mod tests {
 
         #[rstest(element, source, expt_result,
             case(
-                MimeTypeState{bytes_left: 3, parent_state: FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData},
+                MimeTypeState{bytes_left: 3, parent_state: FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData},
                 &[0xFF, 0xFF, 0xFF, 0xFF],
-                (&[0xFF][..], FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}),
+                (&[0xFF][..], FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData}),
             ),
         )]
         fn state_next(
@@ -1224,9 +1171,9 @@ mod tests {
 
         #[rstest(element, source, expt_result,
             case(
-                MimeTypeState{bytes_left: 3, parent_state: FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData},
+                MimeTypeState{bytes_left: 3, parent_state: FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData},
                 &[0xFF, 0xFF, 0xFF, 0xFF],
-                (&[0xFF][..], FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData})
+                (&[0xFF][..], FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData})
             ),
         )]
         fn state_skip(
@@ -1243,9 +1190,9 @@ mod tests {
 
         #[rstest(element, source, expt_result,
             case(
-                ModificationTimestampState{bytes_left: 3, parent_state: FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData},
+                ModificationTimestampState{bytes_left: 3, parent_state: FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData},
                 &[0xFF, 0xFF, 0xFF, 0xFF],
-                (&[0xFF][..], FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}),
+                (&[0xFF][..], FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData}),
             ),
         )]
         fn state_next(
@@ -1258,9 +1205,9 @@ mod tests {
 
         #[rstest(element, source, expt_result,
             case(
-                ModificationTimestampState{bytes_left: 3, parent_state: FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData},
+                ModificationTimestampState{bytes_left: 3, parent_state: FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData},
                 &[0xFF, 0xFF, 0xFF, 0xFF],
-                (&[0xFF][..], FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData})
+                (&[0xFF][..], FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData})
             ),
         )]
         fn state_skip(
@@ -1277,9 +1224,9 @@ mod tests {
 
         #[rstest(element, source, expt_result,
             case(
-                DataState{bytes_left: 3, parent_state: FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData},
+                DataState{bytes_left: 3, parent_state: FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData},
                 &[0xFF, 0xFF, 0xFF, 0xFF],
-                (&[0xFF][..], FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}),
+                (&[0xFF][..], FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData}),
             ),
         )]
         fn state_next(
@@ -1292,9 +1239,9 @@ mod tests {
 
         #[rstest(element, source, expt_result,
             case(
-                DataState{bytes_left: 3, parent_state: FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData},
+                DataState{bytes_left: 3, parent_state: FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData},
                 &[0xFF, 0xFF, 0xFF, 0xFF],
-                (&[0xFF][..], FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState{bytes_left: 0, parent_state: (), _phantom: PhantomData}, _phantom: PhantomData}, _phantom: PhantomData})
+                (&[0xFF][..], FileState{bytes_left: 0, parent_state: FilesState{bytes_left: 0, parent_state: _DocumentState, _phantom: PhantomData}, _phantom: PhantomData})
             ),
         )]
         fn state_skip(

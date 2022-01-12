@@ -65,11 +65,7 @@ const BYTE_STREAM: [u8; 150] = [
 
 #[test]
 fn basic_traversal() {
-    let mut reader: parser::Readers<_> = parser::_DocumentReader::new(
-        &BYTE_STREAM[..],
-        parser::_DocumentState::new(BYTE_STREAM.len()),
-    )
-    .into();
+    let mut reader: parser::Readers<_> = parser::_DocumentReader::new(&BYTE_STREAM[..]).into();
     let mut result = Vec::new();
 
     loop {
@@ -111,11 +107,7 @@ fn basic_traversal() {
 
 #[test]
 fn find_all_element_instances() {
-    let mut reader: parser::Readers<_> = parser::_DocumentReader::new(
-        &BYTE_STREAM[..],
-        parser::_DocumentState::new(BYTE_STREAM.len()),
-    )
-    .into();
+    let mut reader: parser::Readers<_> = parser::_DocumentReader::new(&BYTE_STREAM[..]).into();
     let mut result = Vec::new();
 
     // FilesDef
