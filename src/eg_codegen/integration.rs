@@ -1,4 +1,5 @@
 use crate::eg_codegen::parser;
+use crate::parser::ReaderError;
 
 const BYTE_STREAM: [u8; 150] = [
     // ### Files 1 ###
@@ -82,7 +83,11 @@ fn basic_traversal() {
         }
 
         reader = match reader {
-            parser::Readers::_Document(r) => r.next().unwrap().into(),
+            parser::Readers::_Document(r) => match r.next() {
+                Ok(r_next) => r_next.into(),
+                Err(ReaderError::Parse(nom::Err::Incomplete(_))) => break,
+                Err(_) => panic!(), // in an actual function, this should return the error
+            },
             parser::Readers::Void(r) => r.next().unwrap().into(),
             parser::Readers::Files(r) => r.next().unwrap().into(),
             parser::Readers::File(r) => r.next().unwrap().into(),
@@ -116,7 +121,11 @@ fn find_all_element_instances() {
 
     loop {
         reader = match reader {
-            parser::Readers::_Document(r) => r.next().unwrap().into(),
+            parser::Readers::_Document(r) => match r.next() {
+                Ok(r_next) => r_next.into(),
+                Err(ReaderError::Parse(nom::Err::Incomplete(_))) => break,
+                Err(_) => panic!(), // in an actual function, this should return the error
+            },
             parser::Readers::Void(r) => r.next().unwrap().into(),
             parser::Readers::Files(r) => r.next().unwrap().into(),
             parser::Readers::File(r) => r.next().unwrap().into(),
