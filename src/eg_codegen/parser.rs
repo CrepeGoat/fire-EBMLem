@@ -4,7 +4,9 @@ use std::io::BufRead;
 
 use crate::eg_codegen::element_defs;
 use crate::element_defs::{ElementDef, ParentOf};
-use crate::parser::{BoundTo, ElementReader, ElementState, ReaderError, StateError};
+use crate::parser::{
+    get_element_id, BoundTo, ElementReader, ElementState, ReaderError, StateError,
+};
 use crate::stream::{parse, serialize, stream_diff};
 
 // Top-Level Reader/State Enums #########################################################################
@@ -46,6 +48,19 @@ impl States {
             Self::Data(state) => Readers::Data(state.into_reader(reader)),
         }
     }
+
+    fn element_id(&self) -> Option<u32> {
+        match self {
+            Self::_Document(_state) => None,
+            Self::Void(state) => Some(get_element_id(state)),
+            Self::Files(state) => Some(get_element_id(state)),
+            Self::File(state) => Some(get_element_id(state)),
+            Self::FileName(state) => Some(get_element_id(state)),
+            Self::MimeType(state) => Some(get_element_id(state)),
+            Self::ModificationTimestamp(state) => Some(get_element_id(state)),
+            Self::Data(state) => Some(get_element_id(state)),
+        }
+    }
 }
 
 impl<R> From<Readers<R>> for States {
@@ -59,6 +74,21 @@ impl<R> From<Readers<R>> for States {
             Readers::MimeType(reader) => Self::MimeType(reader.state),
             Readers::ModificationTimestamp(reader) => Self::ModificationTimestamp(reader.state),
             Readers::Data(reader) => Self::Data(reader.state),
+        }
+    }
+}
+
+impl<R> Readers<R> {
+    fn element_id(&self) -> Option<u32> {
+        match self {
+            Self::_Document(_reader) => None,
+            Self::Void(reader) => Some(get_element_id(reader)),
+            Self::Files(reader) => Some(get_element_id(reader)),
+            Self::File(reader) => Some(get_element_id(reader)),
+            Self::FileName(reader) => Some(get_element_id(reader)),
+            Self::MimeType(reader) => Some(get_element_id(reader)),
+            Self::ModificationTimestamp(reader) => Some(get_element_id(reader)),
+            Self::Data(reader) => Some(get_element_id(reader)),
         }
     }
 }
