@@ -1,4 +1,5 @@
 use crate::eg_codegen::parser;
+use crate::parser::ReaderError;
 
 const BYTE_STREAM: [u8; 150] = [
     // ### Files 1 ###
@@ -65,11 +66,7 @@ const BYTE_STREAM: [u8; 150] = [
 
 #[test]
 fn basic_traversal() {
-    let mut reader: parser::Readers<_> = parser::_DocumentReader::new(
-        &BYTE_STREAM[..],
-        parser::_DocumentState::new(BYTE_STREAM.len()),
-    )
-    .into();
+    let mut reader: parser::Readers<_> = parser::_DocumentReader::new(&BYTE_STREAM[..]).into();
     let mut result = Vec::new();
 
     loop {
@@ -82,11 +79,14 @@ fn basic_traversal() {
             parser::Readers::MimeType(_) => result.push("MimeType"),
             parser::Readers::ModificationTimestamp(_) => result.push("ModTime"),
             parser::Readers::Data(_) => result.push("Data"),
-            parser::Readers::None(_) => break,
         }
 
         reader = match reader {
-            parser::Readers::_Document(r) => r.next().unwrap().into(),
+            parser::Readers::_Document(r) => match r.next() {
+                Ok(r_next) => r_next.into(),
+                Err(ReaderError::Parse(nom::Err::Incomplete(_))) => break,
+                Err(_) => panic!(), // in an actual function, this should return the error
+            },
             parser::Readers::Void(r) => r.next().unwrap().into(),
             parser::Readers::Files(r) => r.next().unwrap().into(),
             parser::Readers::File(r) => r.next().unwrap().into(),
@@ -94,7 +94,6 @@ fn basic_traversal() {
             parser::Readers::MimeType(r) => r.next().unwrap().into(),
             parser::Readers::ModificationTimestamp(r) => r.next().unwrap().into(),
             parser::Readers::Data(r) => r.next().unwrap().into(),
-            parser::Readers::None(_) => unreachable!(),
         };
     }
 
@@ -111,11 +110,7 @@ fn basic_traversal() {
 
 #[test]
 fn find_all_element_instances() {
-    let mut reader: parser::Readers<_> = parser::_DocumentReader::new(
-        &BYTE_STREAM[..],
-        parser::_DocumentState::new(BYTE_STREAM.len()),
-    )
-    .into();
+    let mut reader: parser::Readers<_> = parser::_DocumentReader::new(&BYTE_STREAM[..]).into();
     let mut result = Vec::new();
 
     // FilesDef
@@ -124,7 +119,11 @@ fn find_all_element_instances() {
 
     loop {
         reader = match reader {
-            parser::Readers::_Document(r) => r.next().unwrap().into(),
+            parser::Readers::_Document(r) => match r.next() {
+                Ok(r_next) => r_next.into(),
+                Err(ReaderError::Parse(nom::Err::Incomplete(_))) => break,
+                Err(_) => panic!(), // in an actual function, this should return the error
+            },
             parser::Readers::Void(r) => r.next().unwrap().into(),
             parser::Readers::Files(r) => r.next().unwrap().into(),
             parser::Readers::File(r) => r.next().unwrap().into(),
@@ -135,7 +134,6 @@ fn find_all_element_instances() {
             parser::Readers::MimeType(r) => r.skip().unwrap().into(),
             parser::Readers::ModificationTimestamp(r) => r.skip().unwrap().into(),
             parser::Readers::Data(r) => r.skip().unwrap().into(),
-            parser::Readers::None(_) => break,
         };
     }
 
