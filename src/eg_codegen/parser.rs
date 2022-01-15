@@ -5,7 +5,7 @@ use std::io::BufRead;
 use crate::eg_codegen::element_defs;
 use crate::element_defs::{ElementDef, ParentOf};
 use crate::parser::{
-    ElementReader, ElementState, ReaderError, StateError, StateNavigation, StateOf,
+    ElementReader, ElementState, IntoReader, ReaderError, StateError, StateNavigation, StateOf,
 };
 use crate::stream::{parse, serialize, stream_diff};
 
@@ -33,8 +33,10 @@ pub enum Readers<R> {
     Data(DataReader<R>),
 }
 
-impl States {
-    fn into_reader<R: BufRead>(self, reader: R) -> Readers<R> {
+impl<R: BufRead> IntoReader<R> for States {
+    type Reader = Readers<R>;
+
+    fn into_reader(self, reader: R) -> Readers<R> {
         match self {
             Self::_Document(state) => Readers::_Document(state.into_reader(reader)),
             Self::Void(state) => Readers::Void(state.into_reader(reader)),
@@ -113,8 +115,9 @@ impl<R: BufRead> From<_DocumentNextReaders<R>> for Readers<R> {
     }
 }
 
-impl _DocumentNextStates {
-    fn into_reader<R: BufRead>(self, reader: R) -> _DocumentNextReaders<R> {
+impl<R: BufRead> IntoReader<R> for _DocumentNextStates {
+    type Reader = _DocumentNextReaders<R>;
+    fn into_reader(self, reader: R) -> _DocumentNextReaders<R> {
         match self {
             Self::Void(state) => _DocumentNextReaders::Void(state.into_reader(reader)),
             Self::Files(state) => _DocumentNextReaders::Files(state.into_reader(reader)),
@@ -132,10 +135,6 @@ impl<R> From<_DocumentNextReaders<R>> for _DocumentNextStates {
 }
 
 impl _DocumentState {
-    fn into_reader<R: BufRead>(self, reader: R) -> _DocumentReader<R> {
-        _DocumentReader::new(reader)
-    }
-
     fn next(self, stream: &[u8]) -> nom::IResult<&[u8], _DocumentNextStates, StateError> {
         let (stream, id) = parse::element_id(stream).map_err(nom::Err::convert)?;
         let (stream, len) = parse::element_len(stream).map_err(nom::Err::convert)?;
@@ -177,6 +176,13 @@ impl<R: BufRead> _DocumentReader<R> {
         self.reader.consume(stream_dist);
 
         Ok(next_state.into_reader(self.reader))
+    }
+}
+
+impl<R: BufRead> IntoReader<R> for _DocumentState {
+    type Reader = _DocumentReader<R>;
+    fn into_reader(self, reader: R) -> _DocumentReader<R> {
+        _DocumentReader::new(reader)
     }
 }
 
@@ -231,8 +237,9 @@ impl<R: BufRead> From<FilesNextReaders<R>> for Readers<R> {
     }
 }
 
-impl FilesNextStates {
-    fn into_reader<R: BufRead>(self, reader: R) -> FilesNextReaders<R> {
+impl<R: BufRead> IntoReader<R> for FilesNextStates {
+    type Reader = FilesNextReaders<R>;
+    fn into_reader(self, reader: R) -> FilesNextReaders<R> {
         match self {
             Self::Void(state) => FilesNextReaders::Void(state.into_reader(reader)),
             Self::File(state) => FilesNextReaders::File(state.into_reader(reader)),
@@ -258,10 +265,6 @@ impl FilesState {
             parent_state,
             _phantom: PhantomData::<element_defs::FilesDef>,
         }
-    }
-
-    fn into_reader<R: BufRead>(self, reader: R) -> FilesReader<R> {
-        FilesReader::new(reader, self)
     }
 }
 
@@ -344,6 +347,13 @@ impl<R: BufRead> FilesReader<R> {
     }
 }
 
+impl<R: BufRead> IntoReader<R> for FilesState {
+    type Reader = FilesReader<R>;
+    fn into_reader(self, reader: R) -> FilesReader<R> {
+        FilesReader::new(reader, self)
+    }
+}
+
 // File Objects #########################################################################
 
 pub type FileState = ElementState<element_defs::FileDef, FilesState>;
@@ -422,8 +432,9 @@ impl<R> From<FileNextReaders<R>> for FileNextStates {
     }
 }
 
-impl FileNextStates {
-    fn into_reader<R: BufRead>(self, reader: R) -> FileNextReaders<R> {
+impl<R: BufRead> IntoReader<R> for FileNextStates {
+    type Reader = FileNextReaders<R>;
+    fn into_reader(self, reader: R) -> FileNextReaders<R> {
         match self {
             Self::Void(state) => FileNextReaders::<R>::Void(state.into_reader(reader)),
             Self::FileName(state) => FileNextReaders::<R>::FileName(state.into_reader(reader)),
@@ -444,10 +455,6 @@ impl FileState {
             parent_state,
             _phantom: PhantomData::<element_defs::FileDef>,
         }
-    }
-
-    fn into_reader<R: BufRead>(self, reader: R) -> FileReader<R> {
-        FileReader::new(reader, self)
     }
 }
 
@@ -541,6 +548,13 @@ impl<R: BufRead> FileReader<R> {
     }
 }
 
+impl<R: BufRead> IntoReader<R> for FileState {
+    type Reader = FileReader<R>;
+    fn into_reader(self, reader: R) -> FileReader<R> {
+        FileReader::new(reader, self)
+    }
+}
+
 // FileName Objects #########################################################################
 
 pub type FileNameState = ElementState<element_defs::FileNameDef, FileState>;
@@ -565,10 +579,6 @@ impl FileNameState {
             parent_state,
             _phantom: PhantomData::<element_defs::FileNameDef>,
         }
-    }
-
-    fn into_reader<R: BufRead>(self, reader: R) -> FileNameReader<R> {
-        FileNameReader::new(reader, self)
     }
 
     fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (FileState, &str), StateError> {
@@ -627,6 +637,13 @@ impl<R: BufRead> FileNameReader<R> {
     }
 }
 
+impl<R: BufRead> IntoReader<R> for FileNameState {
+    type Reader = FileNameReader<R>;
+    fn into_reader(self, reader: R) -> FileNameReader<R> {
+        FileNameReader::new(reader, self)
+    }
+}
+
 // MimeType Objects #########################################################################
 
 pub type MimeTypeState = ElementState<element_defs::MimeTypeDef, FileState>;
@@ -651,10 +668,6 @@ impl MimeTypeState {
             parent_state,
             _phantom: PhantomData::<element_defs::MimeTypeDef>,
         }
-    }
-
-    fn into_reader<R: BufRead>(self, reader: R) -> MimeTypeReader<R> {
-        MimeTypeReader::new(reader, self)
     }
 
     fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (FileState, &str), StateError> {
@@ -713,6 +726,13 @@ impl<R: BufRead> MimeTypeReader<R> {
     }
 }
 
+impl<R: BufRead> IntoReader<R> for MimeTypeState {
+    type Reader = MimeTypeReader<R>;
+    fn into_reader(self, reader: R) -> MimeTypeReader<R> {
+        MimeTypeReader::new(reader, self)
+    }
+}
+
 // ModificationTimestamp Objects #########################################################################
 
 pub type ModificationTimestampState =
@@ -738,10 +758,6 @@ impl ModificationTimestampState {
             parent_state,
             _phantom: PhantomData::<element_defs::ModificationTimestampDef>,
         }
-    }
-
-    fn into_reader<R: BufRead>(self, reader: R) -> ModificationTimestampReader<R> {
-        ModificationTimestampReader::new(reader, self)
     }
 
     fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (FileState, i64), StateError> {
@@ -799,6 +815,13 @@ impl<R: BufRead> ModificationTimestampReader<R> {
     }
 }
 
+impl<R: BufRead> IntoReader<R> for ModificationTimestampState {
+    type Reader = ModificationTimestampReader<R>;
+    fn into_reader(self, reader: R) -> ModificationTimestampReader<R> {
+        ModificationTimestampReader::new(reader, self)
+    }
+}
+
 // Data Objects #########################################################################
 
 pub type DataState = ElementState<element_defs::DataDef, FileState>;
@@ -823,10 +846,6 @@ impl DataState {
             parent_state,
             _phantom: PhantomData::<element_defs::DataDef>,
         }
-    }
-
-    fn into_reader<R: BufRead>(self, reader: R) -> DataReader<R> {
-        DataReader::new(reader, self)
     }
 
     fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (FileState, &[u8]), StateError> {
@@ -884,6 +903,13 @@ impl<R: BufRead> DataReader<R> {
     }
 }
 
+impl<R: BufRead> IntoReader<R> for DataState {
+    type Reader = DataReader<R>;
+    fn into_reader(self, reader: R) -> DataReader<R> {
+        DataReader::new(reader, self)
+    }
+}
+
 // Void Objects #########################################################################
 
 pub type VoidState = ElementState<element_defs::VoidDef, VoidPrevStates>;
@@ -934,8 +960,9 @@ impl<R: BufRead> From<VoidPrevReaders<R>> for Readers<R> {
     }
 }
 
-impl VoidPrevStates {
-    fn into_reader<R: BufRead>(self, reader: R) -> VoidPrevReaders<R> {
+impl<R: BufRead> IntoReader<R> for VoidPrevStates {
+    type Reader = VoidPrevReaders<R>;
+    fn into_reader(self, reader: R) -> VoidPrevReaders<R> {
         match self {
             Self::_Document(state) => VoidPrevReaders::_Document(state.into_reader(reader)),
             Self::Files(state) => VoidPrevReaders::Files(state.into_reader(reader)),
@@ -980,10 +1007,6 @@ impl VoidState {
             _phantom: PhantomData::<element_defs::VoidDef>,
         }
     }
-
-    fn into_reader<R: BufRead>(self, reader: R) -> VoidReader<R> {
-        VoidReader::new(reader, self)
-    }
 }
 
 impl StateNavigation for VoidState {
@@ -1026,6 +1049,15 @@ impl<R: BufRead> VoidReader<R> {
         Ok(next_state.into_reader(self.reader))
     }
 }
+
+impl<R: BufRead> IntoReader<R> for VoidState {
+    type Reader = VoidReader<R>;
+    fn into_reader(self, reader: R) -> VoidReader<R> {
+        VoidReader::new(reader, self)
+    }
+}
+
+// Tests #########################################################################
 
 #[cfg(test)]
 mod tests {

@@ -59,3 +59,9 @@ pub enum ReaderError {
     #[error("ParseError: {0}")]
     Parse(#[from] nom::Err<StateError>),
 }
+
+pub trait IntoReader<R: std::io::BufRead> {
+    type Reader;
+
+    fn into_reader(self, reader: R) -> Self::Reader;
+}
