@@ -325,26 +325,6 @@ impl<R: BufRead> FilesReader<R> {
     pub fn new(reader: R, state: FilesState) -> Self {
         Self { reader, state }
     }
-
-    pub fn skip(mut self) -> Result<_DocumentReader<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.skip(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
-    }
-
-    pub fn next(mut self) -> Result<FilesNextReaders<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.next(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
-    }
 }
 
 impl<R: BufRead> IntoReader<R> for FilesState {
@@ -526,26 +506,6 @@ impl<R: BufRead> FileReader<R> {
     pub fn new(reader: R, state: FileState) -> Self {
         Self { reader, state }
     }
-
-    pub fn skip(mut self) -> Result<FilesReader<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.skip(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
-    }
-
-    pub fn next(mut self) -> Result<FileNextReaders<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.next(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
-    }
 }
 
 impl<R: BufRead> IntoReader<R> for FileState {
@@ -607,26 +567,6 @@ impl StateNavigation for FileNameState {
 impl<R: BufRead> FileNameReader<R> {
     pub fn new(reader: R, state: FileNameState) -> Self {
         Self { reader, state }
-    }
-
-    pub fn skip(mut self) -> Result<FileReader<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.skip(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
-    }
-
-    pub fn next(mut self) -> Result<FileReader<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.next(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
     }
 
     pub fn read(&mut self) -> Result<&str, ReaderError> {
@@ -698,26 +638,6 @@ impl<R: BufRead> MimeTypeReader<R> {
         Self { reader, state }
     }
 
-    pub fn skip(mut self) -> Result<FileReader<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.skip(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
-    }
-
-    pub fn next(mut self) -> Result<FileReader<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.next(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
-    }
-
     pub fn read(&mut self) -> Result<&str, ReaderError> {
         let stream = self.reader.fill_buf()?;
         let (_, (_, data)) = self.state.clone().read(stream)?;
@@ -787,26 +707,6 @@ impl<R: BufRead> ModificationTimestampReader<R> {
         Self { reader, state }
     }
 
-    pub fn skip(mut self) -> Result<FileReader<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.skip(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
-    }
-
-    pub fn next(mut self) -> Result<FileReader<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.next(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
-    }
-
     pub fn read(&mut self) -> Result<i64, ReaderError> {
         let stream = self.reader.fill_buf()?;
         let (_, (_, data)) = self.state.clone().read(stream)?;
@@ -873,26 +773,6 @@ impl StateNavigation for DataState {
 impl<R: BufRead> DataReader<R> {
     pub fn new(reader: R, state: DataState) -> Self {
         Self { reader, state }
-    }
-
-    pub fn skip(mut self) -> Result<FileReader<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.skip(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
-    }
-
-    pub fn next(mut self) -> Result<FileReader<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.next(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
     }
 
     pub fn read(&mut self) -> Result<&[u8], ReaderError> {
@@ -1027,26 +907,6 @@ impl StateNavigation for VoidState {
 impl<R: BufRead> VoidReader<R> {
     pub fn new(reader: R, state: VoidState) -> Self {
         Self { reader, state }
-    }
-
-    pub fn skip(mut self) -> Result<VoidPrevReaders<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.skip(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
-    }
-
-    pub fn next(mut self) -> Result<VoidPrevReaders<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.next(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
     }
 }
 

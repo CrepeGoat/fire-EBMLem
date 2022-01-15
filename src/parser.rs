@@ -60,6 +60,43 @@ pub enum ReaderError {
     Parse(#[from] nom::Err<StateError>),
 }
 
+pub trait ReaderNavigation<R: std::io::BufRead> {
+    type PrevReaders;
+    type NextReaders;
+
+    fn skip(self) -> Result<Self::PrevReaders, ReaderError>;
+    fn next(self) -> Result<Self::NextReaders, ReaderError>;
+}
+
+impl<R: std::io::BufRead, S: StateNavigation> ReaderNavigation<R> for ElementReader<R, S>
+where
+    S::PrevStates: IntoReader<R>,
+    S::NextStates: IntoReader<R>,
+{
+    type PrevReaders = <S::PrevStates as IntoReader<R>>::Reader;
+    type NextReaders = <S::NextStates as IntoReader<R>>::Reader;
+
+    fn skip(mut self) -> Result<Self::PrevReaders, ReaderError> {
+        let stream = self.reader.fill_buf()?;
+
+        let (next_stream, next_state) = self.state.skip(stream)?;
+        let stream_dist = stream.len() - next_stream.len();
+        self.reader.consume(stream_dist);
+
+        Ok(next_state.into_reader(self.reader))
+    }
+
+    fn next(mut self) -> Result<Self::NextReaders, ReaderError> {
+        let stream = self.reader.fill_buf()?;
+
+        let (next_stream, next_state) = self.state.next(stream)?;
+        let stream_dist = stream.len() - next_stream.len();
+        self.reader.consume(stream_dist);
+
+        Ok(next_state.into_reader(self.reader))
+    }
+}
+
 pub trait IntoReader<R: std::io::BufRead> {
     type Reader;
 

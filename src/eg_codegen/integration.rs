@@ -1,5 +1,5 @@
 use crate::eg_codegen::parser;
-use crate::parser::ReaderError;
+use crate::parser::{ReaderError, ReaderNavigation};
 
 const BYTE_STREAM: [u8; 150] = [
     // ### Files 1 ###
