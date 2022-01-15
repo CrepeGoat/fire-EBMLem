@@ -1,6 +1,6 @@
 use crate::eg_codegen::parser;
 
-const BYTE_STREAM: [u8; 146] = [
+const BYTE_STREAM: [u8; 150] = [
     // ### Files 1 ###
     0x19, 0x46, 0x69, 0x6C, // Files element ID
     0xDA, // Files length = 90
@@ -40,7 +40,10 @@ const BYTE_STREAM: [u8; 146] = [
     //
     // ### Files 2 ###
     0x19, 0x46, 0x69, 0x6C, // Files element ID
-    0xAE, // Files length = 46
+    0xB2, // Files length = 46
+    0xEC, // Void element ID
+    0x82, // Void element length
+    0xFF, 0xFF, // Voild element data
     //
     // --- File 1 ---
     0x61, 0x46, // File element ID
@@ -72,6 +75,7 @@ fn basic_traversal() {
     loop {
         match reader {
             parser::Readers::_Document(_) => result.push("(None)"),
+            parser::Readers::Void(_) => result.push("Void"),
             parser::Readers::Files(_) => result.push("Files"),
             parser::Readers::File(_) => result.push("File"),
             parser::Readers::FileName(_) => result.push("FileName"),
@@ -83,6 +87,7 @@ fn basic_traversal() {
 
         reader = match reader {
             parser::Readers::_Document(r) => r.next().unwrap().into(),
+            parser::Readers::Void(r) => r.next().unwrap().into(),
             parser::Readers::Files(r) => r.next().unwrap().into(),
             parser::Readers::File(r) => r.next().unwrap().into(),
             parser::Readers::FileName(r) => r.next().unwrap().into(),
@@ -98,8 +103,8 @@ fn basic_traversal() {
         vec![
             "(None)", "Files", "File", "FileName", "File", "MimeType", "File", "ModTime", "File",
             "Data", "File", "Files", "File", "ModTime", "File", "Data", "File", "MimeType", "File",
-            "FileName", "File", "Files", "(None)", "Files", "File", "FileName", "File", "MimeType",
-            "File", "ModTime", "File", "Data", "File", "Files", "(None)",
+            "FileName", "File", "Files", "(None)", "Files", "Void", "Files", "File", "FileName",
+            "File", "MimeType", "File", "ModTime", "File", "Data", "File", "Files", "(None)",
         ]
     );
 }
@@ -120,6 +125,7 @@ fn find_all_element_instances() {
     loop {
         reader = match reader {
             parser::Readers::_Document(r) => r.next().unwrap().into(),
+            parser::Readers::Void(r) => r.next().unwrap().into(),
             parser::Readers::Files(r) => r.next().unwrap().into(),
             parser::Readers::File(r) => r.next().unwrap().into(),
             parser::Readers::FileName(mut r) => {

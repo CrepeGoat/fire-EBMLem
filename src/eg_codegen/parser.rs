@@ -11,6 +11,7 @@ use crate::stream::{parse, serialize, stream_diff};
 
 pub enum States {
     _Document(_DocumentState),
+    Void(VoidState),
     Files(FilesState),
     File(FileState),
     FileName(FileNameState),
@@ -22,6 +23,7 @@ pub enum States {
 
 pub enum Readers<R> {
     _Document(_DocumentReader<R>),
+    Void(VoidReader<R>),
     Files(FilesReader<R>),
     File(FileReader<R>),
     FileName(FileNameReader<R>),
@@ -35,6 +37,7 @@ impl States {
     fn into_reader<R: BufRead>(self, reader: R) -> Readers<R> {
         match self {
             Self::_Document(state) => Readers::_Document(state.into_reader(reader)),
+            Self::Void(state) => Readers::Void(state.into_reader(reader)),
             Self::Files(state) => Readers::Files(state.into_reader(reader)),
             Self::File(state) => Readers::File(state.into_reader(reader)),
             Self::FileName(state) => Readers::FileName(state.into_reader(reader)),
@@ -52,6 +55,7 @@ impl<R> From<Readers<R>> for States {
     fn from(enumed_reader: Readers<R>) -> Self {
         match enumed_reader {
             Readers::_Document(reader) => Self::_Document(reader.state),
+            Readers::Void(reader) => Self::Void(reader.state),
             Readers::Files(reader) => Self::Files(reader.state),
             Readers::File(reader) => Self::File(reader.state),
             Readers::FileName(reader) => Self::FileName(reader.state),
@@ -82,12 +86,14 @@ impl<R: BufRead> From<_DocumentReader<R>> for Readers<R> {
 
 #[derive(Debug, Clone, PartialEq)]
 enum _DocumentNextStates {
+    Void(VoidState),
     Files(FilesState),
     None,
 }
 
 #[derive(Debug, PartialEq)]
 pub enum _DocumentNextReaders<R> {
+    Void(VoidReader<R>),
     Files(FilesReader<R>),
     None(R),
 }
@@ -95,6 +101,7 @@ pub enum _DocumentNextReaders<R> {
 impl From<_DocumentNextStates> for States {
     fn from(enumed_states: _DocumentNextStates) -> Self {
         match enumed_states {
+            _DocumentNextStates::Void(state) => state.into(),
             _DocumentNextStates::Files(state) => state.into(),
             _DocumentNextStates::None => Self::None,
         }
@@ -104,6 +111,7 @@ impl From<_DocumentNextStates> for States {
 impl<R: BufRead> From<_DocumentNextReaders<R>> for Readers<R> {
     fn from(enumed_readers: _DocumentNextReaders<R>) -> Self {
         match enumed_readers {
+            _DocumentNextReaders::Void(reader) => reader.into(),
             _DocumentNextReaders::Files(reader) => reader.into(),
             _DocumentNextReaders::None(read) => Self::None(read),
         }
@@ -113,6 +121,7 @@ impl<R: BufRead> From<_DocumentNextReaders<R>> for Readers<R> {
 impl _DocumentNextStates {
     fn into_reader<R: BufRead>(self, reader: R) -> _DocumentNextReaders<R> {
         match self {
+            Self::Void(state) => _DocumentNextReaders::Void(state.into_reader(reader)),
             Self::Files(state) => _DocumentNextReaders::Files(state.into_reader(reader)),
             Self::None => _DocumentNextReaders::None(reader),
         }
@@ -122,6 +131,7 @@ impl _DocumentNextStates {
 impl<R> From<_DocumentNextReaders<R>> for _DocumentNextStates {
     fn from(enumed_reader: _DocumentNextReaders<R>) -> Self {
         match enumed_reader {
+            _DocumentNextReaders::Void(reader) => Self::Void(reader.state),
             _DocumentNextReaders::Files(reader) => Self::Files(reader.state),
             _DocumentNextReaders::None(_) => Self::None,
         }
@@ -173,6 +183,9 @@ impl _DocumentState {
                     match id {
                         <element_defs::FilesDef as ElementDef>::ID => {
                             _DocumentNextStates::Files(FilesState::new(len, self))
+                        }
+                        <element_defs::VoidDef as ElementDef>::ID => {
+                            _DocumentNextStates::Void(VoidState::new(len, self.into()))
                         }
                         id => return Err(nom::Err::Failure(StateError::InvalidChildId(None, id))),
                     },
@@ -227,12 +240,14 @@ impl<R: BufRead> From<FilesReader<R>> for Readers<R> {
 
 #[derive(Debug, Clone, PartialEq)]
 enum FilesNextStates {
+    Void(VoidState),
     File(FileState),
     Parent(_DocumentState),
 }
 
 #[derive(Debug, PartialEq)]
 pub enum FilesNextReaders<R> {
+    Void(VoidReader<R>),
     File(FileReader<R>),
     Parent(_DocumentReader<R>),
 }
@@ -240,6 +255,7 @@ pub enum FilesNextReaders<R> {
 impl From<FilesNextStates> for States {
     fn from(enumed_states: FilesNextStates) -> Self {
         match enumed_states {
+            FilesNextStates::Void(state) => state.into(),
             FilesNextStates::File(state) => state.into(),
             FilesNextStates::Parent(state) => state.into(),
         }
@@ -249,6 +265,7 @@ impl From<FilesNextStates> for States {
 impl<R: BufRead> From<FilesNextReaders<R>> for Readers<R> {
     fn from(enumed_readers: FilesNextReaders<R>) -> Self {
         match enumed_readers {
+            FilesNextReaders::Void(reader) => reader.into(),
             FilesNextReaders::File(reader) => reader.into(),
             FilesNextReaders::Parent(reader) => reader.into(),
         }
@@ -258,6 +275,7 @@ impl<R: BufRead> From<FilesNextReaders<R>> for Readers<R> {
 impl FilesNextStates {
     fn into_reader<R: BufRead>(self, reader: R) -> FilesNextReaders<R> {
         match self {
+            Self::Void(state) => FilesNextReaders::Void(state.into_reader(reader)),
             Self::File(state) => FilesNextReaders::File(state.into_reader(reader)),
             Self::Parent(state) => FilesNextReaders::Parent(state.into_reader(reader)),
         }
@@ -267,6 +285,7 @@ impl FilesNextStates {
 impl<R> From<FilesNextReaders<R>> for FilesNextStates {
     fn from(enumed_reader: FilesNextReaders<R>) -> Self {
         match enumed_reader {
+            FilesNextReaders::Void(reader) => Self::Void(reader.state),
             FilesNextReaders::File(reader) => Self::File(reader.state),
             FilesNextReaders::Parent(reader) => Self::Parent(reader.state),
         }
@@ -316,6 +335,9 @@ impl FilesState {
                 Ok((
                     stream,
                     match id {
+                        <element_defs::VoidDef as ElementDef>::ID => {
+                            FilesNextStates::Void(VoidState::new(len, self.into()))
+                        }
                         <element_defs::FileDef as ElementDef>::ID => {
                             FilesNextStates::File(FileState::new(len, self))
                         }
@@ -377,6 +399,7 @@ impl<R: BufRead> From<FileReader<R>> for Readers<R> {
 
 #[derive(Debug, Clone, PartialEq)]
 enum FileNextStates {
+    Void(VoidState),
     FileName(FileNameState),
     MimeType(MimeTypeState),
     ModificationTimestamp(ModificationTimestampState),
@@ -386,6 +409,7 @@ enum FileNextStates {
 
 #[derive(Debug, PartialEq)]
 pub enum FileNextReaders<R> {
+    Void(VoidReader<R>),
     FileName(FileNameReader<R>),
     MimeType(MimeTypeReader<R>),
     ModificationTimestamp(ModificationTimestampReader<R>),
@@ -396,6 +420,7 @@ pub enum FileNextReaders<R> {
 impl From<FileNextStates> for States {
     fn from(enumed_states: FileNextStates) -> Self {
         match enumed_states {
+            FileNextStates::Void(state) => state.into(),
             FileNextStates::FileName(state) => state.into(),
             FileNextStates::MimeType(state) => state.into(),
             FileNextStates::ModificationTimestamp(state) => state.into(),
@@ -408,6 +433,7 @@ impl From<FileNextStates> for States {
 impl<R: BufRead> From<FileNextReaders<R>> for Readers<R> {
     fn from(enumed_readers: FileNextReaders<R>) -> Self {
         match enumed_readers {
+            FileNextReaders::Void(reader) => reader.into(),
             FileNextReaders::FileName(reader) => reader.into(),
             FileNextReaders::MimeType(reader) => reader.into(),
             FileNextReaders::ModificationTimestamp(reader) => reader.into(),
@@ -420,6 +446,7 @@ impl<R: BufRead> From<FileNextReaders<R>> for Readers<R> {
 impl<R> From<FileNextReaders<R>> for FileNextStates {
     fn from(enumed_reader: FileNextReaders<R>) -> Self {
         match enumed_reader {
+            FileNextReaders::Void(reader) => Self::Void(reader.state),
             FileNextReaders::FileName(reader) => Self::FileName(reader.state),
             FileNextReaders::MimeType(reader) => Self::MimeType(reader.state),
             FileNextReaders::ModificationTimestamp(reader) => {
@@ -434,6 +461,7 @@ impl<R> From<FileNextReaders<R>> for FileNextStates {
 impl FileNextStates {
     fn into_reader<R: BufRead>(self, reader: R) -> FileNextReaders<R> {
         match self {
+            Self::Void(state) => FileNextReaders::<R>::Void(state.into_reader(reader)),
             Self::FileName(state) => FileNextReaders::<R>::FileName(state.into_reader(reader)),
             Self::MimeType(state) => FileNextReaders::<R>::MimeType(state.into_reader(reader)),
             Self::ModificationTimestamp(state) => {
@@ -488,6 +516,9 @@ impl FileState {
                 Ok((
                     stream,
                     match id {
+                        <element_defs::VoidDef as ElementDef>::ID => {
+                            FileNextStates::Void(VoidState::new(len, self.into()))
+                        }
                         <element_defs::FileNameDef as ElementDef>::ID => {
                             FileNextStates::FileName(FileNameState::new(len, self))
                         }
@@ -866,13 +897,30 @@ impl<R: BufRead> DataReader<R> {
 
 // Void Objects #########################################################################
 
+pub type VoidState = ElementState<element_defs::VoidDef, VoidPrevStates>;
+pub type VoidReader<R> = ElementReader<R, VoidState>;
+
+impl From<VoidState> for States {
+    fn from(state: VoidState) -> Self {
+        Self::Void(state)
+    }
+}
+
+impl<R: BufRead> From<VoidReader<R>> for Readers<R> {
+    fn from(reader: VoidReader<R>) -> Self {
+        Self::Void(reader)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum VoidPrevStates {
+    _Document(_DocumentState),
     Files(FilesState),
     File(FileState),
 }
 #[derive(Debug, PartialEq)]
 pub enum VoidPrevReaders<R> {
+    _Document(_DocumentReader<R>),
     Files(FilesReader<R>),
     File(FileReader<R>),
 }
@@ -880,6 +928,7 @@ pub enum VoidPrevReaders<R> {
 impl From<VoidPrevStates> for States {
     fn from(enumed_states: VoidPrevStates) -> Self {
         match enumed_states {
+            VoidPrevStates::_Document(state) => state.into(),
             VoidPrevStates::Files(state) => state.into(),
             VoidPrevStates::File(state) => state.into(),
         }
@@ -889,6 +938,7 @@ impl From<VoidPrevStates> for States {
 impl<R: BufRead> From<VoidPrevReaders<R>> for Readers<R> {
     fn from(enumed_readers: VoidPrevReaders<R>) -> Self {
         match enumed_readers {
+            VoidPrevReaders::_Document(reader) => reader.into(),
             VoidPrevReaders::Files(reader) => reader.into(),
             VoidPrevReaders::File(reader) => reader.into(),
         }
@@ -898,6 +948,7 @@ impl<R: BufRead> From<VoidPrevReaders<R>> for Readers<R> {
 impl VoidPrevStates {
     fn into_reader<R: BufRead>(self, reader: R) -> VoidPrevReaders<R> {
         match self {
+            Self::_Document(state) => VoidPrevReaders::_Document(state.into_reader(reader)),
             Self::Files(state) => VoidPrevReaders::Files(state.into_reader(reader)),
             Self::File(state) => VoidPrevReaders::File(state.into_reader(reader)),
         }
@@ -907,16 +958,40 @@ impl VoidPrevStates {
 impl<R> From<VoidPrevReaders<R>> for VoidPrevStates {
     fn from(enumed_reader: VoidPrevReaders<R>) -> Self {
         match enumed_reader {
+            VoidPrevReaders::_Document(reader) => Self::_Document(reader.state),
             VoidPrevReaders::Files(reader) => Self::Files(reader.state),
             VoidPrevReaders::File(reader) => Self::File(reader.state),
         }
     }
 }
 
-pub type VoidState = ElementState<element_defs::DataDef, VoidPrevStates>;
-pub type VoidReader<R> = ElementReader<R, VoidState>;
+impl From<_DocumentState> for VoidPrevStates {
+    fn from(state: _DocumentState) -> Self {
+        Self::_Document(state)
+    }
+}
+
+impl From<FilesState> for VoidPrevStates {
+    fn from(state: FilesState) -> Self {
+        Self::Files(state)
+    }
+}
+
+impl From<FileState> for VoidPrevStates {
+    fn from(state: FileState) -> Self {
+        Self::File(state)
+    }
+}
 
 impl VoidState {
+    pub fn new(bytes_left: usize, parent_state: VoidPrevStates) -> Self {
+        Self {
+            bytes_left,
+            parent_state,
+            _phantom: PhantomData::<element_defs::VoidDef>,
+        }
+    }
+
     fn into_reader<R: BufRead>(self, reader: R) -> VoidReader<R> {
         VoidReader::new(reader, self)
     }
