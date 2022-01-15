@@ -79,7 +79,6 @@ fn basic_traversal() {
             parser::Readers::MimeType(_) => result.push("MimeType"),
             parser::Readers::ModificationTimestamp(_) => result.push("ModTime"),
             parser::Readers::Data(_) => result.push("Data"),
-            parser::Readers::None(_) => break,
         }
 
         reader = match reader {
@@ -95,7 +94,6 @@ fn basic_traversal() {
             parser::Readers::MimeType(r) => r.next().unwrap().into(),
             parser::Readers::ModificationTimestamp(r) => r.next().unwrap().into(),
             parser::Readers::Data(r) => r.next().unwrap().into(),
-            parser::Readers::None(_) => unreachable!(),
         };
     }
 
@@ -136,7 +134,6 @@ fn find_all_element_instances() {
             parser::Readers::MimeType(r) => r.skip().unwrap().into(),
             parser::Readers::ModificationTimestamp(r) => r.skip().unwrap().into(),
             parser::Readers::Data(r) => r.skip().unwrap().into(),
-            parser::Readers::None(_) => break,
         };
     }
 

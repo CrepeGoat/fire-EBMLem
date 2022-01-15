@@ -18,7 +18,6 @@ pub enum States {
     MimeType(MimeTypeState),
     ModificationTimestamp(ModificationTimestampState),
     Data(DataState),
-    None,
 }
 
 pub enum Readers<R> {
@@ -30,7 +29,6 @@ pub enum Readers<R> {
     MimeType(MimeTypeReader<R>),
     ModificationTimestamp(ModificationTimestampReader<R>),
     Data(DataReader<R>),
-    None(R),
 }
 
 impl States {
@@ -46,7 +44,6 @@ impl States {
                 Readers::ModificationTimestamp(state.into_reader(reader))
             }
             Self::Data(state) => Readers::Data(state.into_reader(reader)),
-            Self::None => Readers::None(reader),
         }
     }
 }
@@ -62,7 +59,6 @@ impl<R> From<Readers<R>> for States {
             Readers::MimeType(reader) => Self::MimeType(reader.state),
             Readers::ModificationTimestamp(reader) => Self::ModificationTimestamp(reader.state),
             Readers::Data(reader) => Self::Data(reader.state),
-            Readers::None(_) => Self::None,
         }
     }
 }
@@ -89,14 +85,12 @@ impl<R: BufRead> From<_DocumentReader<R>> for Readers<R> {
 enum _DocumentNextStates {
     Void(VoidState),
     Files(FilesState),
-    None,
 }
 
 #[derive(Debug, PartialEq)]
 pub enum _DocumentNextReaders<R> {
     Void(VoidReader<R>),
     Files(FilesReader<R>),
-    None(R),
 }
 
 impl From<_DocumentNextStates> for States {
@@ -104,7 +98,6 @@ impl From<_DocumentNextStates> for States {
         match enumed_states {
             _DocumentNextStates::Void(state) => state.into(),
             _DocumentNextStates::Files(state) => state.into(),
-            _DocumentNextStates::None => Self::None,
         }
     }
 }
@@ -114,7 +107,6 @@ impl<R: BufRead> From<_DocumentNextReaders<R>> for Readers<R> {
         match enumed_readers {
             _DocumentNextReaders::Void(reader) => reader.into(),
             _DocumentNextReaders::Files(reader) => reader.into(),
-            _DocumentNextReaders::None(read) => Self::None(read),
         }
     }
 }
@@ -124,7 +116,6 @@ impl _DocumentNextStates {
         match self {
             Self::Void(state) => _DocumentNextReaders::Void(state.into_reader(reader)),
             Self::Files(state) => _DocumentNextReaders::Files(state.into_reader(reader)),
-            Self::None => _DocumentNextReaders::None(reader),
         }
     }
 }
@@ -134,7 +125,6 @@ impl<R> From<_DocumentNextReaders<R>> for _DocumentNextStates {
         match enumed_reader {
             _DocumentNextReaders::Void(reader) => Self::Void(reader.state),
             _DocumentNextReaders::Files(reader) => Self::Files(reader.state),
-            _DocumentNextReaders::None(_) => Self::None,
         }
     }
 }
