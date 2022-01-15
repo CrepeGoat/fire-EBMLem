@@ -4,7 +4,9 @@ use std::io::BufRead;
 
 use crate::eg_codegen::element_defs;
 use crate::element_defs::{ElementDef, ParentOf};
-use crate::parser::{ElementReader, ElementState, ReaderError, StateError, StateOf};
+use crate::parser::{
+    ElementReader, ElementState, ReaderError, StateError, StateNavigation, StateOf,
+};
 use crate::stream::{parse, serialize, stream_diff};
 
 // Top-Level Reader/State Enums #########################################################################
@@ -196,7 +198,7 @@ impl<R: BufRead> From<FilesReader<R>> for Readers<R> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-enum FilesNextStates {
+pub enum FilesNextStates {
     Void(VoidState),
     File(FileState),
     Parent(_DocumentState),
@@ -261,6 +263,11 @@ impl FilesState {
     fn into_reader<R: BufRead>(self, reader: R) -> FilesReader<R> {
         FilesReader::new(reader, self)
     }
+}
+
+impl StateNavigation for FilesState {
+    type PrevStates = _DocumentState;
+    type NextStates = FilesNextStates;
 
     fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], _DocumentState, StateError> {
         let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
@@ -355,7 +362,7 @@ impl<R: BufRead> From<FileReader<R>> for Readers<R> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-enum FileNextStates {
+pub enum FileNextStates {
     Void(VoidState),
     FileName(FileNameState),
     MimeType(MimeTypeState),
@@ -442,6 +449,11 @@ impl FileState {
     fn into_reader<R: BufRead>(self, reader: R) -> FileReader<R> {
         FileReader::new(reader, self)
     }
+}
+
+impl StateNavigation for FileState {
+    type PrevStates = FilesState;
+    type NextStates = FileNextStates;
 
     fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FilesState, StateError> {
         let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
@@ -559,6 +571,18 @@ impl FileNameState {
         FileNameReader::new(reader, self)
     }
 
+    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (FileState, &str), StateError> {
+        let (stream, data) =
+            parse::unicode_str(stream, self.bytes_left).map_err(nom::Err::convert)?;
+
+        Ok((stream, (self.parent_state, data)))
+    }
+}
+
+impl StateNavigation for FileNameState {
+    type PrevStates = FileState;
+    type NextStates = FileState;
+
     fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
         let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
             .map_err(nom::Err::convert)?;
@@ -567,13 +591,6 @@ impl FileNameState {
 
     fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
         self.skip(stream)
-    }
-
-    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (FileState, &str), StateError> {
-        let (stream, data) =
-            parse::unicode_str(stream, self.bytes_left).map_err(nom::Err::convert)?;
-
-        Ok((stream, (self.parent_state, data)))
     }
 }
 
@@ -640,6 +657,18 @@ impl MimeTypeState {
         MimeTypeReader::new(reader, self)
     }
 
+    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (FileState, &str), StateError> {
+        let (stream, data) =
+            parse::ascii_str(stream, self.bytes_left).map_err(nom::Err::convert)?;
+
+        Ok((stream, (self.parent_state, data)))
+    }
+}
+
+impl StateNavigation for MimeTypeState {
+    type PrevStates = FileState;
+    type NextStates = FileState;
+
     fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
         let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
             .map_err(nom::Err::convert)?;
@@ -648,13 +677,6 @@ impl MimeTypeState {
 
     fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
         self.skip(stream)
-    }
-
-    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (FileState, &str), StateError> {
-        let (stream, data) =
-            parse::ascii_str(stream, self.bytes_left).map_err(nom::Err::convert)?;
-
-        Ok((stream, (self.parent_state, data)))
     }
 }
 
@@ -722,6 +744,17 @@ impl ModificationTimestampState {
         ModificationTimestampReader::new(reader, self)
     }
 
+    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (FileState, i64), StateError> {
+        let (stream, data) = parse::date(stream, self.bytes_left).map_err(nom::Err::convert)?;
+
+        Ok((stream, (self.parent_state, data)))
+    }
+}
+
+impl StateNavigation for ModificationTimestampState {
+    type PrevStates = FileState;
+    type NextStates = FileState;
+
     fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
         let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
             .map_err(nom::Err::convert)?;
@@ -730,12 +763,6 @@ impl ModificationTimestampState {
 
     fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
         self.skip(stream)
-    }
-
-    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (FileState, i64), StateError> {
-        let (stream, data) = parse::date(stream, self.bytes_left).map_err(nom::Err::convert)?;
-
-        Ok((stream, (self.parent_state, data)))
     }
 }
 
@@ -802,6 +829,17 @@ impl DataState {
         DataReader::new(reader, self)
     }
 
+    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (FileState, &[u8]), StateError> {
+        let (stream, data) = parse::binary(stream, self.bytes_left).map_err(nom::Err::convert)?;
+
+        Ok((stream, (self.parent_state, data)))
+    }
+}
+
+impl StateNavigation for DataState {
+    type PrevStates = FileState;
+    type NextStates = FileState;
+
     fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
         let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
             .map_err(nom::Err::convert)?;
@@ -810,12 +848,6 @@ impl DataState {
 
     fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
         self.skip(stream)
-    }
-
-    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (FileState, &[u8]), StateError> {
-        let (stream, data) = parse::binary(stream, self.bytes_left).map_err(nom::Err::convert)?;
-
-        Ok((stream, (self.parent_state, data)))
     }
 }
 
@@ -952,6 +984,11 @@ impl VoidState {
     fn into_reader<R: BufRead>(self, reader: R) -> VoidReader<R> {
         VoidReader::new(reader, self)
     }
+}
+
+impl StateNavigation for VoidState {
+    type PrevStates = VoidPrevStates;
+    type NextStates = VoidPrevStates;
 
     fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], VoidPrevStates, StateError> {
         let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)

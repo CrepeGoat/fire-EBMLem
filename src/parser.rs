@@ -10,18 +10,6 @@ pub struct ElementState<E, S> {
     pub _phantom: PhantomData<E>,
 }
 
-// marks a state; binds a state type to a single element type
-pub trait StateOf {
-    type Element;
-}
-
-impl<E, S> StateOf for ElementState<E, S> {
-    type Element = E;
-}
-impl StateOf for () {
-    type Element = ();
-}
-
 #[derive(thiserror::Error, Debug)]
 pub enum StateError {
     #[error("invalid subelement id {1} (parent id = {:?})", *.0)]
@@ -36,6 +24,26 @@ impl From<()> for StateError {
     fn from(_value: ()) -> Self {
         Self::BadToken
     }
+}
+
+pub trait StateNavigation {
+    type PrevStates;
+    type NextStates;
+
+    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], Self::PrevStates, StateError>;
+    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], Self::NextStates, StateError>;
+}
+
+// marks a state; binds a state type to a single element type
+pub trait StateOf {
+    type Element;
+}
+
+impl<E, S> StateOf for ElementState<E, S> {
+    type Element = E;
+}
+impl StateOf for () {
+    type Element = ();
 }
 
 #[derive(Debug, PartialEq)]
