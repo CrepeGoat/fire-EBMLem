@@ -1,7 +1,20 @@
+use crate::element_defs::ElementDef;
 use core::convert::From;
-use core::fmt;
+
 use core::fmt::Debug;
 use core::marker::PhantomData;
+
+// marks an object with a single respective element type
+pub trait BoundTo
+where
+    Self::Element: ElementDef,
+{
+    type Element;
+}
+
+pub fn get_element_id<T: BoundTo>(_: &T) -> u32 {
+    <T as BoundTo>::Element::ID
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ElementState<E, S> {
@@ -10,16 +23,8 @@ pub struct ElementState<E, S> {
     pub _phantom: PhantomData<E>,
 }
 
-// marks a state; binds a state type to a single element type
-pub trait StateOf {
-    type Element;
-}
-
-impl<E, S> StateOf for ElementState<E, S> {
+impl<E: ElementDef, S> BoundTo for ElementState<E, S> {
     type Element = E;
-}
-impl StateOf for () {
-    type Element = ();
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -42,6 +47,10 @@ impl From<()> for StateError {
 pub struct ElementReader<R, S> {
     pub reader: R,
     pub state: S,
+}
+
+impl<R, S: BoundTo> BoundTo for ElementReader<R, S> {
+    type Element = S::Element;
 }
 
 #[derive(thiserror::Error, Debug)]

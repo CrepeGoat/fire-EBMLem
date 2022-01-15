@@ -4,7 +4,7 @@ use std::io::BufRead;
 
 use crate::eg_codegen::element_defs;
 use crate::element_defs::{ElementDef, ParentOf};
-use crate::parser::{ElementReader, ElementState, ReaderError, StateError, StateOf};
+use crate::parser::{BoundTo, ElementReader, ElementState, ReaderError, StateError};
 use crate::stream::{parse, serialize, stream_diff};
 
 // Top-Level Reader/State Enums #########################################################################
@@ -300,7 +300,7 @@ impl FilesState {
                         }
                         id => {
                             return Err(nom::Err::Failure(StateError::InvalidChildId(
-                                Some(<<Self as StateOf>::Element as ElementDef>::ID),
+                                Some(<Self as BoundTo>::Element::ID),
                                 id,
                             )))
                         }
@@ -492,7 +492,7 @@ impl FileState {
                         }
                         id => {
                             return Err(nom::Err::Failure(StateError::InvalidChildId(
-                                Some(<<Self as StateOf>::Element as ElementDef>::ID),
+                                Some(<Self as BoundTo>::Element::ID),
                                 id,
                             )))
                         }
