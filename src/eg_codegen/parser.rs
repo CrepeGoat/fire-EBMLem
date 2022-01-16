@@ -562,13 +562,6 @@ impl<R: BufRead> FileNameReader<R> {
     pub fn new(reader: R, state: FileNameState) -> Self {
         Self { reader, state }
     }
-
-    pub fn read(&mut self) -> Result<&str, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-        let (_, (_, data)) = self.state.clone().read(stream)?;
-
-        Ok(data)
-    }
 }
 
 impl<R: BufRead> IntoReader<R> for FileNameState {
@@ -623,13 +616,6 @@ impl StateNavigation for MimeTypeState {
 impl<R: BufRead> MimeTypeReader<R> {
     pub fn new(reader: R, state: MimeTypeState) -> Self {
         Self { reader, state }
-    }
-
-    pub fn read(&mut self) -> Result<&str, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-        let (_, (_, data)) = self.state.clone().read(stream)?;
-
-        Ok(data)
     }
 }
 
@@ -687,13 +673,6 @@ impl<R: BufRead> ModificationTimestampReader<R> {
     pub fn new(reader: R, state: ModificationTimestampState) -> Self {
         Self { reader, state }
     }
-
-    pub fn read(&mut self) -> Result<i64, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-        let (_, (_, data)) = self.state.clone().read(stream)?;
-
-        Ok(data)
-    }
 }
 
 impl<R: BufRead> IntoReader<R> for ModificationTimestampState {
@@ -748,13 +727,6 @@ impl StateNavigation for DataState {
 impl<R: BufRead> DataReader<R> {
     pub fn new(reader: R, state: DataState) -> Self {
         Self { reader, state }
-    }
-
-    pub fn read(&mut self) -> Result<&[u8], ReaderError> {
-        let stream = self.reader.fill_buf()?;
-        let (_, (_, data)) = self.state.clone().read(stream)?;
-
-        Ok(data)
     }
 }
 

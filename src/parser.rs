@@ -166,7 +166,7 @@ pub enum ReaderError {
     Parse(#[from] nom::Err<StateError>),
 }
 
-pub trait ReaderNavigation<R: std::io::BufRead> {
+pub trait ReaderNavigation<R> {
     type PrevReaders;
     type NextReaders;
 
@@ -200,6 +200,87 @@ where
         self.reader.consume(stream_dist);
 
         Ok(next_state.into_reader(self.reader))
+    }
+}
+
+pub trait ReaderDataParser<'a, R, M: ParserMarker, T: 'a> {
+    fn read(&'a mut self) -> Result<T, ReaderError>;
+}
+
+impl<R: std::io::BufRead, E: UIntElementDef + Clone, S: Clone>
+    ReaderDataParser<'_, R, UIntParserMarker, u64> for ElementReader<R, ElementState<E, S>>
+{
+    fn read(&mut self) -> Result<u64, ReaderError> {
+        let stream = self.reader.fill_buf()?;
+        let (_, (_, data)) = self.state.clone().read(stream)?;
+
+        Ok(data)
+    }
+}
+
+impl<R: std::io::BufRead, E: IntElementDef + Clone, S: Clone>
+    ReaderDataParser<'_, R, IntParserMarker, i64> for ElementReader<R, ElementState<E, S>>
+{
+    fn read(&mut self) -> Result<i64, ReaderError> {
+        let stream = self.reader.fill_buf()?;
+        let (_, (_, data)) = self.state.clone().read(stream)?;
+
+        Ok(data)
+    }
+}
+
+impl<R: std::io::BufRead, E: FloatElementDef + Clone, S: Clone>
+    ReaderDataParser<'_, R, FloatParserMarker, f64> for ElementReader<R, ElementState<E, S>>
+{
+    fn read(&mut self) -> Result<f64, ReaderError> {
+        let stream = self.reader.fill_buf()?;
+        let (_, (_, data)) = self.state.clone().read(stream)?;
+
+        Ok(data)
+    }
+}
+
+impl<R: std::io::BufRead, E: DateElementDef + Clone, S: Clone>
+    ReaderDataParser<'_, R, DateParserMarker, i64> for ElementReader<R, ElementState<E, S>>
+{
+    fn read(&mut self) -> Result<i64, ReaderError> {
+        let stream = self.reader.fill_buf()?;
+        let (_, (_, data)) = self.state.clone().read(stream)?;
+
+        Ok(data)
+    }
+}
+
+impl<'a, R: std::io::BufRead, E: StringElementDef + Clone, S: Clone>
+    ReaderDataParser<'a, R, StringParserMarker, &'a str> for ElementReader<R, ElementState<E, S>>
+{
+    fn read(&mut self) -> Result<&str, ReaderError> {
+        let stream = self.reader.fill_buf()?;
+        let (_, (_, data)) = self.state.clone().read(stream)?;
+
+        Ok(data)
+    }
+}
+
+impl<'a, R: std::io::BufRead, E: UTF8ElementDef + Clone, S: Clone>
+    ReaderDataParser<'a, R, UTF8ParserMarker, &'a str> for ElementReader<R, ElementState<E, S>>
+{
+    fn read(&mut self) -> Result<&str, ReaderError> {
+        let stream = self.reader.fill_buf()?;
+        let (_, (_, data)) = self.state.clone().read(stream)?;
+
+        Ok(data)
+    }
+}
+
+impl<'a, R: std::io::BufRead, E: BinaryElementDef + Clone, S: Clone>
+    ReaderDataParser<'a, R, BinaryParserMarker, &'a [u8]> for ElementReader<R, ElementState<E, S>>
+{
+    fn read(&mut self) -> Result<&[u8], ReaderError> {
+        let stream = self.reader.fill_buf()?;
+        let (_, (_, data)) = self.state.clone().read(stream)?;
+
+        Ok(data)
     }
 }
 
