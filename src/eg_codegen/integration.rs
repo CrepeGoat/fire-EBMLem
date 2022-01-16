@@ -1,4 +1,5 @@
-use crate::eg_codegen::parser;
+use crate::eg_codegen::{element_defs, parser};
+use crate::element_defs::ElementDef;
 use crate::parser::ReaderError;
 
 const BYTE_STREAM: [u8; 150] = [
@@ -113,11 +114,28 @@ fn find_all_element_instances() {
     let mut reader: parser::Readers<_> = parser::_DocumentReader::new(&BYTE_STREAM[..]).into();
     let mut result = Vec::new();
 
-    // FilesDef
-    // FileDef
-    // FileName
+    let branch_map: std::collections::HashMap<u32, bool> = IntoIterator::into_iter([
+        (<element_defs::VoidDef as ElementDef>::ID, false),
+        (<element_defs::FilesDef as ElementDef>::ID, false),
+        (<element_defs::FileDef as ElementDef>::ID, false),
+        (<element_defs::FileNameDef as ElementDef>::ID, false),
+        (<element_defs::MimeTypeDef as ElementDef>::ID, false),
+        (
+            <element_defs::ModificationTimestampDef as ElementDef>::ID,
+            false,
+        ),
+        (<element_defs::DataDef as ElementDef>::ID, false),
+    ])
+    .collect();
+
+    fn search_inner(reader: READER_TYPE, branch_map: std::collections::HashMap<u32, bool>) -> Readers {
+        match 
+    }
 
     loop {
+        match reader {
+            
+        }
         reader = match reader {
             parser::Readers::_Document(r) => match r.next() {
                 Ok(r_next) => r_next.into(),
