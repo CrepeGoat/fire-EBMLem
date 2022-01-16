@@ -1,3 +1,9 @@
+use crate::element_defs::{
+    BinaryElementDef, DateElementDef, ElementDef, FloatElementDef, IntElementDef, StringElementDef,
+    UIntElementDef, UTF8ElementDef,
+};
+use crate::stream::parse;
+
 use core::convert::From;
 use core::fmt;
 use core::fmt::Debug;
@@ -32,6 +38,106 @@ pub trait StateNavigation {
 
     fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], Self::PrevStates, StateError>;
     fn next(self, stream: &[u8]) -> nom::IResult<&[u8], Self::NextStates, StateError>;
+}
+
+pub struct UIntParserMarker;
+pub struct IntParserMarker;
+pub struct FloatParserMarker;
+pub struct DateParserMarker;
+pub struct StringParserMarker;
+pub struct UTF8ParserMarker;
+pub struct BinaryParserMarker;
+
+pub trait ParserMarker {}
+impl ParserMarker for UIntParserMarker {}
+impl ParserMarker for IntParserMarker {}
+impl ParserMarker for FloatParserMarker {}
+impl ParserMarker for DateParserMarker {}
+impl ParserMarker for StringParserMarker {}
+impl ParserMarker for UTF8ParserMarker {}
+impl ParserMarker for BinaryParserMarker {}
+
+pub trait StateDataParser<'a, M: ParserMarker, T: 'a> {
+    type NextState;
+    fn read(self, stream: &'a [u8]) -> nom::IResult<&[u8], (Self::NextState, T), StateError>;
+}
+
+impl<E: UIntElementDef, S> StateDataParser<'_, UIntParserMarker, u64> for ElementState<E, S> {
+    type NextState = S;
+
+    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (S, u64), StateError> {
+        let (stream, data) = parse::uint(stream, self.bytes_left).map_err(nom::Err::convert)?;
+
+        Ok((stream, (self.parent_state, data)))
+    }
+}
+
+impl<E: IntElementDef, S> StateDataParser<'_, IntParserMarker, i64> for ElementState<E, S> {
+    type NextState = S;
+
+    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (S, i64), StateError> {
+        let (stream, data) = parse::int(stream, self.bytes_left).map_err(nom::Err::convert)?;
+
+        Ok((stream, (self.parent_state, data)))
+    }
+}
+
+impl<E: FloatElementDef, S> StateDataParser<'_, FloatParserMarker, f64> for ElementState<E, S> {
+    type NextState = S;
+
+    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (S, f64), StateError> {
+        let (stream, data) = parse::float64(stream, self.bytes_left).map_err(nom::Err::convert)?;
+
+        Ok((stream, (self.parent_state, data)))
+    }
+}
+
+impl<E: DateElementDef, S> StateDataParser<'_, DateParserMarker, i64> for ElementState<E, S> {
+    type NextState = S;
+
+    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (S, i64), StateError> {
+        let (stream, data) = parse::date(stream, self.bytes_left).map_err(nom::Err::convert)?;
+
+        Ok((stream, (self.parent_state, data)))
+    }
+}
+
+impl<'a, E: StringElementDef, S> StateDataParser<'a, StringParserMarker, &'a str>
+    for ElementState<E, S>
+{
+    type NextState = S;
+
+    fn read(self, stream: &'a [u8]) -> nom::IResult<&[u8], (S, &'a str), StateError> {
+        let (stream, data) =
+            parse::ascii_str(stream, self.bytes_left).map_err(nom::Err::convert)?;
+
+        Ok((stream, (self.parent_state, data)))
+    }
+}
+
+impl<'a, E: UTF8ElementDef, S> StateDataParser<'a, UTF8ParserMarker, &'a str>
+    for ElementState<E, S>
+{
+    type NextState = S;
+
+    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (S, &str), StateError> {
+        let (stream, data) =
+            parse::unicode_str(stream, self.bytes_left).map_err(nom::Err::convert)?;
+
+        Ok((stream, (self.parent_state, data)))
+    }
+}
+
+impl<'a, E: BinaryElementDef, S> StateDataParser<'a, BinaryParserMarker, &'a [u8]>
+    for ElementState<E, S>
+{
+    type NextState = S;
+
+    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (S, &[u8]), StateError> {
+        let (stream, data) = parse::binary(stream, self.bytes_left).map_err(nom::Err::convert)?;
+
+        Ok((stream, (self.parent_state, data)))
+    }
 }
 
 // marks a state; binds a state type to a single element type

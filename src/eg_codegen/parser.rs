@@ -5,7 +5,8 @@ use std::io::BufRead;
 use crate::eg_codegen::element_defs;
 use crate::element_defs::{ElementDef, ParentOf};
 use crate::parser::{
-    ElementReader, ElementState, IntoReader, ReaderError, StateError, StateNavigation, StateOf,
+    ElementReader, ElementState, IntoReader, ReaderError, StateDataParser, StateError,
+    StateNavigation, StateOf,
 };
 use crate::stream::{parse, serialize, stream_diff};
 
@@ -540,13 +541,6 @@ impl FileNameState {
             _phantom: PhantomData::<element_defs::FileNameDef>,
         }
     }
-
-    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (FileState, &str), StateError> {
-        let (stream, data) =
-            parse::unicode_str(stream, self.bytes_left).map_err(nom::Err::convert)?;
-
-        Ok((stream, (self.parent_state, data)))
-    }
 }
 
 impl StateNavigation for FileNameState {
@@ -608,13 +602,6 @@ impl MimeTypeState {
             parent_state,
             _phantom: PhantomData::<element_defs::MimeTypeDef>,
         }
-    }
-
-    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (FileState, &str), StateError> {
-        let (stream, data) =
-            parse::ascii_str(stream, self.bytes_left).map_err(nom::Err::convert)?;
-
-        Ok((stream, (self.parent_state, data)))
     }
 }
 
@@ -679,12 +666,6 @@ impl ModificationTimestampState {
             _phantom: PhantomData::<element_defs::ModificationTimestampDef>,
         }
     }
-
-    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (FileState, i64), StateError> {
-        let (stream, data) = parse::date(stream, self.bytes_left).map_err(nom::Err::convert)?;
-
-        Ok((stream, (self.parent_state, data)))
-    }
 }
 
 impl StateNavigation for ModificationTimestampState {
@@ -746,12 +727,6 @@ impl DataState {
             parent_state,
             _phantom: PhantomData::<element_defs::DataDef>,
         }
-    }
-
-    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (FileState, &[u8]), StateError> {
-        let (stream, data) = parse::binary(stream, self.bytes_left).map_err(nom::Err::convert)?;
-
-        Ok((stream, (self.parent_state, data)))
     }
 }
 
