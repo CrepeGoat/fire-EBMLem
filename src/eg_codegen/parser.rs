@@ -1,3 +1,5 @@
+use newtype_enum::newtype_enum;
+
 use core::convert::{From, TryInto};
 use core::marker::PhantomData;
 use std::io::BufRead;
@@ -11,6 +13,7 @@ use crate::stream::{parse, serialize, stream_diff};
 
 // Top-Level Reader/State Enums #########################################################################
 
+#[newtype_enum]
 pub enum States {
     _Document(_DocumentState),
     Void(VoidState),
@@ -22,6 +25,7 @@ pub enum States {
     Data(DataState),
 }
 
+#[newtype_enum]
 pub enum Readers<R> {
     _Document(_DocumentReader<R>),
     Void(VoidReader<R>),
@@ -73,25 +77,15 @@ impl<R> From<Readers<R>> for States {
 pub struct _DocumentState;
 pub type _DocumentReader<R> = ElementReader<R, _DocumentState>;
 
-impl From<_DocumentState> for States {
-    fn from(state: _DocumentState) -> Self {
-        Self::_Document(state)
-    }
-}
-
-impl<R: BufRead> From<_DocumentReader<R>> for Readers<R> {
-    fn from(reader: _DocumentReader<R>) -> Self {
-        Self::_Document(reader)
-    }
-}
-
 #[derive(Debug, Clone, PartialEq)]
+#[newtype_enum]
 enum _DocumentNextStates {
     Void(VoidState),
     Files(FilesState),
 }
 
 #[derive(Debug, PartialEq)]
+#[newtype_enum]
 pub enum _DocumentNextReaders<R> {
     Void(VoidReader<R>),
     Files(FilesReader<R>),
@@ -149,10 +143,10 @@ impl _DocumentState {
             stream,
             match id {
                 <element_defs::VoidDef as ElementDef>::ID => {
-                    _DocumentNextStates::Void(VoidState::new(len, self.into()))
+                    _DocumentNextStates::from_variant(VoidState::new(len, self.into()))
                 }
                 <element_defs::FilesDef as ElementDef>::ID => {
-                    _DocumentNextStates::Files(FilesState::new(len, self))
+                    _DocumentNextStates::from_variant(FilesState::new(len, self))
                 }
                 id => return Err(nom::Err::Failure(StateError::InvalidChildId(None, id))),
             },
