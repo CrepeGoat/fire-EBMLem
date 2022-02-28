@@ -11,7 +11,7 @@ pub trait ElementDef {
     const ID: u32;
 
     type LastParent;
-    const GLOBAL_PARENT_OCCURENCE: (usize, usize); //defaults to (0, 0)
+    const GLOBAL_PARENT_OCCURENCE: (Option<usize>, Option<usize>); //defaults to (0, 0)
 
     const MIN_OCCURS: usize; // defaults to 0
     const MAX_OCCURS: usize; // defaults to usize::MAX

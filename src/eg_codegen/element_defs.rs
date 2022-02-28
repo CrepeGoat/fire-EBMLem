@@ -12,7 +12,7 @@ impl ElementDef for VoidDef {
     const ID: u32 = 0xEC;
 
     type LastParent = FileDef;
-    const GLOBAL_PARENT_OCCURENCE: (usize, usize) = (0, 0);
+    const GLOBAL_PARENT_OCCURENCE: (Option<usize>, Option<usize>) = (None, None);
 
     const MIN_OCCURS: usize = 1;
     const MAX_OCCURS: usize = usize::MAX;
@@ -34,7 +34,7 @@ impl ElementDef for FilesDef {
     const ID: u32 = 0x1946696C;
 
     type LastParent = ();
-    const GLOBAL_PARENT_OCCURENCE: (usize, usize) = (0, 0);
+    const GLOBAL_PARENT_OCCURENCE: (Option<usize>, Option<usize>) = (Some(0), Some(0));
 
     const MIN_OCCURS: usize = 0;
     const MAX_OCCURS: usize = usize::MAX;
@@ -59,7 +59,7 @@ impl ElementDef for FileDef {
     const ID: u32 = 0x6146;
 
     type LastParent = FilesDef;
-    const GLOBAL_PARENT_OCCURENCE: (usize, usize) = (0, 0);
+    const GLOBAL_PARENT_OCCURENCE: (Option<usize>, Option<usize>) = (Some(0), Some(0));
 
     const MIN_OCCURS: usize = 1;
     const MAX_OCCURS: usize = usize::MAX;
@@ -84,7 +84,7 @@ impl ElementDef for FileNameDef {
     const ID: u32 = 0x614E;
 
     type LastParent = FileDef;
-    const GLOBAL_PARENT_OCCURENCE: (usize, usize) = (0, 0);
+    const GLOBAL_PARENT_OCCURENCE: (Option<usize>, Option<usize>) = (Some(0), Some(0));
 
     const MIN_OCCURS: usize = 1;
     const MAX_OCCURS: usize = usize::MAX;
@@ -108,7 +108,7 @@ impl ElementDef for MimeTypeDef {
     const ID: u32 = 0x464D;
 
     type LastParent = FileDef;
-    const GLOBAL_PARENT_OCCURENCE: (usize, usize) = (0, 0);
+    const GLOBAL_PARENT_OCCURENCE: (Option<usize>, Option<usize>) = (Some(0), Some(0));
 
     const MIN_OCCURS: usize = 1;
     const MAX_OCCURS: usize = usize::MAX;
@@ -132,7 +132,7 @@ impl ElementDef for ModificationTimestampDef {
     const ID: u32 = 0x4654;
 
     type LastParent = FileDef;
-    const GLOBAL_PARENT_OCCURENCE: (usize, usize) = (0, 0);
+    const GLOBAL_PARENT_OCCURENCE: (Option<usize>, Option<usize>) = (Some(0), Some(0));
 
     const MIN_OCCURS: usize = 1;
     const MAX_OCCURS: usize = usize::MAX;
@@ -158,7 +158,7 @@ impl ElementDef for DataDef {
     const ID: u32 = 0x4664;
 
     type LastParent = FileDef;
-    const GLOBAL_PARENT_OCCURENCE: (usize, usize) = (0, 0);
+    const GLOBAL_PARENT_OCCURENCE: (Option<usize>, Option<usize>) = (Some(0), Some(0));
 
     const MIN_OCCURS: usize = 1;
     const MAX_OCCURS: usize = usize::MAX;
