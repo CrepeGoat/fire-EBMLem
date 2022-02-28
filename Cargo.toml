@@ -10,6 +10,7 @@ edition = "2018"
 thiserror = "1.0"
 nom = "6.1.0"
 lexical-core = ">0.7.4"
+xml-rs = "0.8.4"
 
 [dev-dependencies]
 rstest = "0.6.4"
