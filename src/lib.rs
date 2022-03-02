@@ -2,7 +2,7 @@
 mod parser;
 mod element_defs;
 mod parser_gen;
-mod schema_parser;
+mod serde_schema;
 mod stream;
 
 mod eg_codegen {

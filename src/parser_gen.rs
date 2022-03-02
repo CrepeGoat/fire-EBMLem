@@ -1,6 +1,6 @@
 // interface loosely based on that of bindgen: https://crates.io/crates/bindgen
 
-use crate::schema_parser::EbmlSchema;
+use crate::serde_schema::EbmlSchema;
 use std::fs::OpenOptions;
 use std::io;
 use std::path::Path;
