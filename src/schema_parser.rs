@@ -5,7 +5,7 @@ pub(crate) use serde_xml_rs::{from_str, to_string};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename = "EBMLSchema")]
-struct EbmlSchema {
+pub(crate) struct EbmlSchema {
     doctype: String,
     version: u32,
     ebml: u32,
@@ -15,7 +15,7 @@ struct EbmlSchema {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-struct Element {
+pub(crate) struct Element {
     name: String,
     path: String,
     id: u32,
@@ -45,7 +45,7 @@ enum ElementMetadatum {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-struct Documentation {
+pub(crate) struct Documentation {
     lang: Option<String>,
     purpose: DocumentationPurpose,
     #[serde(rename = "$value")]
@@ -66,18 +66,18 @@ enum DocumentationPurpose {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-struct ImplementationNote {
+pub(crate) struct ImplementationNote {
     note_attribute: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-struct Restriction {
+pub(crate) struct Restriction {
     #[serde(rename = "$value")]
     enums: Vec<Enum>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-struct Enum {
+pub(crate) struct Enum {
     label: String,
     value: u32,
     #[serde(rename = "$value")]
@@ -85,7 +85,7 @@ struct Enum {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-struct Extension {
+pub(crate) struct Extension {
     r#type: String,
     webm: Option<bool>,
     keep: Option<bool>,
