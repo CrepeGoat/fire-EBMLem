@@ -32,12 +32,12 @@ pub(crate) struct Element {
     maxver: Option<u32>,
 
     #[serde(rename = "$value")]
-    metadata: Vec<ElementMetadatum>,
+    metadata: Vec<ElementValue>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
-enum ElementMetadatum {
+enum ElementValue {
     Documentation(Documentation),
     Extension(Extension),
     ImplementationNote(ImplementationNote),
