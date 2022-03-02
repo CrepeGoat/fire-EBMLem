@@ -289,3 +289,64 @@ pub trait IntoReader<R: std::io::BufRead> {
 
     fn into_reader(self, reader: R) -> Self::Reader;
 }
+
+#[macro_export]
+macro_rules! impl_into_reader {
+    ( $States:ident, $Readers:ident, [ $( $ElementName:ident ),* ] ) => {
+        impl<R: BufRead> IntoReader<R> for $States {
+            type Reader = $Readers<R>;
+            fn into_reader(self, reader: R) -> Self::Reader {
+                match self {
+                    $(
+                        Self::$ElementName(state) => Self::Reader::$ElementName(state.into_reader(reader)),
+                    )*
+                }
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! impl_from_readers_for_states {
+    ( $Readers:ident, $States:ident, [ $( $ElementName:ident ),* ] ) => {
+        impl<R> From<$Readers<R>> for $States {
+            fn from(enumed_reader: $Readers<R>) -> Self {
+                match enumed_reader {
+                    $(
+                        $Readers::$ElementName(reader) => Self::$ElementName(reader.state),
+                    )*
+                }
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! impl_from_substates_for_states {
+    ( $SubStates:ident, $States:ident, [ $( $ElementName:ident ),* ] ) => {
+        impl From<$SubStates> for $States {
+            fn from(enumed_states: $SubStates) -> Self {
+                match enumed_states {
+                    $(
+                        $SubStates::$ElementName(state) => state.into(),
+                    )*
+                }
+            }
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! impl_from_subreaders_for_readers {
+    ( $SubReaders:ident, $Readers:ident, [ $( $ElementName:ident ),* ] ) => {
+        impl<R: BufRead> From<$SubReaders<R>> for $Readers<R> {
+            fn from(enumed_states: $SubReaders<R>) -> Self {
+                match enumed_states {
+                    $(
+                        $SubReaders::$ElementName(state) => state.into(),
+                    )*
+                }
+            }
+        }
+    }
+}
