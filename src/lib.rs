@@ -1,6 +1,7 @@
 #[macro_use]
 mod parser;
 mod element_defs;
+mod parser_gen;
 mod schema_parser;
 mod stream;
 
