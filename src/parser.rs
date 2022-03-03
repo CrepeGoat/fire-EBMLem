@@ -32,11 +32,15 @@ impl From<()> for StateError {
     }
 }
 
-pub trait StateNavigation {
+pub trait SkipStateNavigation {
     type PrevStates;
-    type NextStates;
 
     fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], Self::PrevStates, StateError>;
+}
+
+pub trait NextStateNavigation {
+    type NextStates;
+
     fn next(self, stream: &[u8]) -> nom::IResult<&[u8], Self::NextStates, StateError>;
 }
 
@@ -166,21 +170,23 @@ pub enum ReaderError {
     Parse(#[from] nom::Err<StateError>),
 }
 
-pub trait ReaderNavigation<R> {
+pub trait SkipReaderNavigation<R> {
     type PrevReaders;
-    type NextReaders;
 
     fn skip(self) -> Result<Self::PrevReaders, ReaderError>;
+}
+
+pub trait NextReaderNavigation<R> {
+    type NextReaders;
+
     fn next(self) -> Result<Self::NextReaders, ReaderError>;
 }
 
-impl<R: std::io::BufRead, S: StateNavigation> ReaderNavigation<R> for ElementReader<R, S>
+impl<R: std::io::BufRead, S: SkipStateNavigation> SkipReaderNavigation<R> for ElementReader<R, S>
 where
     S::PrevStates: IntoReader<R>,
-    S::NextStates: IntoReader<R>,
 {
     type PrevReaders = <S::PrevStates as IntoReader<R>>::Reader;
-    type NextReaders = <S::NextStates as IntoReader<R>>::Reader;
 
     fn skip(mut self) -> Result<Self::PrevReaders, ReaderError> {
         let stream = self.reader.fill_buf()?;
@@ -191,6 +197,13 @@ where
 
         Ok(next_state.into_reader(self.reader))
     }
+}
+
+impl<R: std::io::BufRead, S: NextStateNavigation> NextReaderNavigation<R> for ElementReader<R, S>
+where
+    S::NextStates: IntoReader<R>,
+{
+    type NextReaders = <S::NextStates as IntoReader<R>>::Reader;
 
     fn next(mut self) -> Result<Self::NextReaders, ReaderError> {
         let stream = self.reader.fill_buf()?;

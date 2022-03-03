@@ -5,8 +5,8 @@ use std::io::BufRead;
 use crate::eg_codegen::element_defs;
 use crate::element_defs::{ElementDef, ParentOf};
 use crate::parser::{
-    ElementReader, ElementState, IntoReader, ReaderError, StateDataParser, StateError,
-    StateNavigation, StateOf,
+    ElementReader, ElementState, IntoReader, NextStateNavigation, ReaderError, SkipStateNavigation,
+    StateDataParser, StateError, StateOf,
 };
 use crate::stream::{parse, serialize, stream_diff};
 use crate::{
@@ -87,7 +87,7 @@ impl<R: BufRead> From<_DocumentReader<R>> for Readers<R> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-enum _DocumentNextStates {
+pub enum _DocumentNextStates {
     Void(VoidState),
     Files(FilesState),
 }
@@ -104,8 +104,10 @@ impl_from_subreaders_for_readers!(_DocumentNextReaders, Readers, [Void, Files]);
 impl_into_reader!(_DocumentNextStates, _DocumentNextReaders, [Void, Files]);
 impl_from_readers_for_states!(_DocumentNextReaders, _DocumentNextStates, [Void, Files]);
 
-impl _DocumentState {
-    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], _DocumentNextStates, StateError> {
+impl NextStateNavigation for _DocumentState {
+    type NextStates = _DocumentNextStates;
+
+    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], Self::NextStates, StateError> {
         let (stream, id) = parse::element_id(stream).map_err(nom::Err::convert)?;
         let (stream, len) = parse::element_len(stream).map_err(nom::Err::convert)?;
         let len: usize = len
@@ -136,16 +138,6 @@ impl<R: BufRead> _DocumentReader<R> {
             reader,
             state: _DocumentState,
         }
-    }
-
-    pub fn next(mut self) -> Result<_DocumentNextReaders<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.next(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
     }
 }
 
@@ -203,23 +195,22 @@ impl FilesState {
     }
 }
 
-impl StateNavigation for FilesState {
+impl SkipStateNavigation for FilesState {
     type PrevStates = _DocumentState;
-    type NextStates = FilesNextStates;
 
-    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], _DocumentState, StateError> {
+    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], Self::PrevStates, StateError> {
         let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
             .map_err(nom::Err::convert)?;
         Ok((stream, self.parent_state))
     }
+}
 
-    fn next(mut self, stream: &[u8]) -> nom::IResult<&[u8], FilesNextStates, StateError> {
+impl NextStateNavigation for FilesState {
+    type NextStates = FilesNextStates;
+
+    fn next(mut self, stream: &[u8]) -> nom::IResult<&[u8], Self::NextStates, StateError> {
         match self {
-            Self {
-                bytes_left: 0,
-                parent_state: _,
-                _phantom: _,
-            } => Ok((stream, FilesNextStates::Parent(self.parent_state))),
+            Self { bytes_left: 0, .. } => Ok((stream, Self::NextStates::Parent(self.parent_state))),
             _ => {
                 let orig_stream = stream;
 
@@ -238,10 +229,10 @@ impl StateNavigation for FilesState {
                     stream,
                     match id {
                         <element_defs::VoidDef as ElementDef>::ID => {
-                            FilesNextStates::Void(VoidState::new(len, self.into()))
+                            Self::NextStates::Void(VoidState::new(len, self.into()))
                         }
                         <element_defs::FileDef as ElementDef>::ID => {
-                            FilesNextStates::File(FileState::new(len, self))
+                            Self::NextStates::File(FileState::new(len, self))
                         }
                         id => {
                             return Err(nom::Err::Failure(StateError::InvalidChildId(
@@ -366,23 +357,21 @@ impl FileState {
     }
 }
 
-impl StateNavigation for FileState {
+impl SkipStateNavigation for FileState {
     type PrevStates = FilesState;
-    type NextStates = FileNextStates;
 
-    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FilesState, StateError> {
+    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], Self::PrevStates, StateError> {
         let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
             .map_err(nom::Err::convert)?;
         Ok((stream, self.parent_state))
     }
+}
+impl NextStateNavigation for FileState {
+    type NextStates = FileNextStates;
 
-    fn next(mut self, stream: &[u8]) -> nom::IResult<&[u8], FileNextStates, StateError> {
+    fn next(mut self, stream: &[u8]) -> nom::IResult<&[u8], Self::NextStates, StateError> {
         match self {
-            Self {
-                bytes_left: 0,
-                parent_state: _,
-                _phantom: _,
-            } => Ok((stream, FileNextStates::Parent(self.parent_state))),
+            Self { bytes_left: 0, .. } => Ok((stream, Self::NextStates::Parent(self.parent_state))),
             _ => {
                 let orig_stream = stream;
 
@@ -401,21 +390,21 @@ impl StateNavigation for FileState {
                     stream,
                     match id {
                         <element_defs::VoidDef as ElementDef>::ID => {
-                            FileNextStates::Void(VoidState::new(len, self.into()))
+                            Self::NextStates::Void(VoidState::new(len, self.into()))
                         }
                         <element_defs::FileNameDef as ElementDef>::ID => {
-                            FileNextStates::FileName(FileNameState::new(len, self))
+                            Self::NextStates::FileName(FileNameState::new(len, self))
                         }
                         <element_defs::MimeTypeDef as ElementDef>::ID => {
-                            FileNextStates::MimeType(MimeTypeState::new(len, self))
+                            Self::NextStates::MimeType(MimeTypeState::new(len, self))
                         }
                         <element_defs::ModificationTimestampDef as ElementDef>::ID => {
-                            FileNextStates::ModificationTimestamp(ModificationTimestampState::new(
-                                len, self,
-                            ))
+                            Self::NextStates::ModificationTimestamp(
+                                ModificationTimestampState::new(len, self),
+                            )
                         }
                         <element_defs::DataDef as ElementDef>::ID => {
-                            FileNextStates::Data(DataState::new(len, self))
+                            Self::NextStates::Data(DataState::new(len, self))
                         }
                         id => {
                             return Err(nom::Err::Failure(StateError::InvalidChildId(
@@ -470,17 +459,20 @@ impl FileNameState {
     }
 }
 
-impl StateNavigation for FileNameState {
+impl SkipStateNavigation for FileNameState {
     type PrevStates = FileState;
-    type NextStates = FileState;
 
-    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
+    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], Self::PrevStates, StateError> {
         let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
             .map_err(nom::Err::convert)?;
         Ok((stream, self.parent_state))
     }
+}
 
-    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
+impl NextStateNavigation for FileNameState {
+    type NextStates = FileState;
+
+    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], Self::NextStates, StateError> {
         self.skip(stream)
     }
 }
@@ -525,17 +517,20 @@ impl MimeTypeState {
     }
 }
 
-impl StateNavigation for MimeTypeState {
+impl SkipStateNavigation for MimeTypeState {
     type PrevStates = FileState;
-    type NextStates = FileState;
 
-    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
+    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], Self::PrevStates, StateError> {
         let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
             .map_err(nom::Err::convert)?;
         Ok((stream, self.parent_state))
     }
+}
 
-    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
+impl NextStateNavigation for MimeTypeState {
+    type NextStates = FileState;
+
+    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], Self::NextStates, StateError> {
         self.skip(stream)
     }
 }
@@ -581,17 +576,20 @@ impl ModificationTimestampState {
     }
 }
 
-impl StateNavigation for ModificationTimestampState {
+impl SkipStateNavigation for ModificationTimestampState {
     type PrevStates = FileState;
-    type NextStates = FileState;
 
-    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
+    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], Self::PrevStates, StateError> {
         let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
             .map_err(nom::Err::convert)?;
         Ok((stream, self.parent_state))
     }
+}
 
-    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
+impl NextStateNavigation for ModificationTimestampState {
+    type NextStates = FileState;
+
+    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], Self::NextStates, StateError> {
         self.skip(stream)
     }
 }
@@ -636,17 +634,20 @@ impl DataState {
     }
 }
 
-impl StateNavigation for DataState {
+impl SkipStateNavigation for DataState {
     type PrevStates = FileState;
-    type NextStates = FileState;
 
-    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
+    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], Self::PrevStates, StateError> {
         let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
             .map_err(nom::Err::convert)?;
         Ok((stream, self.parent_state))
     }
+}
 
-    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
+impl NextStateNavigation for DataState {
+    type NextStates = FileState;
+
+    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], Self::NextStates, StateError> {
         self.skip(stream)
     }
 }
@@ -728,17 +729,20 @@ impl VoidState {
     }
 }
 
-impl StateNavigation for VoidState {
+impl SkipStateNavigation for VoidState {
     type PrevStates = VoidPrevStates;
-    type NextStates = VoidPrevStates;
 
-    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], VoidPrevStates, StateError> {
+    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], Self::PrevStates, StateError> {
         let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
             .map_err(nom::Err::convert)?;
         Ok((stream, self.parent_state))
     }
+}
 
-    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], VoidPrevStates, StateError> {
+impl NextStateNavigation for VoidState {
+    type NextStates = VoidPrevStates;
+
+    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], Self::NextStates, StateError> {
         self.skip(stream)
     }
 }
