@@ -104,6 +104,7 @@ impl_from_subreaders_for_readers!(_DocumentNextReaders, Readers, [Void, Files]);
 impl_into_reader!(_DocumentNextStates, _DocumentNextReaders, [Void, Files]);
 impl_from_readers_for_states!(_DocumentNextReaders, _DocumentNextStates, [Void, Files]);
 
+// No parent or bytes_left -> custom impl
 impl NextStateNavigation for _DocumentState {
     type NextStates = _DocumentNextStates;
 
@@ -195,57 +196,12 @@ impl FilesState {
     }
 }
 
-impl SkipStateNavigation for FilesState {
-    type PrevStates = _DocumentState;
-
-    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], Self::PrevStates, StateError> {
-        let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
-            .map_err(nom::Err::convert)?;
-        Ok((stream, self.parent_state))
-    }
-}
-
-impl NextStateNavigation for FilesState {
-    type NextStates = FilesNextStates;
-
-    fn next(mut self, stream: &[u8]) -> nom::IResult<&[u8], Self::NextStates, StateError> {
-        match self {
-            Self { bytes_left: 0, .. } => Ok((stream, Self::NextStates::Parent(self.parent_state))),
-            _ => {
-                let orig_stream = stream;
-
-                let (stream, id) = parse::element_id(stream).map_err(nom::Err::convert)?;
-                let (stream, len) = parse::element_len(stream).map_err(nom::Err::convert)?;
-                let len: usize = len
-                    .ok_or(nom::Err::Failure(StateError::Unimplemented(
-                        "TODO: handle optionally unsized elements",
-                    )))?
-                    .try_into()
-                    .expect("overflow in storing element bytelength");
-
-                self.bytes_left -= len + stream_diff(orig_stream, stream);
-
-                Ok((
-                    stream,
-                    match id {
-                        <element_defs::VoidDef as ElementDef>::ID => {
-                            Self::NextStates::Void(VoidState::new(len, self.into()))
-                        }
-                        <element_defs::FileDef as ElementDef>::ID => {
-                            Self::NextStates::File(FileState::new(len, self))
-                        }
-                        id => {
-                            return Err(nom::Err::Failure(StateError::InvalidChildId(
-                                Some(<<Self as StateOf>::Element as ElementDef>::ID),
-                                id,
-                            )))
-                        }
-                    },
-                ))
-            }
-        }
-    }
-}
+impl_skip_state_navigation!(FilesState, _DocumentState);
+impl_next_state_navigation!(
+    FilesState,
+    FilesNextStates,
+    [(Void, VoidState), (File, FileState)]
+);
 
 impl<R: BufRead> FilesReader<R> {
     pub fn new(reader: R, state: FilesState) -> Self {
@@ -357,67 +313,18 @@ impl FileState {
     }
 }
 
-impl SkipStateNavigation for FileState {
-    type PrevStates = FilesState;
-
-    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], Self::PrevStates, StateError> {
-        let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
-            .map_err(nom::Err::convert)?;
-        Ok((stream, self.parent_state))
-    }
-}
-impl NextStateNavigation for FileState {
-    type NextStates = FileNextStates;
-
-    fn next(mut self, stream: &[u8]) -> nom::IResult<&[u8], Self::NextStates, StateError> {
-        match self {
-            Self { bytes_left: 0, .. } => Ok((stream, Self::NextStates::Parent(self.parent_state))),
-            _ => {
-                let orig_stream = stream;
-
-                let (stream, id) = parse::element_id(stream).map_err(nom::Err::convert)?;
-                let (stream, len) = parse::element_len(stream).map_err(nom::Err::convert)?;
-                let len: usize = len
-                    .ok_or(nom::Err::Failure(StateError::Unimplemented(
-                        "TODO: handle optionally unsized elements",
-                    )))?
-                    .try_into()
-                    .expect("overflow in storing element bytelength");
-
-                self.bytes_left -= len + stream_diff(orig_stream, stream);
-
-                Ok((
-                    stream,
-                    match id {
-                        <element_defs::VoidDef as ElementDef>::ID => {
-                            Self::NextStates::Void(VoidState::new(len, self.into()))
-                        }
-                        <element_defs::FileNameDef as ElementDef>::ID => {
-                            Self::NextStates::FileName(FileNameState::new(len, self))
-                        }
-                        <element_defs::MimeTypeDef as ElementDef>::ID => {
-                            Self::NextStates::MimeType(MimeTypeState::new(len, self))
-                        }
-                        <element_defs::ModificationTimestampDef as ElementDef>::ID => {
-                            Self::NextStates::ModificationTimestamp(
-                                ModificationTimestampState::new(len, self),
-                            )
-                        }
-                        <element_defs::DataDef as ElementDef>::ID => {
-                            Self::NextStates::Data(DataState::new(len, self))
-                        }
-                        id => {
-                            return Err(nom::Err::Failure(StateError::InvalidChildId(
-                                Some(<<Self as StateOf>::Element as ElementDef>::ID),
-                                id,
-                            )))
-                        }
-                    },
-                ))
-            }
-        }
-    }
-}
+impl_skip_state_navigation!(FileState, FilesState);
+impl_next_state_navigation!(
+    FileState,
+    FileNextStates,
+    [
+        (Void, VoidState),
+        (FileName, FileNameState),
+        (MimeType, MimeTypeState),
+        (ModificationTimestamp, ModificationTimestampState),
+        (Data, DataState)
+    ]
+);
 
 impl<R: BufRead> FileReader<R> {
     pub fn new(reader: R, state: FileState) -> Self {
@@ -459,23 +366,8 @@ impl FileNameState {
     }
 }
 
-impl SkipStateNavigation for FileNameState {
-    type PrevStates = FileState;
-
-    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], Self::PrevStates, StateError> {
-        let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
-            .map_err(nom::Err::convert)?;
-        Ok((stream, self.parent_state))
-    }
-}
-
-impl NextStateNavigation for FileNameState {
-    type NextStates = FileState;
-
-    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], Self::NextStates, StateError> {
-        self.skip(stream)
-    }
-}
+impl_skip_state_navigation!(FileNameState, FileState);
+impl_next_state_navigation!(FileNameState, FileState, []);
 
 impl<R: BufRead> FileNameReader<R> {
     pub fn new(reader: R, state: FileNameState) -> Self {
@@ -517,23 +409,8 @@ impl MimeTypeState {
     }
 }
 
-impl SkipStateNavigation for MimeTypeState {
-    type PrevStates = FileState;
-
-    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], Self::PrevStates, StateError> {
-        let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
-            .map_err(nom::Err::convert)?;
-        Ok((stream, self.parent_state))
-    }
-}
-
-impl NextStateNavigation for MimeTypeState {
-    type NextStates = FileState;
-
-    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], Self::NextStates, StateError> {
-        self.skip(stream)
-    }
-}
+impl_skip_state_navigation!(MimeTypeState, FileState);
+impl_next_state_navigation!(MimeTypeState, FileState, []);
 
 impl<R: BufRead> MimeTypeReader<R> {
     pub fn new(reader: R, state: MimeTypeState) -> Self {
@@ -576,23 +453,8 @@ impl ModificationTimestampState {
     }
 }
 
-impl SkipStateNavigation for ModificationTimestampState {
-    type PrevStates = FileState;
-
-    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], Self::PrevStates, StateError> {
-        let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
-            .map_err(nom::Err::convert)?;
-        Ok((stream, self.parent_state))
-    }
-}
-
-impl NextStateNavigation for ModificationTimestampState {
-    type NextStates = FileState;
-
-    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], Self::NextStates, StateError> {
-        self.skip(stream)
-    }
-}
+impl_skip_state_navigation!(ModificationTimestampState, FileState);
+impl_next_state_navigation!(ModificationTimestampState, FileState, []);
 
 impl<R: BufRead> ModificationTimestampReader<R> {
     pub fn new(reader: R, state: ModificationTimestampState) -> Self {
@@ -634,23 +496,8 @@ impl DataState {
     }
 }
 
-impl SkipStateNavigation for DataState {
-    type PrevStates = FileState;
-
-    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], Self::PrevStates, StateError> {
-        let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
-            .map_err(nom::Err::convert)?;
-        Ok((stream, self.parent_state))
-    }
-}
-
-impl NextStateNavigation for DataState {
-    type NextStates = FileState;
-
-    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], Self::NextStates, StateError> {
-        self.skip(stream)
-    }
-}
+impl_skip_state_navigation!(DataState, FileState);
+impl_next_state_navigation!(DataState, FileState, []);
 
 impl<R: BufRead> DataReader<R> {
     pub fn new(reader: R, state: DataState) -> Self {
@@ -729,23 +576,8 @@ impl VoidState {
     }
 }
 
-impl SkipStateNavigation for VoidState {
-    type PrevStates = VoidPrevStates;
-
-    fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], Self::PrevStates, StateError> {
-        let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
-            .map_err(nom::Err::convert)?;
-        Ok((stream, self.parent_state))
-    }
-}
-
-impl NextStateNavigation for VoidState {
-    type NextStates = VoidPrevStates;
-
-    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], Self::NextStates, StateError> {
-        self.skip(stream)
-    }
-}
+impl_skip_state_navigation!(VoidState, VoidPrevStates);
+impl_next_state_navigation!(VoidState, VoidPrevStates, []);
 
 impl<R: BufRead> VoidReader<R> {
     pub fn new(reader: R, state: VoidState) -> Self {
