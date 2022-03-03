@@ -304,6 +304,76 @@ pub trait IntoReader<R: std::io::BufRead> {
 }
 
 #[macro_export]
+macro_rules! impl_skip_state_navigation {
+    ( $State:ident, $PrevStates:ident ) => {
+        impl SkipStateNavigation for $State {
+            type PrevStates = $PrevStates;
+
+            fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], Self::PrevStates, StateError> {
+                let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
+                    .map_err(nom::Err::convert)?;
+                Ok((stream, self.parent_state))
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! impl_next_state_navigation {
+    ( $State:ident, $NextStates:ident, []) => {
+        impl NextStateNavigation for $State {
+            type NextStates = $NextStates;
+
+            fn next(self, stream: &[u8]) -> nom::IResult<&[u8], Self::NextStates, StateError> {
+                self.skip(stream)
+            }
+        }
+    };
+
+    ( $State:ident, $NextStates:ident, [ $( ($ElementName:ident, $ElementState:ident) ),* ] ) => {
+        impl NextStateNavigation for $State {
+            type NextStates = $NextStates;
+
+            fn next(mut self, stream: &[u8]) -> nom::IResult<&[u8], Self::NextStates, StateError> {
+                match self {
+                    Self { bytes_left: 0, .. } => Ok((stream, Self::NextStates::Parent(self.parent_state))),
+                    _ => {
+                        let orig_stream = stream;
+
+                        let (stream, id) = parse::element_id(stream).map_err(nom::Err::convert)?;
+                        let (stream, len) = parse::element_len(stream).map_err(nom::Err::convert)?;
+                        let len: usize = len
+                            .ok_or(nom::Err::Failure(StateError::Unimplemented(
+                                "TODO: handle optionally unsized elements",
+                            )))?
+                            .try_into()
+                            .expect("overflow in storing element bytelength");
+
+                        self.bytes_left -= len + stream_diff(orig_stream, stream);
+
+                        Ok((
+                            stream,
+                            match id {
+                                $(
+                                    <<$ElementState as StateOf>::Element as ElementDef>::ID =>
+                                        Self::NextStates::$ElementName($ElementState::new(len, self.into())),
+                                )*
+                                id => {
+                                    return Err(nom::Err::Failure(StateError::InvalidChildId(
+                                        Some(<<Self as StateOf>::Element as ElementDef>::ID),
+                                        id,
+                                    )))
+                                }
+                            },
+                        ))
+                    }
+                }
+            }
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! impl_into_reader {
     ( $States:ident, $Readers:ident, [ $( $ElementName:ident ),* ] ) => {
         impl<R: BufRead> IntoReader<R> for $States {
