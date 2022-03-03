@@ -297,10 +297,27 @@ impl<'a, R: std::io::BufRead, E: BinaryElementDef + Clone, S: Clone>
     }
 }
 
+impl<E, S, R: std::io::BufRead> From<ElementReader<R, ElementState<E, S>>> for ElementState<E, S> {
+    fn from(reader: ElementReader<R, ElementState<E, S>>) -> Self {
+        reader.state
+    }
+}
+
 pub trait IntoReader<R: std::io::BufRead> {
     type Reader;
 
     fn into_reader(self, reader: R) -> Self::Reader;
+}
+
+impl<E, S, R: std::io::BufRead> IntoReader<R> for ElementState<E, S> {
+    type Reader = ElementReader<R, ElementState<E, S>>;
+
+    fn into_reader(self, reader: R) -> Self::Reader {
+        Self::Reader {
+            reader,
+            state: self,
+        }
+    }
 }
 
 #[macro_export]
@@ -330,7 +347,7 @@ macro_rules! impl_next_state_navigation {
         }
     };
 
-    ( $State:ident, $NextStates:ident, [ $( ($ElementName:ident, $ElementState:ident) ),* ] ) => {
+    ( $State:ident, $NextStates:ident, [ $( ($ElementName:ident, $ElementState:ident) ),+ ] ) => {
         impl NextStateNavigation for $State {
             type NextStates = $NextStates;
 

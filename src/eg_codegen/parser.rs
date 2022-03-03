@@ -209,13 +209,6 @@ impl<R: BufRead> FilesReader<R> {
     }
 }
 
-impl<R: BufRead> IntoReader<R> for FilesState {
-    type Reader = FilesReader<R>;
-    fn into_reader(self, reader: R) -> FilesReader<R> {
-        FilesReader::new(reader, self)
-    }
-}
-
 // File Objects #########################################################################
 
 pub type FileState = ElementState<element_defs::FileDef, FilesState>;
@@ -332,13 +325,6 @@ impl<R: BufRead> FileReader<R> {
     }
 }
 
-impl<R: BufRead> IntoReader<R> for FileState {
-    type Reader = FileReader<R>;
-    fn into_reader(self, reader: R) -> FileReader<R> {
-        FileReader::new(reader, self)
-    }
-}
-
 // FileName Objects #########################################################################
 
 pub type FileNameState = ElementState<element_defs::FileNameDef, FileState>;
@@ -375,13 +361,6 @@ impl<R: BufRead> FileNameReader<R> {
     }
 }
 
-impl<R: BufRead> IntoReader<R> for FileNameState {
-    type Reader = FileNameReader<R>;
-    fn into_reader(self, reader: R) -> FileNameReader<R> {
-        FileNameReader::new(reader, self)
-    }
-}
-
 // MimeType Objects #########################################################################
 
 pub type MimeTypeState = ElementState<element_defs::MimeTypeDef, FileState>;
@@ -415,13 +394,6 @@ impl_next_state_navigation!(MimeTypeState, FileState, []);
 impl<R: BufRead> MimeTypeReader<R> {
     pub fn new(reader: R, state: MimeTypeState) -> Self {
         Self { reader, state }
-    }
-}
-
-impl<R: BufRead> IntoReader<R> for MimeTypeState {
-    type Reader = MimeTypeReader<R>;
-    fn into_reader(self, reader: R) -> MimeTypeReader<R> {
-        MimeTypeReader::new(reader, self)
     }
 }
 
@@ -462,13 +434,6 @@ impl<R: BufRead> ModificationTimestampReader<R> {
     }
 }
 
-impl<R: BufRead> IntoReader<R> for ModificationTimestampState {
-    type Reader = ModificationTimestampReader<R>;
-    fn into_reader(self, reader: R) -> ModificationTimestampReader<R> {
-        ModificationTimestampReader::new(reader, self)
-    }
-}
-
 // Data Objects #########################################################################
 
 pub type DataState = ElementState<element_defs::DataDef, FileState>;
@@ -502,13 +467,6 @@ impl_next_state_navigation!(DataState, FileState, []);
 impl<R: BufRead> DataReader<R> {
     pub fn new(reader: R, state: DataState) -> Self {
         Self { reader, state }
-    }
-}
-
-impl<R: BufRead> IntoReader<R> for DataState {
-    type Reader = DataReader<R>;
-    fn into_reader(self, reader: R) -> DataReader<R> {
-        DataReader::new(reader, self)
     }
 }
 
@@ -582,13 +540,6 @@ impl_next_state_navigation!(VoidState, VoidPrevStates, []);
 impl<R: BufRead> VoidReader<R> {
     pub fn new(reader: R, state: VoidState) -> Self {
         Self { reader, state }
-    }
-}
-
-impl<R: BufRead> IntoReader<R> for VoidState {
-    type Reader = VoidReader<R>;
-    fn into_reader(self, reader: R) -> VoidReader<R> {
-        VoidReader::new(reader, self)
     }
 }
 
