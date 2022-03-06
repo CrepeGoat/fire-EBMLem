@@ -10,7 +10,7 @@ use core::fmt::Debug;
 use core::marker::PhantomData;
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ElementState<E, S> {
+pub struct ElementState<E: ElementDef, S> {
     pub bytes_left: usize,
     pub parent_state: S,
     pub _phantom: PhantomData<E>,
@@ -149,7 +149,7 @@ pub trait StateOf {
     type Element;
 }
 
-impl<E, S> StateOf for ElementState<E, S> {
+impl<E: ElementDef, S> StateOf for ElementState<E, S> {
     type Element = E;
 }
 impl StateOf for () {
@@ -297,7 +297,9 @@ impl<'a, R: std::io::BufRead, E: BinaryElementDef + Clone, S: Clone>
     }
 }
 
-impl<E, S, R: std::io::BufRead> From<ElementReader<R, ElementState<E, S>>> for ElementState<E, S> {
+impl<E: ElementDef, S, R: std::io::BufRead> From<ElementReader<R, ElementState<E, S>>>
+    for ElementState<E, S>
+{
     fn from(reader: ElementReader<R, ElementState<E, S>>) -> Self {
         reader.state
     }
@@ -309,7 +311,7 @@ pub trait IntoReader<R: std::io::BufRead> {
     fn into_reader(self, reader: R) -> Self::Reader;
 }
 
-impl<E, S, R: std::io::BufRead> IntoReader<R> for ElementState<E, S> {
+impl<E: ElementDef, S, R: std::io::BufRead> IntoReader<R> for ElementState<E, S> {
     type Reader = ElementReader<R, ElementState<E, S>>;
 
     fn into_reader(self, reader: R) -> Self::Reader {
