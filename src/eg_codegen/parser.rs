@@ -187,7 +187,7 @@ impl FilesState {
         Self {
             bytes_left,
             parent_state,
-            _phantom: PhantomData::<element_defs::FilesDef>,
+            _phantom: PhantomData::<_>,
         }
     }
 }
@@ -287,7 +287,7 @@ impl FileState {
         Self {
             bytes_left,
             parent_state,
-            _phantom: PhantomData::<element_defs::FileDef>,
+            _phantom: PhantomData::<_>,
         }
     }
 }
@@ -321,7 +321,7 @@ impl FileNameState {
         Self {
             bytes_left,
             parent_state,
-            _phantom: PhantomData::<element_defs::FileNameDef>,
+            _phantom: PhantomData::<_>,
         }
     }
 }
@@ -345,7 +345,7 @@ impl MimeTypeState {
         Self {
             bytes_left,
             parent_state,
-            _phantom: PhantomData::<element_defs::MimeTypeDef>,
+            _phantom: PhantomData::<_>,
         }
     }
 }
@@ -370,7 +370,7 @@ impl ModificationTimestampState {
         Self {
             bytes_left,
             parent_state,
-            _phantom: PhantomData::<element_defs::ModificationTimestampDef>,
+            _phantom: PhantomData::<_>,
         }
     }
 }
@@ -394,7 +394,7 @@ impl DataState {
         Self {
             bytes_left,
             parent_state,
-            _phantom: PhantomData::<element_defs::DataDef>,
+            _phantom: PhantomData::<_>,
         }
     }
 }
@@ -439,7 +439,7 @@ impl VoidState {
         Self {
             bytes_left,
             parent_state,
-            _phantom: PhantomData::<element_defs::VoidDef>,
+            _phantom: PhantomData::<_>,
         }
     }
 }
