@@ -1,60 +1,60 @@
 use serde_derive::{Deserialize, Serialize};
-pub(crate) use serde_xml_rs::{from_str, to_string};
+pub use serde_xml_rs::{from_reader, from_str, to_string};
 
 // documentation, element, enum, extension, implementation_note, restriction, EBMLSchema
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename = "EBMLSchema")]
-pub(crate) struct EbmlSchema {
-    doctype: String,
-    version: u32,
-    ebml: u32,
+pub struct EbmlSchema {
+    pub doctype: String,
+    pub version: u32,
+    pub ebml: u32,
     #[serde(rename = "$value")]
-    elements: Vec<Element>,
+    pub elements: Vec<Element>,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct Element {
-    name: String,
-    path: String,
-    id: u32,
-    min_occurs: Option<usize>,
-    max_occurs: Option<usize>,
-    range: Option<String>, // numeric elements only
-    length: Option<String>,
-    default: Option<String>, // non-master elements only
-    r#type: String,
-    unknownsizeallowed: Option<bool>, // master elements only
-    recursive: Option<bool>,          // master elements only
-    recurring: Option<bool>,
-    minver: Option<u32>,
-    maxver: Option<u32>,
+pub struct Element {
+    pub name: String,
+    pub path: String,
+    pub id: u32,
+    pub min_occurs: Option<usize>,
+    pub max_occurs: Option<usize>,
+    pub range: Option<String>, // numeric elements only
+    pub length: Option<String>,
+    pub default: Option<String>, // non-master elements only
+    pub r#type: String,
+    pub unknownsizeallowed: Option<bool>, // master elements only
+    pub recursive: Option<bool>,          // master elements only
+    pub recurring: Option<bool>,
+    pub minver: Option<u32>,
+    pub maxver: Option<u32>,
 
     #[serde(rename = "$value")]
-    metadata: Vec<ElementValue>,
+    pub metadata: Vec<ElementValue>,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
-enum ElementValue {
+pub enum ElementValue {
     Documentation(Documentation),
     Extension(Extension),
     ImplementationNote(ImplementationNote),
     Restriction(Restriction),
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub(crate) struct Documentation {
-    lang: Option<String>,
-    purpose: DocumentationPurpose,
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct Documentation {
+    pub lang: Option<String>,
+    pub purpose: DocumentationPurpose,
     #[serde(rename = "$value")]
-    value: String,
+    pub value: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename = "purpose")]
-enum DocumentationPurpose {
+pub enum DocumentationPurpose {
     #[serde(rename = "definition")]
     Definition,
     #[serde(rename = "rationale")]
@@ -65,29 +65,29 @@ enum DocumentationPurpose {
     References,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub(crate) struct ImplementationNote {
-    note_attribute: String,
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct ImplementationNote {
+    pub note_attribute: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub(crate) struct Restriction {
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct Restriction {
     #[serde(rename = "$value")]
-    enums: Vec<Enum>,
+    pub enums: Vec<Enum>,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub(crate) struct Enum {
-    label: String,
-    value: u32,
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct Enum {
+    pub label: String,
+    pub value: u32,
     #[serde(rename = "$value")]
-    docs: Vec<Documentation>,
+    pub docs: Vec<Documentation>,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub(crate) struct Extension {
-    r#type: String,
-    webm: Option<bool>,
-    keep: Option<bool>,
-    cppname: Option<String>,
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct Extension {
+    pub r#type: String,
+    pub webm: Option<bool>,
+    pub keep: Option<bool>,
+    pub cppname: Option<String>,
 }
