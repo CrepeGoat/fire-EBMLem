@@ -19,8 +19,8 @@ The `Builder` object has the following responsibilities:
 
 **/
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct GlobalPlaceholder {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct GlobalPlaceholder {
     lower_bound: u64,
     upper_bound: Option<u64>,
 }
@@ -82,13 +82,43 @@ impl Default for GlobalPlaceholder {
 }
 
 #[derive(thiserror::Error, Debug)]
-enum GlobalPlaceHolderParserError {
+pub enum GlobalPlaceHolderParserError {
     #[error("invalid bound: {0}")]
     InvalidBound(<u64 as FromStr>::Err),
     #[error("missing token {0}")]
     MissingToken(char),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PathAtoms(Vec<(GlobalPlaceholder, String)>);
+
+impl FromStr for PathAtoms {
+    type Err = PathAtomsParserError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(
+            s.replace("\\)", ")") // global parent occurrence also uses '\' -> remove before...
+                .split(|c| c == '\\') // ...split on '\'
+                .map(|s| {
+                    let divider = s.find(')').map_or(0, |i| i + 1);
+                    let (s1, s2) = s.split_at(divider);
+                    Ok((
+                        s1.parse().map_err(Self::Err::InvalidGlobalPlaceholder)?,
+                        s2.to_string(),
+                    ))
+                })
+                .collect::<Result<_, _>>()?,
+        ))
+    }
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum PathAtomsParserError {
+    #[error("invalid global placeholder: {0}")]
+    InvalidGlobalPlaceholder(<GlobalPlaceholder as FromStr>::Err),
+}
+
+#[derive(Debug)]
 pub struct Builder {
     schema: EbmlSchema,
 }
@@ -98,7 +128,7 @@ impl Builder {
         Self { schema }
     }
 
-    pub fn generate(self) -> Result<Parsers, ()> {
+    pub fn generate(self) -> Result<Parsers, BuilderGenerateError> {
         // Validate inputs & configuration
         // ...
         // Return `Parsers` object
@@ -111,43 +141,61 @@ impl Builder {
             .map(|elem| (elem.id, elem))
             .collect();
 
-        let pathed_elems = elems
+        let pathed_elems: Trie<(GlobalPlaceholder, String), &Element> = elems
             .values()
             .map(|elem| {
                 let path_atoms = elem
                     .path
-                    .replace("\\)", ")") // global parent occurrence also uses '\' -> remove before...
-                    .split(|c| c == '\\') // ...split on '\'
-                    .map(|s| s.to_string())
-                    .collect::<Vec<_>>();
-                (path_atoms, elem)
+                    .parse::<PathAtoms>()
+                    .map_err(BuilderGenerateError::InvalidPath)?
+                    .0; // trie should use single path atoms as edges
+                Ok((path_atoms, elem))
             })
-            .collect::<Trie<_, _>>();
+            .collect::<Result<_, _>>()?;
 
-        let elem_parents = pathed_elems
+        let elem_parents: HashMap<u32, Vec<Option<u32>>> = pathed_elems
             .iter()
-            .map(|(fullpath, elem)| {
-                let (fullname, parent_path) = fullpath.split_last().unwrap();
-                let global_span: GlobalPlaceholder =
-                    fullname.strip_suffix(&elem.name).unwrap().parse().unwrap();
+            .map(|(path_atoms, elem)| {
+                let expt_first_atom = &[&(Default::default(), "".to_string())];
+                let path_atoms = path_atoms
+                    .strip_prefix(expt_first_atom)
+                    .ok_or_else(|| BuilderGenerateError::NonNullPathPrefix(elem.path.clone()))?;
+                let ((global_span, name), parent_path_atoms) = path_atoms
+                    .split_last()
+                    .ok_or_else(|| BuilderGenerateError::EmptyPath(elem.name.clone()))?;
+                if name != &elem.name {
+                    return Err(BuilderGenerateError::MismatchedPathName(
+                        elem.name.clone(),
+                        name.to_string(),
+                    ));
+                }
 
-                let parent_ids = if global_span == Default::default() {
-                    vec![(!parent_path.is_empty())
-                        .then(|| pathed_elems.get(parent_path.iter().copied()).unwrap().id)]
+                let parent_ids: Vec<Option<u32>> = if *global_span == Default::default() {
+                    let parent_id = (!parent_path_atoms.is_empty())
+                        .then(|| {
+                            pathed_elems
+                                .get(parent_path_atoms.iter().copied())
+                                .map(|elem| elem.id)
+                                .ok_or_else(|| {
+                                    BuilderGenerateError::NoDirectParent(elem.path.clone())
+                                })
+                        })
+                        .transpose()?;
+                    vec![parent_id]
                 } else {
                     todo!()
                 };
 
-                (elem.id, parent_ids)
+                Ok((elem.id, parent_ids))
             })
-            .collect::<HashMap<_, _>>();
+            .collect::<Result<_, _>>()?;
 
         let mut elem_children = HashMap::new();
         for (elem_id, parent_ids) in elem_parents.iter() {
             for parent_id in parent_ids.iter() {
                 elem_children
                     .entry(*parent_id)
-                    .or_insert(Vec::new())
+                    .or_insert_with(Vec::new)
                     .push(*elem_id);
             }
         }
@@ -158,6 +206,20 @@ impl Builder {
             children: elem_children,
         })
     }
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum BuilderGenerateError {
+    #[error("invalid path: {0}")]
+    InvalidPath(<PathAtoms as FromStr>::Err),
+    #[error("empty path for element name {0}")]
+    EmptyPath(String),
+    #[error("inconsistent element name: element labeled {0}, but path terminated with {1}")]
+    MismatchedPathName(String, String),
+    #[error("no direct parent element in path {0}")]
+    NoDirectParent(String),
+    #[error("expected a null prefix in path {0}")]
+    NonNullPathPrefix(String),
 }
 
 /**
