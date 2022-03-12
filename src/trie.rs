@@ -42,11 +42,25 @@ where
         }
     }
 
-    pub fn get<I: IntoIterator<Item = K>>(&self, keys: I) -> Option<&V> {
+    pub fn get<'a, I: IntoIterator<Item = &'a K>>(&self, keys: I) -> Option<&V>
+    where
+        K: 'a,
+    {
         let mut keys = keys.into_iter();
         match keys.next() {
-            Some(next_key) => self.subtries.get(&next_key).and_then(|trie| trie.get(keys)),
+            Some(next_key) => self.subtries.get(next_key).and_then(|trie| trie.get(keys)),
             None => self.leaf.as_ref(),
+        }
+    }
+
+    pub fn subtrie<I: IntoIterator<Item = K>>(&self, keys: I) -> Option<&Trie<K, V>> {
+        let mut keys = keys.into_iter();
+        match keys.next() {
+            Some(next_key) => self
+                .subtries
+                .get(&next_key)
+                .and_then(|trie| trie.subtrie(keys)),
+            None => Some(self),
         }
     }
 
@@ -55,7 +69,7 @@ where
 
         let iter_subtrie_meta = core::iter::from_fn(move || {
             let next_item = trie_buffer.pop();
-            if let Some((depth, key, trie)) = next_item {
+            if let Some((depth, _key, trie)) = next_item {
                 trie_buffer.extend(trie.subtries.iter().map(|(k, v)| (depth + 1, Some(k), v)));
             }
             next_item
@@ -81,20 +95,6 @@ where
             }
         })
         .filter_map(|trie| trie.leaf.as_ref())
-    }
-
-    pub fn iter_sub<I: IntoIterator<Item = K>>(
-        &self,
-        keys: I,
-    ) -> Option<std::collections::hash_map::Iter<'_, K, Trie<K, V>>> {
-        let mut keys = keys.into_iter();
-        match keys.next() {
-            Some(next_key) => self
-                .subtries
-                .get(&next_key)
-                .and_then(|trie| trie.iter_sub(keys)),
-            None => Some(self.subtries.iter()),
-        }
     }
 }
 
