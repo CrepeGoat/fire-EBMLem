@@ -45,7 +45,7 @@ impl FromStr for GlobalPlaceholder {
         if s.is_empty() {
             return Ok(Self {
                 lower_bound: 0,
-                upper_bound: None,
+                upper_bound: Some(0),
             });
         }
 
@@ -81,7 +81,7 @@ impl Default for GlobalPlaceholder {
     }
 }
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, Clone, PartialEq)]
 pub enum GlobalPlaceHolderParserError {
     #[error("invalid bound: {0}")]
     InvalidBound(<u64 as FromStr>::Err),
@@ -170,21 +170,22 @@ impl Builder {
                     ));
                 }
 
-                let parent_ids: Vec<Option<u32>> = if *global_span == Default::default() {
-                    let parent_id = (!parent_path_atoms.is_empty())
-                        .then(|| {
-                            pathed_elems
-                                .get(parent_path_atoms.iter().copied())
-                                .map(|elem| elem.id)
-                                .ok_or_else(|| {
-                                    BuilderGenerateError::NoDirectParent(elem.path.clone())
-                                })
-                        })
-                        .transpose()?;
-                    vec![parent_id]
-                } else {
-                    todo!()
-                };
+                let mut parent_ids: Vec<Option<u32>> = pathed_elems
+                    .subtrie(parent_path_atoms.iter().copied())
+                    .ok_or_else(|| BuilderGenerateError::NoDirectParent(elem.name.clone()))?
+                    .iter_depths()
+                    .skip_while(|(depth, _trie)| depth < &(global_span.lower_bound as usize))
+                    .take_while(|(depth, _trie)| {
+                        global_span
+                            .upper_bound
+                            .map_or(true, |ubnd| depth <= &(ubnd as usize))
+                    })
+                    // v the root trie will have *no* leaf -> treat this as id = None
+                    .map(|(_depth, &elem)| Some(elem.id))
+                    .collect::<Vec<_>>();
+                if parent_path_atoms.is_empty() && global_span.contains(&0) {
+                    parent_ids.push(None);
+                }
 
                 Ok((elem.id, parent_ids))
             })
@@ -250,5 +251,27 @@ impl Parsers {
 
     pub fn write<'a>(&self, mut writer: Box<dyn io::Write + 'a>) -> io::Result<()> {
         todo!();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::*;
+
+    #[rstest]
+    #[case("", Ok(GlobalPlaceholder{lower_bound: 0, upper_bound: Some(0)}))]
+    #[case("(-)", Ok(GlobalPlaceholder{lower_bound: 0, upper_bound: None}))]
+    #[case("(1-)", Ok(GlobalPlaceholder{lower_bound: 1, upper_bound: None}))]
+    #[case("(-3)", Ok(GlobalPlaceholder{lower_bound: 0, upper_bound: Some(3)}))]
+    #[case("(2-3)", Ok(GlobalPlaceholder{lower_bound: 2, upper_bound: Some(3)}))]
+    #[case("(23)", Err(GlobalPlaceHolderParserError::MissingToken('-')))]
+    #[case("2-3)", Err(GlobalPlaceHolderParserError::MissingToken('(')))]
+    #[case("(2-3", Err(GlobalPlaceHolderParserError::MissingToken(')')))]
+    fn global_placeholder_parse(
+        #[case] s: &'static str,
+        #[case] expt_result: Result<GlobalPlaceholder, GlobalPlaceHolderParserError>,
+    ) {
+        assert_eq!(s.parse(), expt_result);
     }
 }
