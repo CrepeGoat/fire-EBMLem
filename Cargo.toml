@@ -16,5 +16,5 @@ serde_derive = "1.0.136"
 serde-xml-rs = "0.5.1"
 
 [dev-dependencies]
-rstest = "0.6.4"
+rstest = "0.12.0"
 proptest = "0.10.1"

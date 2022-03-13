@@ -53,7 +53,10 @@ where
         }
     }
 
-    pub fn subtrie<I: IntoIterator<Item = K>>(&self, keys: I) -> Option<&Trie<K, V>> {
+    pub fn subtrie<'a, I: IntoIterator<Item = &'a K>>(&self, keys: I) -> Option<&Trie<K, V>>
+    where
+        K: 'a,
+    {
         let mut keys = keys.into_iter();
         match keys.next() {
             Some(next_key) => self
@@ -81,6 +84,31 @@ where
                 Some((keypath.clone(), trie))
             })
             .filter_map(|(keypath, trie)| trie.leaf.as_ref().map(|value| (keypath, value)))
+    }
+
+    pub fn iter_depths(&self) -> impl core::iter::Iterator<Item = (usize, &V)> {
+        let mut buffer1 = vec![self];
+        let mut buffer2 = Vec::new();
+        let mut depth: usize = 0;
+
+        core::iter::from_fn(move || {
+            if buffer1.is_empty() {
+                if buffer2.is_empty() {
+                    return None;
+                }
+
+                core::mem::swap(&mut buffer1, &mut buffer2);
+                depth += 1;
+            }
+
+            if let Some(next_trie) = buffer1.pop() {
+                buffer2.extend(next_trie.subtries.values());
+                Some((depth, next_trie))
+            } else {
+                unreachable!("already checked that there are items remaining")
+            }
+        })
+        .filter_map(|(depth, trie)| trie.leaf.as_ref().map(|value| (depth, value)))
     }
 
     pub fn iter_values(&self) -> impl core::iter::Iterator<Item = &V> {
