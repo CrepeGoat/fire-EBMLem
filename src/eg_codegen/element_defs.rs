@@ -4,6 +4,28 @@ use crate::element_defs::{
 };
 use crate::element_defs::{Bound, ParentOf};
 
+// parent: File
+#[derive(Debug, Clone, PartialEq)]
+pub struct VoidDef;
+
+impl ElementDef for VoidDef {
+    const ID: u32 = 0xEC;
+
+    type LastParent = FileDef;
+    const GLOBAL_PARENT_OCCURENCE: (usize, usize) = (0, 0);
+
+    const MIN_OCCURS: usize = 1;
+    const MAX_OCCURS: usize = usize::MAX;
+    const LENGTH: Range<usize> = Range::IsWithin(Bound::Unbounded, Bound::Unbounded);
+    const RECURRING: bool = false;
+    const MIN_VERSION: u64 = 1;
+    const MAX_VERSION: u64 = 1;
+}
+
+impl BinaryElementDef for VoidDef {
+    const DEFAULT: Option<&'static [u8]> = None;
+}
+
 // parent: (None)
 #[derive(Debug, Clone, PartialEq)]
 pub struct FilesDef;
