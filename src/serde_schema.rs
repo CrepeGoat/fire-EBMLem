@@ -24,7 +24,7 @@ pub struct Element {
     pub range: Option<String>, // numeric elements only
     pub length: Option<String>,
     pub default: Option<String>, // non-master elements only
-    pub r#type: String,
+    pub r#type: ElementType,
     pub unknownsizeallowed: Option<bool>, // master elements only
     pub recursive: Option<bool>,          // master elements only
     pub recurring: Option<bool>,
@@ -33,6 +33,27 @@ pub struct Element {
 
     #[serde(rename = "$value")]
     pub metadata: Vec<ElementValue>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename = "type")]
+pub enum ElementType {
+    #[serde(rename = "integer")]
+    SignedInteger,
+    #[serde(rename = "uinteger")]
+    UnsignedInteger,
+    #[serde(rename = "float")]
+    Float,
+    #[serde(rename = "string")]
+    String,
+    #[serde(rename = "date")]
+    Date,
+    #[serde(rename = "utf-8")]
+    Utf8,
+    #[serde(rename = "master")]
+    Master,
+    #[serde(rename = "binary")]
+    Binary,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
