@@ -7,8 +7,8 @@ use std::io::BufRead;
 use crate::eg_codegen::element_defs;
 use crate::element_defs::{ElementDef, ParentOf};
 use crate::parser::{
-    ElementReader, ElementState, IntoReader, NextStateNavigation, ReaderError, SkipStateNavigation,
-    StateDataParser, StateError, StateOf,
+    BoundTo, ElementReader, ElementState, IntoReader, NextStateNavigation, ReaderError,
+    SkipStateNavigation, StateDataParser, StateError,
 };
 use crate::stream::{parse, serialize, stream_diff};
 use crate::{

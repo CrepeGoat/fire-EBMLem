@@ -5,9 +5,16 @@ use crate::element_defs::{
 use crate::stream::parse;
 
 use core::convert::From;
-use core::fmt;
 use core::fmt::Debug;
 use core::marker::PhantomData;
+
+// marks an object with a single respective element type
+pub trait BoundTo
+where
+    Self::Element: ElementDef,
+{
+    type Element;
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ElementState<E: ElementDef, S> {
@@ -144,16 +151,8 @@ impl<'a, E: BinaryElementDef, S> StateDataParser<'a, BinaryParserMarker, &'a [u8
     }
 }
 
-// marks a state; binds a state type to a single element type
-pub trait StateOf {
-    type Element;
-}
-
-impl<E: ElementDef, S> StateOf for ElementState<E, S> {
+impl<E: ElementDef, S> BoundTo for ElementState<E, S> {
     type Element = E;
-}
-impl StateOf for () {
-    type Element = ();
 }
 
 #[derive(Debug, PartialEq)]
@@ -305,6 +304,10 @@ impl<E: ElementDef, S, R: std::io::BufRead> From<ElementReader<R, ElementState<E
     }
 }
 
+impl<R, S: BoundTo> BoundTo for ElementReader<R, S> {
+    type Element = S::Element;
+}
+
 pub trait IntoReader<R: std::io::BufRead> {
     type Reader;
 
@@ -374,12 +377,12 @@ macro_rules! impl_next_state_navigation {
                             stream,
                             match id {
                                 $(
-                                    <<$ElementState as StateOf>::Element as ElementDef>::ID =>
+                                    <<$ElementState as BoundTo>::Element as ElementDef>::ID =>
                                         Self::NextStates::$ElementName($ElementState::new(len, self.into())),
                                 )*
                                 id => {
                                     return Err(nom::Err::Failure(StateError::InvalidChildId(
-                                        Some(<<Self as StateOf>::Element as ElementDef>::ID),
+                                        Some(<<Self as BoundTo>::Element as ElementDef>::ID),
                                         id,
                                     )))
                                 }
