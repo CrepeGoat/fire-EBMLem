@@ -1,9 +1,9 @@
 // interface loosely based on that of bindgen: https://crates.io/crates/bindgen
 
-use crate::serde_schema::{EbmlSchema, Element};
+use crate::serde_schema::{EbmlSchema, Element, ElementType};
 use crate::trie::Trie;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::OpenOptions;
 use std::io;
 use std::path::Path;
@@ -43,10 +43,7 @@ impl FromStr for GlobalPlaceholder {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.is_empty() {
-            return Ok(Self {
-                lower_bound: 0,
-                upper_bound: Some(0),
-            });
+            return Ok(Self::default());
         }
 
         let s = s
@@ -96,9 +93,14 @@ impl FromStr for PathAtoms {
     type Err = PathAtomsParserError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.is_empty() {
+            return Ok(Self(Vec::new()));
+        }
         Ok(Self(
-            s.replace("\\)", ")") // global parent occurrence also uses '\' -> remove before...
-                .split(|c| c == '\\') // ...split on '\'
+            s.replace("\\)", ")") // global parent occurrence also uses '\' -> remove...
+                .strip_prefix('\\') // each path atom starts with \ -> remove the first...
+                .ok_or(Self::Err::MissingPathDivider)?
+                .split(|c| c == '\\') // ...then split on '\'
                 .map(|s| {
                     let divider = s.find(')').map_or(0, |i| i + 1);
                     let (s1, s2) = s.split_at(divider);
@@ -112,8 +114,10 @@ impl FromStr for PathAtoms {
     }
 }
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, Clone, PartialEq)]
 pub enum PathAtomsParserError {
+    #[error("missing path divider '\\'")]
+    MissingPathDivider,
     #[error("invalid global placeholder: {0}")]
     InvalidGlobalPlaceholder(<GlobalPlaceholder as FromStr>::Err),
 }
@@ -153,13 +157,13 @@ impl Builder {
             })
             .collect::<Result<_, _>>()?;
 
-        let elem_parents: HashMap<u32, Vec<Option<u32>>> = pathed_elems
+        let elem_parents: HashMap<u32, HashSet<Option<u32>>> = pathed_elems
             .iter()
             .map(|(path_atoms, elem)| {
-                let expt_first_atom = &[&(Default::default(), "".to_string())];
-                let path_atoms = path_atoms
-                    .strip_prefix(expt_first_atom)
-                    .ok_or_else(|| BuilderGenerateError::NonNullPathPrefix(elem.path.clone()))?;
+                //let expt_first_atom = &[&(Default::default(), "".to_string())];
+                //let path_atoms = path_atoms
+                //    .strip_prefix(expt_first_atom)
+                //    .ok_or_else(|| BuilderGenerateError::NonNullPathPrefix(elem.path.clone()))?;
                 let ((global_span, name), parent_path_atoms) = path_atoms
                     .split_last()
                     .ok_or_else(|| BuilderGenerateError::EmptyPath(elem.name.clone()))?;
@@ -170,21 +174,22 @@ impl Builder {
                     ));
                 }
 
-                let mut parent_ids: Vec<Option<u32>> = pathed_elems
+                let mut parent_ids: HashSet<Option<u32>> = pathed_elems
                     .subtrie(parent_path_atoms.iter().copied())
                     .ok_or_else(|| BuilderGenerateError::NoDirectParent(elem.name.clone()))?
                     .iter_depths()
-                    .skip_while(|(depth, _trie)| depth < &(global_span.lower_bound as usize))
-                    .take_while(|(depth, _trie)| {
+                    .skip_while(|(depth, _elem)| depth < &(global_span.lower_bound as usize))
+                    .take_while(|(depth, _elem)| {
                         global_span
                             .upper_bound
                             .map_or(true, |ubnd| depth <= &(ubnd as usize))
                     })
+                    .filter(|(_depth, elem)| elem.r#type == ElementType::Master)
                     // v the root trie will have *no* leaf -> treat this as id = None
                     .map(|(_depth, &elem)| Some(elem.id))
-                    .collect::<Vec<_>>();
+                    .collect::<HashSet<_>>();
                 if parent_path_atoms.is_empty() && global_span.contains(&0) {
-                    parent_ids.push(None);
+                    parent_ids.insert(None);
                 }
 
                 Ok((elem.id, parent_ids))
@@ -196,9 +201,14 @@ impl Builder {
             for parent_id in parent_ids.iter() {
                 elem_children
                     .entry(*parent_id)
-                    .or_insert_with(Vec::new)
-                    .push(*elem_id);
+                    .or_insert_with(HashSet::new)
+                    .insert(*elem_id);
             }
+        }
+        for elem_id in elems.keys() {
+            elem_children
+                .entry(Some(*elem_id))
+                .or_insert_with(HashSet::new);
         }
 
         Ok(Parsers {
@@ -234,8 +244,8 @@ pub struct Parsers {
     // u32's are the element ID's
     // ID = `None` -> root document
     elements: HashMap<u32, Element>, // the root doesn't have a schema config
-    parents: HashMap<u32, Vec<Option<u32>>>, // the root can BE a parent, but will not HAVE a parent
-    children: HashMap<Option<u32>, Vec<u32>>, // the root can HAVE children, but will not BE a child
+    parents: HashMap<u32, HashSet<Option<u32>>>, // the root can BE a parent, but will not HAVE a parent
+    children: HashMap<Option<u32>, HashSet<u32>>, // the root can HAVE children, but will not BE a child
 }
 
 impl Parsers {
@@ -259,6 +269,8 @@ mod tests {
     use super::*;
     use rstest::*;
 
+    use crate::serde_schema::*;
+
     #[rstest]
     #[case("", Ok(GlobalPlaceholder{lower_bound: 0, upper_bound: Some(0)}))]
     #[case("(-)", Ok(GlobalPlaceholder{lower_bound: 0, upper_bound: None}))]
@@ -273,5 +285,159 @@ mod tests {
         #[case] expt_result: Result<GlobalPlaceholder, GlobalPlaceHolderParserError>,
     ) {
         assert_eq!(s.parse(), expt_result);
+    }
+
+    #[rstest]
+    #[case("", Ok(PathAtoms(Vec::new())))]
+    #[case("\\EBML", Ok(PathAtoms(vec![(GlobalPlaceholder::default(), "EBML".to_string())])))]
+    #[case("\\EBML\\EBMLVersion", Ok(PathAtoms(vec![
+        (GlobalPlaceholder::default(), "EBML".to_string()),
+        (GlobalPlaceholder::default(), "EBMLVersion".to_string()),
+    ])))]
+    #[case("\\(-)Void", Ok(PathAtoms(vec![
+        (GlobalPlaceholder{lower_bound: 0, upper_bound: None}, "Void".to_string()),
+    ])))]
+    fn path_atoms_parse(
+        #[case] s: &'static str,
+        #[case] expt_result: Result<PathAtoms, PathAtomsParserError>,
+    ) {
+        assert_eq!(s.parse(), expt_result);
+    }
+
+    #[fixture]
+    fn schema() -> EbmlSchema {
+        EbmlSchema {
+            doctype: "matroska".to_string(),
+            version: 4,
+            ebml: 1,
+            elements: vec![
+                Element {
+                    name: "EBML".to_string(),
+                    path: "\\EBML".to_string(),
+                    id: 0x1A45DFA3,
+                    min_occurs: Some(1),
+                    max_occurs: Some(1),
+                    range: None,
+                    length: None,
+                    default: None,
+                    r#type: ElementType::Master,
+                    unknownsizeallowed: None,
+                    recursive: None,
+                    recurring: None,
+                    minver: None,
+                    maxver: None,
+                    metadata: Vec::new(),
+                },
+                Element {
+                    name: "EBMLVersion".to_string(),
+                    path: "\\EBML\\EBMLVersion".to_string(),
+                    id: 0x4286,
+                    min_occurs: Some(1),
+                    max_occurs: Some(1),
+                    range: Some("not 0".to_string()),
+                    length: None,
+                    default: Some("1".to_string()),
+                    r#type: ElementType::UnsignedInteger,
+                    unknownsizeallowed: None,
+                    recursive: None,
+                    recurring: None,
+                    minver: None,
+                    maxver: None,
+                    metadata: Vec::new(),
+                },
+                Element {
+                    name: "DocType".to_string(),
+                    path: "\\EBML\\DocType".to_string(),
+                    id: 0x4282,
+                    min_occurs: Some(1),
+                    max_occurs: Some(1),
+                    range: None,
+                    length: Some("&gt;0".to_string()),
+                    default: None,
+                    r#type: ElementType::String,
+                    unknownsizeallowed: None,
+                    recursive: None,
+                    recurring: None,
+                    minver: None,
+                    maxver: None,
+                    metadata: Vec::new(),
+                },
+                Element {
+                    name: "Void".to_string(),
+                    path: "\\(-\\)Void".to_string(),
+                    id: 0xEC,
+                    min_occurs: None,
+                    max_occurs: Some(1),
+                    range: None,
+                    length: Some("4".to_string()),
+                    default: None,
+                    r#type: ElementType::Binary,
+                    unknownsizeallowed: None,
+                    recursive: None,
+                    recurring: None,
+                    minver: None,
+                    maxver: None,
+                    metadata: Vec::new(),
+                },
+            ],
+        }
+    }
+
+    #[rstest]
+    fn builder_generate(schema: EbmlSchema) {
+        let result = Builder::new(schema).generate();
+        let result = result.unwrap();
+
+        assert_eq!(
+            result
+                .elements
+                .keys()
+                .collect::<std::collections::HashSet<_>>(),
+            vec![0x1A45DFA3, 0x4286, 0x4282, 0xEC]
+                .iter()
+                .collect::<std::collections::HashSet<_>>()
+        );
+        assert_eq!(
+            result.parents,
+            vec![
+                (0x1A45DFA3, vec![None].into_iter().collect::<HashSet<_>>()),
+                (
+                    0x4286,
+                    vec![Some(0x1A45DFA3)].into_iter().collect::<HashSet<_>>()
+                ),
+                (
+                    0x4282,
+                    vec![Some(0x1A45DFA3)].into_iter().collect::<HashSet<_>>()
+                ),
+                (
+                    0xEC,
+                    vec![None, Some(0x1A45DFA3)]
+                        .into_iter()
+                        .collect::<HashSet<_>>()
+                ),
+            ]
+            .into_iter()
+            .collect::<HashMap<_, _>>()
+        );
+        assert_eq!(
+            result.children,
+            vec![
+                (
+                    None,
+                    vec![0x1A45DFA3, 0xEC].into_iter().collect::<HashSet<_>>()
+                ),
+                (
+                    Some(0x1A45DFA3),
+                    vec![0x4286, 0x4282, 0xEC]
+                        .into_iter()
+                        .collect::<HashSet<_>>()
+                ),
+                (Some(0x4286), HashSet::new()),
+                (Some(0x4282), HashSet::new()),
+                (Some(0xEC), HashSet::new()),
+            ]
+            .into_iter()
+            .collect::<HashMap<_, _>>()
+        );
     }
 }
