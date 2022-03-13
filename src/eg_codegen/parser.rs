@@ -4,7 +4,10 @@ use std::io::BufRead;
 
 use crate::eg_codegen::element_defs;
 use crate::element_defs::{ElementDef, ParentOf};
-use crate::parser::{ElementReader, ElementState, ReaderError, StateError, StateOf};
+use crate::parser::{
+    ElementReader, ElementState, IntoReader, ReaderError, StateDataParser, StateError,
+    StateNavigation, StateOf,
+};
 use crate::stream::{parse, serialize, stream_diff};
 
 // Top-Level Reader/State Enums #########################################################################
@@ -31,8 +34,10 @@ pub enum Readers<R> {
     Data(DataReader<R>),
 }
 
-impl States {
-    fn into_reader<R: BufRead>(self, reader: R) -> Readers<R> {
+impl<R: BufRead> IntoReader<R> for States {
+    type Reader = Readers<R>;
+
+    fn into_reader(self, reader: R) -> Readers<R> {
         match self {
             Self::_Document(state) => Readers::_Document(state.into_reader(reader)),
             Self::Void(state) => Readers::Void(state.into_reader(reader)),
@@ -111,8 +116,9 @@ impl<R: BufRead> From<_DocumentNextReaders<R>> for Readers<R> {
     }
 }
 
-impl _DocumentNextStates {
-    fn into_reader<R: BufRead>(self, reader: R) -> _DocumentNextReaders<R> {
+impl<R: BufRead> IntoReader<R> for _DocumentNextStates {
+    type Reader = _DocumentNextReaders<R>;
+    fn into_reader(self, reader: R) -> _DocumentNextReaders<R> {
         match self {
             Self::Void(state) => _DocumentNextReaders::Void(state.into_reader(reader)),
             Self::Files(state) => _DocumentNextReaders::Files(state.into_reader(reader)),
@@ -130,10 +136,6 @@ impl<R> From<_DocumentNextReaders<R>> for _DocumentNextStates {
 }
 
 impl _DocumentState {
-    fn into_reader<R: BufRead>(self, reader: R) -> _DocumentReader<R> {
-        _DocumentReader::new(reader)
-    }
-
     fn next(self, stream: &[u8]) -> nom::IResult<&[u8], _DocumentNextStates, StateError> {
         let (stream, id) = parse::element_id(stream).map_err(nom::Err::convert)?;
         let (stream, len) = parse::element_len(stream).map_err(nom::Err::convert)?;
@@ -178,6 +180,13 @@ impl<R: BufRead> _DocumentReader<R> {
     }
 }
 
+impl<R: BufRead> IntoReader<R> for _DocumentState {
+    type Reader = _DocumentReader<R>;
+    fn into_reader(self, reader: R) -> _DocumentReader<R> {
+        _DocumentReader::new(reader)
+    }
+}
+
 // Files Objects #########################################################################
 
 pub type FilesReader<R> = ElementReader<R, FilesState>;
@@ -196,7 +205,7 @@ impl<R: BufRead> From<FilesReader<R>> for Readers<R> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-enum FilesNextStates {
+pub enum FilesNextStates {
     Void(VoidState),
     File(FileState),
     Parent(_DocumentState),
@@ -229,8 +238,9 @@ impl<R: BufRead> From<FilesNextReaders<R>> for Readers<R> {
     }
 }
 
-impl FilesNextStates {
-    fn into_reader<R: BufRead>(self, reader: R) -> FilesNextReaders<R> {
+impl<R: BufRead> IntoReader<R> for FilesNextStates {
+    type Reader = FilesNextReaders<R>;
+    fn into_reader(self, reader: R) -> FilesNextReaders<R> {
         match self {
             Self::Void(state) => FilesNextReaders::Void(state.into_reader(reader)),
             Self::File(state) => FilesNextReaders::File(state.into_reader(reader)),
@@ -257,10 +267,11 @@ impl FilesState {
             _phantom: PhantomData::<element_defs::FilesDef>,
         }
     }
+}
 
-    fn into_reader<R: BufRead>(self, reader: R) -> FilesReader<R> {
-        FilesReader::new(reader, self)
-    }
+impl StateNavigation for FilesState {
+    type PrevStates = _DocumentState;
+    type NextStates = FilesNextStates;
 
     fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], _DocumentState, StateError> {
         let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
@@ -315,25 +326,12 @@ impl<R: BufRead> FilesReader<R> {
     pub fn new(reader: R, state: FilesState) -> Self {
         Self { reader, state }
     }
+}
 
-    pub fn skip(mut self) -> Result<_DocumentReader<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.skip(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
-    }
-
-    pub fn next(mut self) -> Result<FilesNextReaders<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.next(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
+impl<R: BufRead> IntoReader<R> for FilesState {
+    type Reader = FilesReader<R>;
+    fn into_reader(self, reader: R) -> FilesReader<R> {
+        FilesReader::new(reader, self)
     }
 }
 
@@ -355,7 +353,7 @@ impl<R: BufRead> From<FileReader<R>> for Readers<R> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-enum FileNextStates {
+pub enum FileNextStates {
     Void(VoidState),
     FileName(FileNameState),
     MimeType(MimeTypeState),
@@ -415,8 +413,9 @@ impl<R> From<FileNextReaders<R>> for FileNextStates {
     }
 }
 
-impl FileNextStates {
-    fn into_reader<R: BufRead>(self, reader: R) -> FileNextReaders<R> {
+impl<R: BufRead> IntoReader<R> for FileNextStates {
+    type Reader = FileNextReaders<R>;
+    fn into_reader(self, reader: R) -> FileNextReaders<R> {
         match self {
             Self::Void(state) => FileNextReaders::<R>::Void(state.into_reader(reader)),
             Self::FileName(state) => FileNextReaders::<R>::FileName(state.into_reader(reader)),
@@ -438,10 +437,11 @@ impl FileState {
             _phantom: PhantomData::<element_defs::FileDef>,
         }
     }
+}
 
-    fn into_reader<R: BufRead>(self, reader: R) -> FileReader<R> {
-        FileReader::new(reader, self)
-    }
+impl StateNavigation for FileState {
+    type PrevStates = FilesState;
+    type NextStates = FileNextStates;
 
     fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FilesState, StateError> {
         let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
@@ -507,25 +507,12 @@ impl<R: BufRead> FileReader<R> {
     pub fn new(reader: R, state: FileState) -> Self {
         Self { reader, state }
     }
+}
 
-    pub fn skip(mut self) -> Result<FilesReader<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.skip(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
-    }
-
-    pub fn next(mut self) -> Result<FileNextReaders<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.next(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
+impl<R: BufRead> IntoReader<R> for FileState {
+    type Reader = FileReader<R>;
+    fn into_reader(self, reader: R) -> FileReader<R> {
+        FileReader::new(reader, self)
     }
 }
 
@@ -554,10 +541,11 @@ impl FileNameState {
             _phantom: PhantomData::<element_defs::FileNameDef>,
         }
     }
+}
 
-    fn into_reader<R: BufRead>(self, reader: R) -> FileNameReader<R> {
-        FileNameReader::new(reader, self)
-    }
+impl StateNavigation for FileNameState {
+    type PrevStates = FileState;
+    type NextStates = FileState;
 
     fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
         let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
@@ -568,45 +556,18 @@ impl FileNameState {
     fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
         self.skip(stream)
     }
-
-    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (FileState, &str), StateError> {
-        let (stream, data) =
-            parse::unicode_str(stream, self.bytes_left).map_err(nom::Err::convert)?;
-
-        Ok((stream, (self.parent_state, data)))
-    }
 }
 
 impl<R: BufRead> FileNameReader<R> {
     pub fn new(reader: R, state: FileNameState) -> Self {
         Self { reader, state }
     }
+}
 
-    pub fn skip(mut self) -> Result<FileReader<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.skip(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
-    }
-
-    pub fn next(mut self) -> Result<FileReader<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.next(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
-    }
-
-    pub fn read(&mut self) -> Result<&str, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-        let (_, (_, data)) = self.state.clone().read(stream)?;
-
-        Ok(data)
+impl<R: BufRead> IntoReader<R> for FileNameState {
+    type Reader = FileNameReader<R>;
+    fn into_reader(self, reader: R) -> FileNameReader<R> {
+        FileNameReader::new(reader, self)
     }
 }
 
@@ -635,10 +596,11 @@ impl MimeTypeState {
             _phantom: PhantomData::<element_defs::MimeTypeDef>,
         }
     }
+}
 
-    fn into_reader<R: BufRead>(self, reader: R) -> MimeTypeReader<R> {
-        MimeTypeReader::new(reader, self)
-    }
+impl StateNavigation for MimeTypeState {
+    type PrevStates = FileState;
+    type NextStates = FileState;
 
     fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
         let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
@@ -649,45 +611,18 @@ impl MimeTypeState {
     fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
         self.skip(stream)
     }
-
-    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (FileState, &str), StateError> {
-        let (stream, data) =
-            parse::ascii_str(stream, self.bytes_left).map_err(nom::Err::convert)?;
-
-        Ok((stream, (self.parent_state, data)))
-    }
 }
 
 impl<R: BufRead> MimeTypeReader<R> {
     pub fn new(reader: R, state: MimeTypeState) -> Self {
         Self { reader, state }
     }
+}
 
-    pub fn skip(mut self) -> Result<FileReader<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.skip(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
-    }
-
-    pub fn next(mut self) -> Result<FileReader<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.next(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
-    }
-
-    pub fn read(&mut self) -> Result<&str, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-        let (_, (_, data)) = self.state.clone().read(stream)?;
-
-        Ok(data)
+impl<R: BufRead> IntoReader<R> for MimeTypeState {
+    type Reader = MimeTypeReader<R>;
+    fn into_reader(self, reader: R) -> MimeTypeReader<R> {
+        MimeTypeReader::new(reader, self)
     }
 }
 
@@ -717,10 +652,11 @@ impl ModificationTimestampState {
             _phantom: PhantomData::<element_defs::ModificationTimestampDef>,
         }
     }
+}
 
-    fn into_reader<R: BufRead>(self, reader: R) -> ModificationTimestampReader<R> {
-        ModificationTimestampReader::new(reader, self)
-    }
+impl StateNavigation for ModificationTimestampState {
+    type PrevStates = FileState;
+    type NextStates = FileState;
 
     fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
         let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
@@ -731,44 +667,18 @@ impl ModificationTimestampState {
     fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
         self.skip(stream)
     }
-
-    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (FileState, i64), StateError> {
-        let (stream, data) = parse::date(stream, self.bytes_left).map_err(nom::Err::convert)?;
-
-        Ok((stream, (self.parent_state, data)))
-    }
 }
 
 impl<R: BufRead> ModificationTimestampReader<R> {
     pub fn new(reader: R, state: ModificationTimestampState) -> Self {
         Self { reader, state }
     }
+}
 
-    pub fn skip(mut self) -> Result<FileReader<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.skip(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
-    }
-
-    pub fn next(mut self) -> Result<FileReader<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.next(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
-    }
-
-    pub fn read(&mut self) -> Result<i64, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-        let (_, (_, data)) = self.state.clone().read(stream)?;
-
-        Ok(data)
+impl<R: BufRead> IntoReader<R> for ModificationTimestampState {
+    type Reader = ModificationTimestampReader<R>;
+    fn into_reader(self, reader: R) -> ModificationTimestampReader<R> {
+        ModificationTimestampReader::new(reader, self)
     }
 }
 
@@ -797,10 +707,11 @@ impl DataState {
             _phantom: PhantomData::<element_defs::DataDef>,
         }
     }
+}
 
-    fn into_reader<R: BufRead>(self, reader: R) -> DataReader<R> {
-        DataReader::new(reader, self)
-    }
+impl StateNavigation for DataState {
+    type PrevStates = FileState;
+    type NextStates = FileState;
 
     fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
         let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
@@ -811,44 +722,18 @@ impl DataState {
     fn next(self, stream: &[u8]) -> nom::IResult<&[u8], FileState, StateError> {
         self.skip(stream)
     }
-
-    fn read(self, stream: &[u8]) -> nom::IResult<&[u8], (FileState, &[u8]), StateError> {
-        let (stream, data) = parse::binary(stream, self.bytes_left).map_err(nom::Err::convert)?;
-
-        Ok((stream, (self.parent_state, data)))
-    }
 }
 
 impl<R: BufRead> DataReader<R> {
     pub fn new(reader: R, state: DataState) -> Self {
         Self { reader, state }
     }
+}
 
-    pub fn skip(mut self) -> Result<FileReader<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.skip(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
-    }
-
-    pub fn next(mut self) -> Result<FileReader<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.next(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
-    }
-
-    pub fn read(&mut self) -> Result<&[u8], ReaderError> {
-        let stream = self.reader.fill_buf()?;
-        let (_, (_, data)) = self.state.clone().read(stream)?;
-
-        Ok(data)
+impl<R: BufRead> IntoReader<R> for DataState {
+    type Reader = DataReader<R>;
+    fn into_reader(self, reader: R) -> DataReader<R> {
+        DataReader::new(reader, self)
     }
 }
 
@@ -902,8 +787,9 @@ impl<R: BufRead> From<VoidPrevReaders<R>> for Readers<R> {
     }
 }
 
-impl VoidPrevStates {
-    fn into_reader<R: BufRead>(self, reader: R) -> VoidPrevReaders<R> {
+impl<R: BufRead> IntoReader<R> for VoidPrevStates {
+    type Reader = VoidPrevReaders<R>;
+    fn into_reader(self, reader: R) -> VoidPrevReaders<R> {
         match self {
             Self::_Document(state) => VoidPrevReaders::_Document(state.into_reader(reader)),
             Self::Files(state) => VoidPrevReaders::Files(state.into_reader(reader)),
@@ -948,10 +834,11 @@ impl VoidState {
             _phantom: PhantomData::<element_defs::VoidDef>,
         }
     }
+}
 
-    fn into_reader<R: BufRead>(self, reader: R) -> VoidReader<R> {
-        VoidReader::new(reader, self)
-    }
+impl StateNavigation for VoidState {
+    type PrevStates = VoidPrevStates;
+    type NextStates = VoidPrevStates;
 
     fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], VoidPrevStates, StateError> {
         let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
@@ -968,27 +855,16 @@ impl<R: BufRead> VoidReader<R> {
     pub fn new(reader: R, state: VoidState) -> Self {
         Self { reader, state }
     }
+}
 
-    pub fn skip(mut self) -> Result<VoidPrevReaders<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.skip(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
-    }
-
-    pub fn next(mut self) -> Result<VoidPrevReaders<R>, ReaderError> {
-        let stream = self.reader.fill_buf()?;
-
-        let (next_stream, next_state) = self.state.next(stream)?;
-        let stream_dist = stream.len() - next_stream.len();
-        self.reader.consume(stream_dist);
-
-        Ok(next_state.into_reader(self.reader))
+impl<R: BufRead> IntoReader<R> for VoidState {
+    type Reader = VoidReader<R>;
+    fn into_reader(self, reader: R) -> VoidReader<R> {
+        VoidReader::new(reader, self)
     }
 }
+
+// Tests #########################################################################
 
 #[cfg(test)]
 mod tests {
