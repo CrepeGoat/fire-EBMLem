@@ -10,6 +10,7 @@ edition = "2018"
 thiserror = "1.0"
 nom = "6.1.0"
 lexical-core = ">0.7.4"
+enum_dispatch = "0.3.8"
 
 [dev-dependencies]
 rstest = "0.6.4"

@@ -5,12 +5,19 @@ use crate::element_defs::{
 use crate::stream::parse;
 
 use core::convert::From;
-use core::fmt;
 use core::fmt::Debug;
 use core::marker::PhantomData;
 
+// marks an object with a single respective element type
+pub trait BoundTo
+where
+    Self::Element: ElementDef,
+{
+    type Element;
+}
+
 #[derive(Debug, Clone, PartialEq)]
-pub struct ElementState<E, S> {
+pub struct ElementState<E: ElementDef, S> {
     pub bytes_left: usize,
     pub parent_state: S,
     pub _phantom: PhantomData<E>,
@@ -32,11 +39,15 @@ impl From<()> for StateError {
     }
 }
 
-pub trait StateNavigation {
+pub trait SkipStateNavigation {
     type PrevStates;
-    type NextStates;
 
     fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], Self::PrevStates, StateError>;
+}
+
+pub trait NextStateNavigation {
+    type NextStates;
+
     fn next(self, stream: &[u8]) -> nom::IResult<&[u8], Self::NextStates, StateError>;
 }
 
@@ -140,16 +151,8 @@ impl<'a, E: BinaryElementDef, S> StateDataParser<'a, BinaryParserMarker, &'a [u8
     }
 }
 
-// marks a state; binds a state type to a single element type
-pub trait StateOf {
-    type Element;
-}
-
-impl<E, S> StateOf for ElementState<E, S> {
+impl<E: ElementDef, S> BoundTo for ElementState<E, S> {
     type Element = E;
-}
-impl StateOf for () {
-    type Element = ();
 }
 
 #[derive(Debug, PartialEq)]
@@ -166,21 +169,23 @@ pub enum ReaderError {
     Parse(#[from] nom::Err<StateError>),
 }
 
-pub trait ReaderNavigation<R> {
+pub trait SkipReaderNavigation<R> {
     type PrevReaders;
-    type NextReaders;
 
     fn skip(self) -> Result<Self::PrevReaders, ReaderError>;
+}
+
+pub trait NextReaderNavigation<R> {
+    type NextReaders;
+
     fn next(self) -> Result<Self::NextReaders, ReaderError>;
 }
 
-impl<R: std::io::BufRead, S: StateNavigation> ReaderNavigation<R> for ElementReader<R, S>
+impl<R: std::io::BufRead, S: SkipStateNavigation> SkipReaderNavigation<R> for ElementReader<R, S>
 where
     S::PrevStates: IntoReader<R>,
-    S::NextStates: IntoReader<R>,
 {
     type PrevReaders = <S::PrevStates as IntoReader<R>>::Reader;
-    type NextReaders = <S::NextStates as IntoReader<R>>::Reader;
 
     fn skip(mut self) -> Result<Self::PrevReaders, ReaderError> {
         let stream = self.reader.fill_buf()?;
@@ -191,6 +196,13 @@ where
 
         Ok(next_state.into_reader(self.reader))
     }
+}
+
+impl<R: std::io::BufRead, S: NextStateNavigation> NextReaderNavigation<R> for ElementReader<R, S>
+where
+    S::NextStates: IntoReader<R>,
+{
+    type NextReaders = <S::NextStates as IntoReader<R>>::Reader;
 
     fn next(mut self) -> Result<Self::NextReaders, ReaderError> {
         let stream = self.reader.fill_buf()?;
@@ -284,8 +296,162 @@ impl<'a, R: std::io::BufRead, E: BinaryElementDef + Clone, S: Clone>
     }
 }
 
+impl<E: ElementDef, S, R: std::io::BufRead> From<ElementReader<R, ElementState<E, S>>>
+    for ElementState<E, S>
+{
+    fn from(reader: ElementReader<R, ElementState<E, S>>) -> Self {
+        reader.state
+    }
+}
+
+impl<R, S: BoundTo> BoundTo for ElementReader<R, S> {
+    type Element = S::Element;
+}
+
 pub trait IntoReader<R: std::io::BufRead> {
     type Reader;
 
     fn into_reader(self, reader: R) -> Self::Reader;
+}
+
+impl<E: ElementDef, S, R: std::io::BufRead> IntoReader<R> for ElementState<E, S> {
+    type Reader = ElementReader<R, ElementState<E, S>>;
+
+    fn into_reader(self, reader: R) -> Self::Reader {
+        Self::Reader {
+            reader,
+            state: self,
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! impl_skip_state_navigation {
+    ( $State:ident, $PrevStates:ident ) => {
+        impl SkipStateNavigation for $State {
+            type PrevStates = $PrevStates;
+
+            fn skip(self, stream: &[u8]) -> nom::IResult<&[u8], Self::PrevStates, StateError> {
+                let (stream, _) = nom::bytes::streaming::take::<_, _, ()>(self.bytes_left)(stream)
+                    .map_err(nom::Err::convert)?;
+                Ok((stream, self.parent_state))
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! impl_next_state_navigation {
+    ( $State:ident, $NextStates:ident, []) => {
+        impl NextStateNavigation for $State {
+            type NextStates = $NextStates;
+
+            fn next(self, stream: &[u8]) -> nom::IResult<&[u8], Self::NextStates, StateError> {
+                self.skip(stream)
+            }
+        }
+    };
+
+    ( $State:ident, $NextStates:ident, [ $( ($ElementName:ident, $ElementState:ident) ),+ ] ) => {
+        impl NextStateNavigation for $State {
+            type NextStates = $NextStates;
+
+            fn next(mut self, stream: &[u8]) -> nom::IResult<&[u8], Self::NextStates, StateError> {
+                match self {
+                    Self { bytes_left: 0, .. } => Ok((stream, Self::NextStates::Parent(self.parent_state))),
+                    _ => {
+                        let orig_stream = stream;
+
+                        let (stream, id) = parse::element_id(stream).map_err(nom::Err::convert)?;
+                        let (stream, len) = parse::element_len(stream).map_err(nom::Err::convert)?;
+                        let len: usize = len
+                            .ok_or(nom::Err::Failure(StateError::Unimplemented(
+                                "TODO: handle optionally unsized elements",
+                            )))?
+                            .try_into()
+                            .expect("overflow in storing element bytelength");
+
+                        self.bytes_left -= len + stream_diff(orig_stream, stream);
+
+                        Ok((
+                            stream,
+                            match id {
+                                $(
+                                    <<$ElementState as BoundTo>::Element as ElementDef>::ID =>
+                                        Self::NextStates::$ElementName($ElementState::new(len, self.into())),
+                                )*
+                                id => {
+                                    return Err(nom::Err::Failure(StateError::InvalidChildId(
+                                        Some(<<Self as BoundTo>::Element as ElementDef>::ID),
+                                        id,
+                                    )))
+                                }
+                            },
+                        ))
+                    }
+                }
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! impl_into_reader {
+    ( $States:ident, $Readers:ident, [ $( $ElementName:ident ),* ] ) => {
+        impl<R: BufRead> IntoReader<R> for $States {
+            type Reader = $Readers<R>;
+            fn into_reader(self, reader: R) -> Self::Reader {
+                match self {
+                    $(
+                        Self::$ElementName(state) => Self::Reader::$ElementName(state.into_reader(reader)),
+                    )*
+                }
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! impl_from_readers_for_states {
+    ( $Readers:ident, $States:ident, [ $( $ElementName:ident ),* ] ) => {
+        impl<R> From<$Readers<R>> for $States {
+            fn from(enumed_reader: $Readers<R>) -> Self {
+                match enumed_reader {
+                    $(
+                        $Readers::$ElementName(reader) => Self::$ElementName(reader.state),
+                    )*
+                }
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! impl_from_substates_for_states {
+    ( $SubStates:ident, $States:ident, [ $( $ElementName:ident ),* ] ) => {
+        impl From<$SubStates> for $States {
+            fn from(enumed_states: $SubStates) -> Self {
+                match enumed_states {
+                    $(
+                        $SubStates::$ElementName(state) => state.into(),
+                    )*
+                }
+            }
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! impl_from_subreaders_for_readers {
+    ( $SubReaders:ident, $Readers:ident, [ $( $ElementName:ident ),* ] ) => {
+        impl<R: BufRead> From<$SubReaders<R>> for $Readers<R> {
+            fn from(enumed_states: $SubReaders<R>) -> Self {
+                match enumed_states {
+                    $(
+                        $SubReaders::$ElementName(state) => state.into(),
+                    )*
+                }
+            }
+        }
+    }
 }
