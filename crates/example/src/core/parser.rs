@@ -4,16 +4,16 @@ use core::convert::{From, TryInto};
 use core::marker::PhantomData;
 use std::io::BufRead;
 
-use crate::eg_codegen::element_defs;
-use crate::element_defs::{ElementDef, ParentOf};
-use crate::parser::{
+use crate::base::element_defs::{ElementDef, ParentOf};
+use crate::base::parser::{
     BoundTo, ElementReader, ElementState, IntoReader, NextStateNavigation, ReaderError,
     SkipStateNavigation, StateDataParser, StateError,
 };
-use crate::stream::{parse, serialize, stream_diff};
+use crate::base::stream::{parse, serialize, stream_diff};
+use crate::core::element_defs;
 use crate::{
     impl_from_readers_for_states, impl_from_subreaders_for_readers, impl_from_substates_for_states,
-    impl_into_reader,
+    impl_into_reader, impl_next_state_navigation, impl_skip_state_navigation,
 };
 
 // Top-Level Reader/State Enums #########################################################################

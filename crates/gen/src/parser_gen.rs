@@ -9,7 +9,7 @@ use std::io;
 use std::path::Path;
 
 use core::ops::{Bound, RangeBounds};
-use std::str::FromStr;
+use core::str::FromStr;
 
 /**
 The `Builder` object has the following responsibilities:
@@ -249,7 +249,7 @@ pub struct Parsers {
 }
 
 impl Parsers {
-    pub fn write_to_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+    pub fn write_package<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
         let file = OpenOptions::new()
             .write(true)
             .truncate(true)
@@ -257,10 +257,6 @@ impl Parsers {
             .open(path.as_ref())?;
         self.write(Box::new(file))?;
         Ok(())
-    }
-
-    pub fn write<'a>(&self, mut writer: Box<dyn io::Write + 'a>) -> io::Result<()> {
-        todo!();
     }
 }
 

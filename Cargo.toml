@@ -1,20 +1,3 @@
-[package]
-name = "ebml-parser"
-version = "0.1.0"
-authors = ["CrepeGoat <studentoflife96@gmail.com>"]
-edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-thiserror = "1.0"
-nom = "6.1.0"
-lexical-core = ">0.7.4"
-enum_dispatch = "0.3.8"
-serde = "1.0.136"
-serde_derive = "1.0.136"
-serde-xml-rs = "0.5.1"
-
-[dev-dependencies]
-rstest = "0.12.0"
-proptest = "0.10.1"
+[workspace]
+members = ["crates/*"]
+exclude = ["crates/base_template"]

@@ -1,8 +1,8 @@
-use crate::element_defs::{
+use crate::base::element_defs::{
     BinaryElementDef, DateElementDef, ElementDef, FloatElementDef, IntElementDef, MasterElementDef,
     Range, StringElementDef, UIntElementDef, UTF8ElementDef,
 };
-use crate::element_defs::{Bound, ParentOf};
+use crate::base::element_defs::{Bound, ParentOf};
 
 // parent: File
 #[derive(Debug, Clone, PartialEq)]
