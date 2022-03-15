@@ -249,15 +249,77 @@ pub struct Parsers {
 }
 
 impl Parsers {
-    pub fn write_package<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
-        let file = OpenOptions::new()
-            .write(true)
-            .truncate(true)
-            .create(true)
-            .open(path.as_ref())?;
-        self.write(Box::new(file))?;
+    pub fn write_element_defs<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        todo!();
+    }
+
+    pub fn write_parsers<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        todo!();
+    }
+
+    pub fn write_package<P: AsRef<Path>>(&self, path: P) -> Result<(), WriteParserPackageError> {
+        let template_dir_path = {
+            let mut cwd = std::env::var("CARGO_MANIFEST_DIR")
+                .map(std::path::PathBuf::from)
+                .map_err(WriteParserPackageError::NoManifestPath)?;
+            cwd.pop();
+            cwd.push("base_template");
+            cwd
+        };
+
+        let out_dir_path = std::env::var("OUT_DIR")
+            .map(std::path::PathBuf::from)
+            .map_err(WriteParserPackageError::NoOutputDir)?;
+
+        std::fs::create_dir_all((&out_dir_path).join("src/base/"))
+            .map_err(WriteParserPackageError::IOError)?;
+        std::fs::create_dir_all((&out_dir_path).join("src/core/"))
+            .map_err(WriteParserPackageError::IOError)?;
+
+        for filename in &[
+            "Cargo.toml",
+            "src/lib.rs",
+            "src/base/element_defs.rs",
+            "src/base/mod.rs",
+            "src/base/parser.rs",
+            "src/base/stream.rs",
+            "src/core/mod.rs",
+        ] {
+            std::fs::copy(
+                template_dir_path.join(filename),
+                out_dir_path.join(filename),
+            )
+            .map_err(WriteParserPackageError::IOError)?;
+        }
+
+        {
+            let mut writer = std::fs::File::create(out_dir_path.join("src/core/element_defs.rs"))
+                .map(std::io::BufWriter::new)
+                .map_err(WriteParserPackageError::IOError)?;
+            self.write_element_defs(&mut writer)
+                .map_err(WriteParserPackageError::IOError)?;
+        }
+
+        {
+            let mut writer = std::fs::File::create(out_dir_path.join("src/core/parsers.rs"))
+                .map(std::io::BufWriter::new)
+                .map_err(WriteParserPackageError::IOError)?;
+            self.write_parsers(&mut writer)
+                .map_err(WriteParserPackageError::IOError)?;
+        }
+
         Ok(())
     }
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum WriteParserPackageError {
+    #[error("no path to cargo manifest: {0}")]
+    NoManifestPath(std::env::VarError),
+    #[error("no output directory: {0}")]
+    NoOutputDir(std::env::VarError),
+    #[error("IO error: {0}")]
+    IOError(std::io::Error),
 }
 
 #[cfg(test)]
