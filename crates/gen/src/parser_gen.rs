@@ -1,11 +1,9 @@
 // interface loosely based on that of bindgen: https://crates.io/crates/bindgen
 
-use crate::serde_schema::{EbmlSchema, Element, ElementType};
+use crate::serde_schema::{from_reader, EbmlSchema, Element, ElementType};
 use crate::trie::Trie;
 
 use std::collections::{HashMap, HashSet};
-use std::fs::OpenOptions;
-use std::io;
 use std::path::Path;
 
 use core::ops::{Bound, RangeBounds};
@@ -128,8 +126,10 @@ pub struct Builder {
 }
 
 impl Builder {
-    pub fn new(schema: EbmlSchema) -> Self {
-        Self { schema }
+    pub fn new<R: std::io::Read>(schema: R) -> Result<Self, serde_xml_rs::Error> {
+        Ok(Self {
+            schema: from_reader(schema)?,
+        })
     }
 
     pub fn generate(self) -> Result<Parsers, BuilderGenerateError> {
@@ -895,7 +895,7 @@ mod tests {
 
     #[rstest]
     fn builder_generate(schema: EbmlSchema) {
-        let result = Builder::new(schema).generate();
+        let result = Builder { schema }.generate();
         let result = result.unwrap();
 
         assert_eq!(
