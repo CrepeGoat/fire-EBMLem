@@ -141,6 +141,7 @@ impl Builder {
         let elems: HashMap<u32, Element> = self
             .schema
             .elements
+            .unwrap_or_else(Vec::new)
             .into_iter()
             .map(|elem| (elem.id, elem))
             .collect();
@@ -817,10 +818,10 @@ mod tests {
     #[fixture]
     fn schema() -> EbmlSchema {
         EbmlSchema {
-            doctype: "matroska".to_string(),
+            doc_type: "matroska".to_string(),
             version: 4,
-            ebml: 1,
-            elements: vec![
+            ebml: None,
+            elements: Some(vec![
                 Element {
                     name: "EBML".to_string(),
                     path: "\\EBML".to_string(),
@@ -836,7 +837,7 @@ mod tests {
                     recurring: None,
                     minver: None,
                     maxver: None,
-                    metadata: Vec::new(),
+                    metadata: None,
                 },
                 Element {
                     name: "EBMLVersion".to_string(),
@@ -853,7 +854,7 @@ mod tests {
                     recurring: None,
                     minver: None,
                     maxver: None,
-                    metadata: Vec::new(),
+                    metadata: None,
                 },
                 Element {
                     name: "DocType".to_string(),
@@ -870,7 +871,7 @@ mod tests {
                     recurring: None,
                     minver: None,
                     maxver: None,
-                    metadata: Vec::new(),
+                    metadata: None,
                 },
                 Element {
                     name: "Void".to_string(),
@@ -887,9 +888,9 @@ mod tests {
                     recurring: None,
                     minver: None,
                     maxver: None,
-                    metadata: Vec::new(),
+                    metadata: None,
                 },
-            ],
+            ]),
         }
     }
 
