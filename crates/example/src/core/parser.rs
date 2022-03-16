@@ -1,20 +1,23 @@
+use crate::base::element_defs::ElementDef;
+#[allow(unused_imports)]
+use crate::base::parser::{
+    BoundTo, ElementReader, ElementState, IntoReader, NextStateNavigation, ReaderError,
+    SkipStateNavigation, StateDataParser, StateError,
+};
+#[allow(unused_imports)]
+use crate::base::stream::{parse, serialize, stream_diff};
+use crate::core::element_defs;
+#[allow(unused_imports)]
+use crate::{
+    impl_from_readers_for_states, impl_from_subreaders_for_readers, impl_from_substates_for_states,
+    impl_into_reader, impl_next_state_navigation, impl_skip_state_navigation,
+};
+
 use enum_dispatch::enum_dispatch;
 
 use core::convert::{From, TryInto};
 use core::marker::PhantomData;
 use std::io::BufRead;
-
-use crate::base::element_defs::{ElementDef, ParentOf};
-use crate::base::parser::{
-    BoundTo, ElementReader, ElementState, IntoReader, NextStateNavigation, ReaderError,
-    SkipStateNavigation, StateDataParser, StateError,
-};
-use crate::base::stream::{parse, serialize, stream_diff};
-use crate::core::element_defs;
-use crate::{
-    impl_from_readers_for_states, impl_from_subreaders_for_readers, impl_from_substates_for_states,
-    impl_into_reader, impl_next_state_navigation, impl_skip_state_navigation,
-};
 
 // Top-Level Reader/State Enums #########################################################################
 
@@ -157,8 +160,8 @@ impl<R: BufRead> IntoReader<R> for _DocumentState {
 
 // Files Objects #########################################################################
 
-pub type FilesReader<R> = ElementReader<R, FilesState>;
 pub type FilesState = ElementState<element_defs::FilesDef, _DocumentState>;
+pub type FilesReader<R> = ElementReader<R, FilesState>;
 
 #[derive(Debug, Clone, PartialEq)]
 #[enum_dispatch]

@@ -1,8 +1,10 @@
+#[allow(unused_imports)]
 use crate::base::element_defs::{
     BinaryElementDef, DateElementDef, ElementDef, FloatElementDef, IntElementDef, MasterElementDef,
-    Range, StringElementDef, UIntElementDef, UTF8ElementDef,
+    Range, StringElementDef, UIntElementDef, Utf8ElementDef,
 };
-use crate::base::element_defs::{Bound, ParentOf};
+
+use core::ops::Bound;
 
 // parent: File
 #[derive(Debug, Clone, PartialEq)]
@@ -10,16 +12,14 @@ pub struct VoidDef;
 
 impl ElementDef for VoidDef {
     const ID: u32 = 0xEC;
-
-    type LastParent = FileDef;
-    const GLOBAL_PARENT_OCCURENCE: (usize, usize) = (0, 0);
+    const PATH: &'static str = "\\(-\\)Void";
 
     const MIN_OCCURS: usize = 1;
-    const MAX_OCCURS: usize = usize::MAX;
+    const MAX_OCCURS: Option<usize> = None;
     const LENGTH: Range<usize> = Range::IsWithin(Bound::Unbounded, Bound::Unbounded);
     const RECURRING: bool = false;
     const MIN_VERSION: u64 = 1;
-    const MAX_VERSION: u64 = 1;
+    const MAX_VERSION: Option<u64> = Some(1);
 }
 
 impl BinaryElementDef for VoidDef {
@@ -32,16 +32,14 @@ pub struct FilesDef;
 
 impl ElementDef for FilesDef {
     const ID: u32 = 0x1946696C;
-
-    type LastParent = ();
-    const GLOBAL_PARENT_OCCURENCE: (usize, usize) = (0, 0);
+    const PATH: &'static str = "\\Files";
 
     const MIN_OCCURS: usize = 0;
-    const MAX_OCCURS: usize = usize::MAX;
+    const MAX_OCCURS: Option<usize> = None;
     const LENGTH: Range<usize> = Range::IsWithin(Bound::Unbounded, Bound::Unbounded);
     const RECURRING: bool = false;
     const MIN_VERSION: u64 = 1;
-    const MAX_VERSION: u64 = 1;
+    const MAX_VERSION: Option<u64> = None;
 }
 
 impl MasterElementDef for FilesDef {
@@ -49,24 +47,20 @@ impl MasterElementDef for FilesDef {
     const RECURSIVE: bool = false;
 }
 
-impl ParentOf<FilesDef> for () {}
-
 // parent: Files
 #[derive(Debug, Clone, PartialEq)]
 pub struct FileDef;
 
 impl ElementDef for FileDef {
     const ID: u32 = 0x6146;
-
-    type LastParent = FilesDef;
-    const GLOBAL_PARENT_OCCURENCE: (usize, usize) = (0, 0);
+    const PATH: &'static str = "\\Files\\File";
 
     const MIN_OCCURS: usize = 1;
-    const MAX_OCCURS: usize = usize::MAX;
+    const MAX_OCCURS: Option<usize> = None;
     const LENGTH: Range<usize> = Range::IsWithin(Bound::Unbounded, Bound::Unbounded);
     const RECURRING: bool = false;
     const MIN_VERSION: u64 = 1;
-    const MAX_VERSION: u64 = 1;
+    const MAX_VERSION: Option<u64> = None;
 }
 
 impl MasterElementDef for FileDef {
@@ -74,31 +68,25 @@ impl MasterElementDef for FileDef {
     const RECURSIVE: bool = false;
 }
 
-impl ParentOf<FileDef> for FilesDef {}
-
 // parent: File
 #[derive(Debug, Clone, PartialEq)]
 pub struct FileNameDef;
 
 impl ElementDef for FileNameDef {
     const ID: u32 = 0x614E;
-
-    type LastParent = FileDef;
-    const GLOBAL_PARENT_OCCURENCE: (usize, usize) = (0, 0);
+    const PATH: &'static str = "\\Files\\File\\FileName";
 
     const MIN_OCCURS: usize = 1;
-    const MAX_OCCURS: usize = usize::MAX;
+    const MAX_OCCURS: Option<usize> = None;
     const LENGTH: Range<usize> = Range::IsWithin(Bound::Unbounded, Bound::Unbounded);
     const RECURRING: bool = false;
     const MIN_VERSION: u64 = 1;
-    const MAX_VERSION: u64 = 1;
+    const MAX_VERSION: Option<u64> = None;
 }
 
-impl UTF8ElementDef for FileNameDef {
+impl Utf8ElementDef for FileNameDef {
     const DEFAULT: Option<&'static str> = None;
 }
-
-impl ParentOf<FileNameDef> for FileDef {}
 
 // parent: File
 #[derive(Debug, Clone, PartialEq)]
@@ -106,23 +94,19 @@ pub struct MimeTypeDef;
 
 impl ElementDef for MimeTypeDef {
     const ID: u32 = 0x464D;
-
-    type LastParent = FileDef;
-    const GLOBAL_PARENT_OCCURENCE: (usize, usize) = (0, 0);
+    const PATH: &'static str = "\\Files\\File\\MimeType";
 
     const MIN_OCCURS: usize = 1;
-    const MAX_OCCURS: usize = usize::MAX;
+    const MAX_OCCURS: Option<usize> = None;
     const LENGTH: Range<usize> = Range::IsWithin(Bound::Unbounded, Bound::Unbounded);
     const RECURRING: bool = false;
     const MIN_VERSION: u64 = 1;
-    const MAX_VERSION: u64 = 1;
+    const MAX_VERSION: Option<u64> = None;
 }
 
 impl StringElementDef for MimeTypeDef {
     const DEFAULT: Option<&'static str> = None;
 }
-
-impl ParentOf<MimeTypeDef> for FileDef {}
 
 // parent: File
 #[derive(Debug, Clone, PartialEq)]
@@ -130,25 +114,20 @@ pub struct ModificationTimestampDef;
 
 impl ElementDef for ModificationTimestampDef {
     const ID: u32 = 0x4654;
-
-    type LastParent = FileDef;
-    const GLOBAL_PARENT_OCCURENCE: (usize, usize) = (0, 0);
+    const PATH: &'static str = "\\Files\\File\\ModificationTimestamp";
 
     const MIN_OCCURS: usize = 1;
-    const MAX_OCCURS: usize = usize::MAX;
+    const MAX_OCCURS: Option<usize> = None;
     const LENGTH: Range<usize> = Range::IsExactly(8);
     const RECURRING: bool = false;
     const MIN_VERSION: u64 = 1;
-    const MAX_VERSION: u64 = 1;
+    const MAX_VERSION: Option<u64> = None;
 }
 
 impl DateElementDef for ModificationTimestampDef {
-    const RANGE: Range<i64> =
-        Range::IsWithin(core::ops::Bound::Unbounded, core::ops::Bound::Unbounded);
+    const RANGE: Range<i64> = Range::IsWithin(Bound::Unbounded, Bound::Unbounded);
     const DEFAULT: Option<i64> = None;
 }
-
-impl ParentOf<ModificationTimestampDef> for FileDef {}
 
 // parent: File
 #[derive(Debug, Clone, PartialEq)]
@@ -156,20 +135,16 @@ pub struct DataDef;
 
 impl ElementDef for DataDef {
     const ID: u32 = 0x4664;
-
-    type LastParent = FileDef;
-    const GLOBAL_PARENT_OCCURENCE: (usize, usize) = (0, 0);
+    const PATH: &'static str = "\\Files\\File\\Data";
 
     const MIN_OCCURS: usize = 1;
-    const MAX_OCCURS: usize = usize::MAX;
+    const MAX_OCCURS: Option<usize> = None;
     const LENGTH: Range<usize> = Range::IsWithin(Bound::Unbounded, Bound::Unbounded);
     const RECURRING: bool = false;
     const MIN_VERSION: u64 = 1;
-    const MAX_VERSION: u64 = 1;
+    const MAX_VERSION: Option<u64> = None;
 }
 
 impl BinaryElementDef for DataDef {
     const DEFAULT: Option<&'static [u8]> = None;
 }
-
-impl ParentOf<DataDef> for FileDef {}
