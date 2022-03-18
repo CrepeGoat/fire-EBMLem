@@ -577,6 +577,7 @@ impl Parsers {
                     make_prev_readers(&element_name),
                 )
             } else {
+                println!("element name: {}", element_name);
                 let parent_name = parent_names
                     .get(&element_name)
                     .unwrap()
@@ -720,13 +721,9 @@ impl Parsers {
             cwd
         };
 
-        let out_dir_path = std::env::var("OUT_DIR")
-            .map(std::path::PathBuf::from)
-            .map_err(WriteParserPackageError::NoOutputDir)?;
-
-        std::fs::create_dir_all((&out_dir_path).join("src/base/"))
+        std::fs::create_dir_all((path.as_ref()).join("src/base/"))
             .map_err(WriteParserPackageError::IOError)?;
-        std::fs::create_dir_all((&out_dir_path).join("src/core/"))
+        std::fs::create_dir_all((path.as_ref()).join("src/core/"))
             .map_err(WriteParserPackageError::IOError)?;
 
         for filename in &[
@@ -740,13 +737,13 @@ impl Parsers {
         ] {
             std::fs::copy(
                 template_dir_path.join(filename),
-                out_dir_path.join(filename),
+                path.as_ref().join(filename),
             )
             .map_err(WriteParserPackageError::IOError)?;
         }
 
         {
-            let mut writer = std::fs::File::create(out_dir_path.join("src/core/element_defs.rs"))
+            let mut writer = std::fs::File::create(path.as_ref().join("src/core/element_defs.rs"))
                 .map(std::io::BufWriter::new)
                 .map_err(WriteParserPackageError::IOError)?;
             self.write_element_defs(&mut writer)
@@ -754,7 +751,7 @@ impl Parsers {
         }
 
         {
-            let mut writer = std::fs::File::create(out_dir_path.join("src/core/parsers.rs"))
+            let mut writer = std::fs::File::create(path.as_ref().join("src/core/parsers.rs"))
                 .map(std::io::BufWriter::new)
                 .map_err(WriteParserPackageError::IOError)?;
             self.write_parsers(&mut writer)
@@ -769,8 +766,6 @@ impl Parsers {
 pub enum WriteParserPackageError {
     #[error("no path to cargo manifest: {0}")]
     NoManifestPath(std::env::VarError),
-    #[error("no output directory: {0}")]
-    NoOutputDir(std::env::VarError),
     #[error("IO error: {0}")]
     IOError(std::io::Error),
 }

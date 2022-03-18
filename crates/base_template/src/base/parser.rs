@@ -1,8 +1,8 @@
-use crate::element_defs::{
+use crate::base::element_defs::{
     BinaryElementDef, DateElementDef, ElementDef, FloatElementDef, IntElementDef, StringElementDef,
-    UIntElementDef, UTF8ElementDef,
+    UIntElementDef, Utf8ElementDef,
 };
-use crate::stream::parse;
+use crate::base::stream::parse;
 
 use core::convert::From;
 use core::fmt::Debug;
@@ -56,7 +56,7 @@ pub struct IntParserMarker;
 pub struct FloatParserMarker;
 pub struct DateParserMarker;
 pub struct StringParserMarker;
-pub struct UTF8ParserMarker;
+pub struct Utf8ParserMarker;
 pub struct BinaryParserMarker;
 
 pub trait ParserMarker {}
@@ -65,7 +65,7 @@ impl ParserMarker for IntParserMarker {}
 impl ParserMarker for FloatParserMarker {}
 impl ParserMarker for DateParserMarker {}
 impl ParserMarker for StringParserMarker {}
-impl ParserMarker for UTF8ParserMarker {}
+impl ParserMarker for Utf8ParserMarker {}
 impl ParserMarker for BinaryParserMarker {}
 
 pub trait StateDataParser<'a, M: ParserMarker, T: 'a> {
@@ -126,7 +126,7 @@ impl<'a, E: StringElementDef, S> StateDataParser<'a, StringParserMarker, &'a str
     }
 }
 
-impl<'a, E: UTF8ElementDef, S> StateDataParser<'a, UTF8ParserMarker, &'a str>
+impl<'a, E: Utf8ElementDef, S> StateDataParser<'a, Utf8ParserMarker, &'a str>
     for ElementState<E, S>
 {
     type NextState = S;
@@ -274,8 +274,8 @@ impl<'a, R: std::io::BufRead, E: StringElementDef + Clone, S: Clone>
     }
 }
 
-impl<'a, R: std::io::BufRead, E: UTF8ElementDef + Clone, S: Clone>
-    ReaderDataParser<'a, R, UTF8ParserMarker, &'a str> for ElementReader<R, ElementState<E, S>>
+impl<'a, R: std::io::BufRead, E: Utf8ElementDef + Clone, S: Clone>
+    ReaderDataParser<'a, R, Utf8ParserMarker, &'a str> for ElementReader<R, ElementState<E, S>>
 {
     fn read(&mut self) -> Result<&str, ReaderError> {
         let stream = self.reader.fill_buf()?;

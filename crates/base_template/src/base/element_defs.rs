@@ -9,16 +9,14 @@ pub enum Range<T> {
 pub trait ElementDef {
     // name
     const ID: u32;
-
-    type LastParent;
-    const GLOBAL_PARENT_OCCURENCE: (usize, usize); //defaults to (0, 0)
+    const PATH: &'static str;
 
     const MIN_OCCURS: usize; // defaults to 0
-    const MAX_OCCURS: usize; // defaults to usize::MAX
+    const MAX_OCCURS: Option<usize>; // defaults to usize::MAX
     const LENGTH: Range<usize>; // defaults to type-defined length limits
     const RECURRING: bool; // defaults to false
     const MIN_VERSION: u64; // defaults to 1
-    const MAX_VERSION: u64; // defaults to "EBMLSchema"'s "version" attribute
+    const MAX_VERSION: Option<u64>; // defaults to "EBMLSchema"'s "version" attribute
 }
 
 pub trait MasterElementDef: ElementDef {
@@ -50,12 +48,10 @@ pub trait StringElementDef: ElementDef {
     const DEFAULT: Option<&'static str>;
 }
 
-pub trait UTF8ElementDef: ElementDef {
+pub trait Utf8ElementDef: ElementDef {
     const DEFAULT: Option<&'static str>;
 }
 
 pub trait BinaryElementDef: ElementDef {
     const DEFAULT: Option<&'static [u8]>;
 }
-
-pub trait ParentOf<E: ElementDef> {}
