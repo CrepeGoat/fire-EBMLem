@@ -1,7 +1,7 @@
-use example_ebml_parser::base::parser::{
+use iron_ebmlem_parser::base::parser::{
     NextReaderNavigation, ReaderDataParser, ReaderError, SkipReaderNavigation,
 };
-use example_ebml_parser::core::parser;
+use iron_ebmlem_parser::core::parser;
 
 const BYTE_STREAM: [u8; 150] = [
     // ### Files 1 ###
