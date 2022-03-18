@@ -1,15 +1,15 @@
 use serde_derive::{Deserialize, Serialize};
-pub use serde_xml_rs::{from_reader, from_str, to_string};
+pub(crate) use serde_xml_rs::{from_reader, from_str, to_string};
 
 // documentation, element, enum, extension, implementation_note, restriction, EBMLSchema
 
-pub mod custom_serde {
-    pub mod hexadecimal {
+pub(crate) mod custom_serde {
+    pub(crate) mod hexadecimal {
         use serde::{de::Error as _, Deserialize, Deserializer, Serialize, Serializer};
 
         // This deserializer was originally written with u64 in mind. Then it was made generic by
         // changing u64 to T everywhere and adding boundaries. Same with the serializer.
-        pub fn deserialize<'de, D>(deserializer: D) -> Result<u32, D::Error>
+        pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<u32, D::Error>
         where
             D: Deserializer<'de>,
         {
@@ -22,7 +22,7 @@ pub mod custom_serde {
             .map_err(|e| D::Error::custom(format!("{}", e)))
         }
 
-        pub fn serialize<S>(value: &u32, serializer: S) -> Result<S::Ok, S::Error>
+        pub(crate) fn serialize<S>(value: &u32, serializer: S) -> Result<S::Ok, S::Error>
         where
             S: Serializer,
         {
@@ -34,40 +34,40 @@ pub mod custom_serde {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename = "EBMLSchema")]
 #[serde(rename_all = "camelCase")]
-pub struct EbmlSchema {
-    pub doc_type: String,
-    pub version: u32,
-    pub ebml: Option<u32>,
+pub(crate) struct EbmlSchema {
+    pub(crate) doc_type: String,
+    pub(crate) version: u32,
+    pub(crate) ebml: Option<u32>,
     #[serde(rename = "$value")]
-    pub elements: Option<Vec<Element>>,
+    pub(crate) elements: Option<Vec<Element>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct Element {
-    pub name: String,
-    pub path: String,
+pub(crate) struct Element {
+    pub(crate) name: String,
+    pub(crate) path: String,
     #[serde(with = "custom_serde::hexadecimal")]
-    pub id: u32,
-    pub min_occurs: Option<usize>,
-    pub max_occurs: Option<usize>,
-    pub range: Option<String>, // numeric elements only
-    pub length: Option<String>,
-    pub default: Option<String>, // non-master elements only
-    pub r#type: ElementType,
-    pub unknownsizeallowed: Option<bool>, // master elements only
-    pub recursive: Option<bool>,          // master elements only
-    pub recurring: Option<bool>,
-    pub minver: Option<u32>,
-    pub maxver: Option<u32>,
+    pub(crate) id: u32,
+    pub(crate) min_occurs: Option<usize>,
+    pub(crate) max_occurs: Option<usize>,
+    pub(crate) range: Option<String>, // numeric elements only
+    pub(crate) length: Option<String>,
+    pub(crate) default: Option<String>, // non-master elements only
+    pub(crate) r#type: ElementType,
+    pub(crate) unknownsizeallowed: Option<bool>, // master elements only
+    pub(crate) recursive: Option<bool>,          // master elements only
+    pub(crate) recurring: Option<bool>,
+    pub(crate) minver: Option<u32>,
+    pub(crate) maxver: Option<u32>,
 
     #[serde(rename = "$value")]
-    pub metadata: Option<Vec<ElementValue>>,
+    pub(crate) metadata: Option<Vec<ElementValue>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename = "type")]
-pub enum ElementType {
+pub(crate) enum ElementType {
     #[serde(rename = "integer")]
     SignedInteger,
     #[serde(rename = "uinteger")]
@@ -88,7 +88,7 @@ pub enum ElementType {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
-pub enum ElementValue {
+pub(crate) enum ElementValue {
     Documentation(Documentation),
     Extension(Extension),
     ImplementationNote(ImplementationNote),
@@ -96,16 +96,16 @@ pub enum ElementValue {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct Documentation {
-    pub lang: Option<String>,
-    pub purpose: DocumentationPurpose,
+pub(crate) struct Documentation {
+    pub(crate) lang: Option<String>,
+    pub(crate) purpose: DocumentationPurpose,
     #[serde(rename = "$value")]
-    pub value: String,
+    pub(crate) value: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename = "purpose")]
-pub enum DocumentationPurpose {
+pub(crate) enum DocumentationPurpose {
     #[serde(rename = "definition")]
     Definition,
     #[serde(rename = "rationale")]
@@ -117,30 +117,30 @@ pub enum DocumentationPurpose {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct ImplementationNote {
-    pub note_attribute: String,
+pub(crate) struct ImplementationNote {
+    pub(crate) note_attribute: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct Restriction {
+pub(crate) struct Restriction {
     #[serde(rename = "$value")]
-    pub enums: Vec<Enum>,
+    pub(crate) enums: Vec<Enum>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct Enum {
-    pub label: String,
-    pub value: u32,
+pub(crate) struct Enum {
+    pub(crate) label: String,
+    pub(crate) value: u32,
     #[serde(rename = "$value")]
-    pub docs: Option<Vec<Documentation>>,
+    pub(crate) docs: Option<Vec<Documentation>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct Extension {
-    pub r#type: String,
-    pub webm: Option<bool>,
-    pub keep: Option<bool>,
-    pub cppname: Option<String>,
+pub(crate) struct Extension {
+    pub(crate) r#type: String,
+    pub(crate) webm: Option<bool>,
+    pub(crate) keep: Option<bool>,
+    pub(crate) cppname: Option<String>,
 }
 
 #[cfg(test)]
