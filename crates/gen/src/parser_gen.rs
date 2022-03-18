@@ -175,9 +175,13 @@ impl Builder {
                     ));
                 }
 
-                let mut parent_ids: HashSet<Option<u32>> = pathed_elems
+                let parent_trie = pathed_elems
                     .subtrie(parent_path_atoms.iter().copied())
-                    .ok_or_else(|| BuilderGenerateError::NoDirectParent(elem.name.clone()))?
+                    .expect("path of parent must necessarily exist for a given child");
+                if !parent_path_atoms.is_empty() && parent_trie.get([]).is_none() {
+                    return Err(BuilderGenerateError::NoDirectParent(elem.name.clone()));
+                }
+                let mut parent_ids: HashSet<Option<u32>> = parent_trie
                     .iter_depths()
                     .skip_while(|(depth, _elem)| depth < &(global_span.lower_bound as usize))
                     .take_while(|(depth, _elem)| {
