@@ -589,6 +589,50 @@ impl Parsers {
             .collect::<String>(),
         )?;
 
+        write!(
+            writer,
+            r#"
+            #[derive(Debug, Clone, PartialEq)]
+            #[enum_dispatch]
+            pub enum _DocumentNextStates {{
+                {child_states}
+            }}
+
+            #[derive(Debug, PartialEq)]
+            #[enum_dispatch]
+            pub enum _DocumentNextReaders<R> {{
+                {child_readers}
+            }}
+
+            impl_from_substates_for_states!(_DocumentNextStates, States, [{children}]);
+            impl_from_subreaders_for_readers!(_DocumentNextReaders, Readers, [{children}]);
+
+            impl_into_reader!(_DocumentNextStates, _DocumentNextReaders, [{children}]);
+            impl_from_readers_for_states!(_DocumentNextReaders, _DocumentNextStates, [{children}]);
+            "#,
+            child_states = child_names
+                .get("_Document")
+                .unwrap()
+                .iter()
+                .map(|name| format!("{name}({name}State),"))
+                .collect::<String>(),
+            child_readers = child_names
+                .get("_Document")
+                .unwrap()
+                .iter()
+                .map(|name| format!("{name}({name}Reader<R>),"))
+                .collect::<String>(),
+            children = itertools::intersperse(
+                child_names
+                    .get("_Document")
+                    .unwrap()
+                    .iter()
+                    .map(String::as_str),
+                ", "
+            )
+            .collect::<String>(),
+        )?;
+
         let make_state = |name: &str| format!("{}State", name);
         let make_reader = |name: &str| format!("{}Reader", name);
         let make_prev_states = |name: &str| format!("{}PrevStates", name);
@@ -687,7 +731,6 @@ impl Parsers {
 
                     impl_into_reader!({name}NextStates, {name}NextReaders, [{children}]);
                     impl_from_readers_for_states!({name}NextReaders, {name}NextStates, [{children}]);
-
                     "#,
                     name = element_name,
                     parent_state = parent_state_name,
