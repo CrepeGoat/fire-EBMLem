@@ -1,7 +1,10 @@
 #[macro_use]
 mod parser;
 mod element_defs;
+mod parser_gen;
+mod serde_schema;
 mod stream;
+mod trie;
 
 mod eg_codegen {
     mod element_defs;
