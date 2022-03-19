@@ -685,9 +685,14 @@ impl Parsers {
                         .iter()
                         .map(|name| format!("{name}({name}Reader<R>),"))
                         .collect::<String>(),
-                    children =
-                        itertools::intersperse(elem_child_names.iter().map(String::as_str), ", ")
-                            .collect::<String>(),
+                    children = itertools::intersperse(
+                        elem_child_names
+                            .iter()
+                            .map(String::as_str)
+                            .chain(core::iter::once("Parent")),
+                        ", "
+                    )
+                    .collect::<String>(),
                 )?;
             }
 

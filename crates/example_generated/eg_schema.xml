@@ -3,6 +3,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <EBMLSchema xmlns="urn:ietf:rfc:8794"
   docType="files-in-ebml-demo" version="1">
+ <element name="Void" path="\(-\)Void" id="0xEC" type="binary">
+   <documentation lang="en" purpose="definition">Used to void damaged data, to avoid unexpected behaviors when using damaged data. The content is discarded. Also used to reserve space in a sub-element for later use.</documentation>
+ </element>
  <!-- Root Element-->
  <element name="Files" path="\Files" id="0x1946696C"
    type="master">
