@@ -264,7 +264,6 @@ impl Parsers {
             };
 
             use core::ops::Bound;
-
             "#.as_bytes()
         )?;
 
@@ -286,7 +285,6 @@ impl Parsers {
                     const MIN_VERSION: u64 = {minver};
                     const MAX_VERSION: Option<u64> = {maxver};
                 }}
-
                 "#,
                 name = element.name,
                 id = element.id,
@@ -432,7 +430,7 @@ impl Parsers {
                     }),
                     child_ids
                         .iter()
-                        .map(|child_id| self.elements.get(&child_id).unwrap().name.clone())
+                        .map(|child_id| self.elements.get(child_id).unwrap().name.clone())
                         .collect::<HashSet<_>>(),
                 )
             })
@@ -462,7 +460,6 @@ impl Parsers {
             use std::io::BufRead;
 
             // Top-Level Reader/State Enums #########################################################################
-
             "#.as_bytes()
         )?;
 
@@ -498,7 +495,6 @@ impl Parsers {
             #[enum_dispatch(States)]
             #[enum_dispatch(Readers<R>)]
             trait BlankTrait {}
-
             "#
             .as_bytes(),
         )?;
@@ -510,7 +506,6 @@ impl Parsers {
             pub enum States {{
                 {elements}
             }}
-
             "#,
             elements = element_names
                 .iter()
@@ -555,10 +550,27 @@ impl Parsers {
         write!(
             writer,
             r#"
+            // _Document Objects #########################################################################
+
             #[derive(Debug, Clone, PartialEq)]
             pub struct _DocumentState;
             pub type _DocumentReader<R> = ElementReader<R, _DocumentState>;
 
+            impl<R: BufRead> _DocumentReader<R> {{
+                pub fn new(reader: R) -> Self {{
+                    Self {{
+                        reader,
+                        state: _DocumentState,
+                    }}
+                }}
+            }}
+
+            impl<R: BufRead> IntoReader<R> for _DocumentState {{
+                type Reader = _DocumentReader<R>;
+                fn into_reader(self, reader: R) -> _DocumentReader<R> {{
+                    _DocumentReader::new(reader)
+                }}
+            }}
             "#,
         )?;
 
@@ -583,7 +595,6 @@ impl Parsers {
                     make_prev_readers(&element_name),
                 )
             } else {
-                println!("element name: {}", element_name);
                 let parent_name = parent_names
                     .get(&element_name)
                     .unwrap()
@@ -602,6 +613,8 @@ impl Parsers {
             write!(
                 writer,
                 r#"
+                // {name} Objects #########################################################################
+
                 pub type {name}State = ElementState<element_defs::{name}Def, {parent_state}>;
                 pub type {name}Reader<R> = ElementReader<R, {name}State>;
 
@@ -623,7 +636,6 @@ impl Parsers {
 
                 impl_skip_state_navigation!({name}State, {parent_state});
                 impl_next_state_navigation!({name}State, {child_state}, [{child_pairs}]);
-
                 "#,
                 name = element_name,
                 parent_state = parent_state_name.as_str(),
