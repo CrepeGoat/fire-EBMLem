@@ -352,6 +352,35 @@ macro_rules! impl_next_state_navigation {
         }
     };
 
+    ( _DocumentState, _DocumentNextStates, [ $( ($ElementName:ident, $ElementState:ident) ),+ ] ) => {
+        // No parent or bytes_left -> custom impl
+        impl NextStateNavigation for _DocumentState {
+            type NextStates = _DocumentNextStates;
+
+            fn next(self, stream: &[u8]) -> nom::IResult<&[u8], Self::NextStates, StateError> {
+                let (stream, id) = parse::element_id(stream).map_err(nom::Err::convert)?;
+                let (stream, len) = parse::element_len(stream).map_err(nom::Err::convert)?;
+                let len: usize = len
+                    .ok_or(nom::Err::Failure(StateError::Unimplemented(
+                        "TODO: handle optionally unsized elements",
+                    )))?
+                    .try_into()
+                    .expect("overflow in storing element bytelength");
+
+                Ok((
+                    stream,
+                    match id {
+                        $(
+                            <<$ElementState as BoundTo>::Element as ElementDef>::ID =>
+                                Self::NextStates::$ElementName($ElementState::new(len, self.into())),
+                        )*
+                        id => return Err(nom::Err::Failure(StateError::InvalidChildId(None, id))),
+                    },
+                ))
+            }
+        }
+    };
+
     ( $State:ident, $NextStates:ident, [ $( ($ElementName:ident, $ElementState:ident) ),+ ] ) => {
         impl NextStateNavigation for $State {
             type NextStates = $NextStates;

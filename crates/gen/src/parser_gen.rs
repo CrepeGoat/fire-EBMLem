@@ -571,7 +571,22 @@ impl Parsers {
                     _DocumentReader::new(reader)
                 }}
             }}
+
+            impl_next_state_navigation!(
+                _DocumentState,
+                _DocumentNextStates,
+                [{child_pairs}]
+            );
             "#,
+            child_pairs = itertools::intersperse(
+                child_names
+                    .get("_Document")
+                    .unwrap()
+                    .iter()
+                    .map(|cname| format!("({cname}, {cname}State)")),
+                ", ".to_string()
+            )
+            .collect::<String>(),
         )?;
 
         let make_state = |name: &str| format!("{}State", name);

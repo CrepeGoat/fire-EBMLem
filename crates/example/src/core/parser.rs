@@ -113,34 +113,11 @@ impl_from_subreaders_for_readers!(_DocumentNextReaders, Readers, [Void, Files]);
 impl_into_reader!(_DocumentNextStates, _DocumentNextReaders, [Void, Files]);
 impl_from_readers_for_states!(_DocumentNextReaders, _DocumentNextStates, [Void, Files]);
 
-// No parent or bytes_left -> custom impl
-impl NextStateNavigation for _DocumentState {
-    type NextStates = _DocumentNextStates;
-
-    fn next(self, stream: &[u8]) -> nom::IResult<&[u8], Self::NextStates, StateError> {
-        let (stream, id) = parse::element_id(stream).map_err(nom::Err::convert)?;
-        let (stream, len) = parse::element_len(stream).map_err(nom::Err::convert)?;
-        let len: usize = len
-            .ok_or(nom::Err::Failure(StateError::Unimplemented(
-                "TODO: handle optionally unsized elements",
-            )))?
-            .try_into()
-            .expect("overflow in storing element bytelength");
-
-        Ok((
-            stream,
-            match id {
-                <element_defs::VoidDef as ElementDef>::ID => {
-                    _DocumentNextStates::Void(VoidState::new(len, self.into()))
-                }
-                <element_defs::FilesDef as ElementDef>::ID => {
-                    _DocumentNextStates::Files(FilesState::new(len, self))
-                }
-                id => return Err(nom::Err::Failure(StateError::InvalidChildId(None, id))),
-            },
-        ))
-    }
-}
+impl_next_state_navigation!(
+    _DocumentState,
+    _DocumentNextStates,
+    [(Void, VoidState), (Files, FilesState)]
+);
 
 impl<R: BufRead> _DocumentReader<R> {
     pub fn new(reader: R) -> Self {
