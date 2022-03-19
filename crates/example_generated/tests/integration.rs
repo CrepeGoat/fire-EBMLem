@@ -1,5 +1,7 @@
-use crate::eg_codegen::parser;
-use crate::parser::{NextReaderNavigation, ReaderDataParser, ReaderError, SkipReaderNavigation};
+use iron_ebmlem_parser::base::parser::{
+    NextReaderNavigation, ReaderDataParser, ReaderError, SkipReaderNavigation,
+};
+use iron_ebmlem_parser::core::parser;
 
 const BYTE_STREAM: [u8; 150] = [
     // ### Files 1 ###
