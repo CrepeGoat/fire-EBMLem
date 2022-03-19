@@ -277,6 +277,7 @@ impl Parsers {
 
                 impl ElementDef for {name}Def {{
                     const ID: u32 = {id};
+                    const PATH: &'static str = r"{path}";
 
                     const MIN_OCCURS: usize = {min_occurs};
                     const MAX_OCCURS: Option<usize> = {max_occurs};
@@ -289,6 +290,7 @@ impl Parsers {
                 "#,
                 name = element.name,
                 id = element.id,
+                path = element.path,
                 min_occurs = element.min_occurs.unwrap_or(0),
                 max_occurs = element
                     .max_occurs
@@ -546,7 +548,7 @@ impl Parsers {
             );
             
             "#,
-            elements = itertools::intersperse(element_names.iter().map(String::as_str), ",")
+            elements = itertools::intersperse(element_names.iter().map(String::as_str), ", ")
                 .collect::<String>()
         )?;
 
@@ -591,7 +593,7 @@ impl Parsers {
                 (make_state(parent_name), make_reader(parent_name))
             };
 
-            let child_state_name = if !elem_parent_names.is_empty() {
+            let child_state_name = if !elem_child_names.is_empty() {
                 make_next_states(&element_name)
             } else {
                 parent_state_name.clone()
@@ -755,7 +757,7 @@ impl Parsers {
         }
 
         {
-            let mut writer = std::fs::File::create(path.as_ref().join("src/core/parsers.rs"))
+            let mut writer = std::fs::File::create(path.as_ref().join("src/core/parser.rs"))
                 .map(std::io::BufWriter::new)
                 .map_err(WriteParserPackageError::IOError)?;
             self.write_parsers(&mut writer)

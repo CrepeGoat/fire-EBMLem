@@ -9,6 +9,7 @@ edition = "2018"
 thiserror = "1.0"
 enum_dispatch = "0.3.8"
 nom = "6.1.0"
+iron-ebmlem-parser = { path = "./parser" }
 
 [dev-dependencies]
 rstest = "0.12.0"
