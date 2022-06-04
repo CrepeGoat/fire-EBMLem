@@ -36,6 +36,32 @@ should be done elsewhere.
 
 **/
 
+struct Fmt<'a>(&'a str);
+
+impl Fmt<'_> {
+    fn as_def(&self) -> String {
+        format!("{0}Def", self.0)
+    }
+    fn as_state(&self) -> String {
+        format!("{0}State", self.0)
+    }
+    fn as_reader(&self) -> String {
+        format!("{0}Reader", self.0)
+    }
+    fn as_prev_states(&self) -> String {
+        format!("{0}PrevStates", self.0)
+    }
+    fn as_prev_readers(&self) -> String {
+        format!("{0}PrevReaders", self.0)
+    }
+    fn as_next_states(&self) -> String {
+        format!("{0}NextStates", self.0)
+    }
+    fn as_next_readers(&self) -> String {
+        format!("{0}NextReaders", self.0)
+    }
+}
+
 pub struct CodeGenerator {
     elem_model: EbmlElementModel,
 }
@@ -425,13 +451,6 @@ impl CodeGenerator {
             .collect::<String>(),
         )?;
 
-        let make_state = |name: &str| format!("{}State", name);
-        let make_reader = |name: &str| format!("{}Reader", name);
-        let make_prev_states = |name: &str| format!("{}PrevStates", name);
-        let make_prev_readers = |name: &str| format!("{}PrevReaders", name);
-        let make_next_states = |name: &str| format!("{}NextStates", name);
-        let make_next_readers = |name: &str| format!("{}NextReaders", name);
-
         for element_name in element_names {
             if element_name == "_Document" {
                 continue;
@@ -442,8 +461,8 @@ impl CodeGenerator {
 
             let (parent_state_name, parent_reader_name) = if elem_parent_names.len() > 1 {
                 (
-                    make_prev_states(&element_name),
-                    make_prev_readers(&element_name),
+                    Fmt(&element_name).as_prev_states(),
+                    Fmt(&element_name).as_prev_readers(),
                 )
             } else {
                 let parent_name = parent_names
@@ -452,11 +471,11 @@ impl CodeGenerator {
                     .iter()
                     .next()
                     .unwrap();
-                (make_state(parent_name), make_reader(parent_name))
+                (Fmt(parent_name).as_state(), Fmt(parent_name).as_reader())
             };
 
             let child_state_name = if !elem_child_names.is_empty() {
-                make_next_states(&element_name)
+                Fmt(&element_name).as_next_states()
             } else {
                 parent_state_name.clone()
             };
