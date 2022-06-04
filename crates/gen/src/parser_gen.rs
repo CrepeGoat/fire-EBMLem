@@ -10,7 +10,7 @@ use core::ops::{Bound, RangeBounds};
 use core::str::FromStr;
 
 /**
-The `Builder` object has the following responsibilities:
+The `SchemaParser` object has the following responsibilities:
 
 - validate the schema objects read directly from the schema
 - perform all pre-processing in advance required to write the source routines for parsing
@@ -121,21 +121,21 @@ pub enum PathAtomsParserError {
 }
 
 #[derive(Debug)]
-pub struct Builder {
+pub struct SchemaParser {
     schema: EbmlSchema,
 }
 
-impl Builder {
+impl SchemaParser {
     pub fn new<R: std::io::Read>(schema: R) -> Result<Self, serde_xml_rs::Error> {
         Ok(Self {
             schema: from_reader(schema)?,
         })
     }
 
-    pub fn generate(self) -> Result<Parsers, BuilderGenerateError> {
+    pub fn generate(self) -> Result<EbmlElementModel, SchemaParserGenerateError> {
         // Validate inputs & configuration
         // ...
-        // Return `Parsers` object
+        // Return `EbmlElementModel` object
 
         //
         let elems: HashMap<u32, Element> = self
@@ -152,7 +152,7 @@ impl Builder {
                 let path_atoms = elem
                     .path
                     .parse::<PathAtoms>()
-                    .map_err(BuilderGenerateError::InvalidPath)?
+                    .map_err(SchemaParserGenerateError::InvalidPath)?
                     .0; // trie should use single path atoms as edges
                 Ok((path_atoms, elem))
             })
@@ -164,12 +164,12 @@ impl Builder {
                 //let expt_first_atom = &[&(Default::default(), "".to_string())];
                 //let path_atoms = path_atoms
                 //    .strip_prefix(expt_first_atom)
-                //    .ok_or_else(|| BuilderGenerateError::NonNullPathPrefix(elem.path.clone()))?;
+                //    .ok_or_else(|| SchemaParserGenerateError::NonNullPathPrefix(elem.path.clone()))?;
                 let ((global_span, name), parent_path_atoms) = path_atoms
                     .split_last()
-                    .ok_or_else(|| BuilderGenerateError::EmptyPath(elem.name.clone()))?;
+                    .ok_or_else(|| SchemaParserGenerateError::EmptyPath(elem.name.clone()))?;
                 if name != &elem.name {
-                    return Err(BuilderGenerateError::MismatchedPathName(
+                    return Err(SchemaParserGenerateError::MismatchedPathName(
                         elem.name.clone(),
                         name.to_string(),
                     ));
@@ -179,7 +179,7 @@ impl Builder {
                     .subtrie(parent_path_atoms.iter().copied())
                     .expect("path of parent must necessarily exist for a given child");
                 if !parent_path_atoms.is_empty() && parent_trie.get([]).is_none() {
-                    return Err(BuilderGenerateError::NoDirectParent(elem.name.clone()));
+                    return Err(SchemaParserGenerateError::NoDirectParent(elem.name.clone()));
                 }
                 let mut parent_ids: HashSet<Option<u32>> = parent_trie
                     .iter_depths()
@@ -216,7 +216,7 @@ impl Builder {
                 .or_insert_with(HashSet::new);
         }
 
-        Ok(Parsers {
+        Ok(EbmlElementModel {
             elements: elems,
             parents: elem_parents,
             children: elem_children,
@@ -225,7 +225,7 @@ impl Builder {
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum BuilderGenerateError {
+pub enum SchemaParserGenerateError {
     #[error("invalid path: {0}")]
     InvalidPath(<PathAtoms as FromStr>::Err),
     #[error("empty path for element name {0}")]
@@ -239,13 +239,13 @@ pub enum BuilderGenerateError {
 }
 
 /**
-The `Parsers` object has only one job: write valid Rust code as described in the schema.
+The `EbmlElementModel` object has only one job: write valid Rust code as described in the schema.
 Everything else (reading the schema, validating the element definitions & hierarchy, etc.)
 should be done elsewhere.
 
 **/
 
-pub struct Parsers {
+pub struct EbmlElementModel {
     // u32's are the element ID's
     // ID = `None` -> root document
     elements: HashMap<u32, Element>, // the root doesn't have a schema config
@@ -253,7 +253,7 @@ pub struct Parsers {
     children: HashMap<Option<u32>, HashSet<u32>>, // the root can HAVE children, but will not BE a child
 }
 
-impl Parsers {
+impl EbmlElementModel {
     pub fn write_element_defs<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_all(
             r#"
@@ -972,7 +972,7 @@ mod tests {
 
     #[rstest]
     fn builder_generate(schema: EbmlSchema) {
-        let result = Builder { schema }.generate();
+        let result = SchemaParser { schema }.generate();
         let result = result.unwrap();
 
         assert_eq!(

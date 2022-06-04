@@ -1,4 +1,4 @@
-use iron_ebmlem::parser_gen::Builder;
+use iron_ebmlem::parser_gen::SchemaParser;
 
 fn main() {
     let cargo_path = std::env::var("CARGO_MANIFEST_DIR")
@@ -9,7 +9,7 @@ fn main() {
         std::fs::File::open(cargo_path.join("eg_schema.xml")).expect("couldn't open schema file"),
     );
 
-    Builder::new(schema_file)
+    SchemaParser::new(schema_file)
         .expect("couldn't parse schema file")
         .generate()
         .expect("couldn't make parser writer")
