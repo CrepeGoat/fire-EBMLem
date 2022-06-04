@@ -3,7 +3,7 @@
 use crate::element_model::{EbmlElementModel, EbmlElementModelError, GlobalPlaceholder, PathAtoms};
 use crate::serde_schema::{from_reader, EbmlSchema, ElementType};
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 /**
@@ -204,10 +204,10 @@ impl CodeGenerator {
                                 self.elem_model.elements.get(&pid).unwrap().name.clone()
                             })
                         })
-                        .collect::<HashSet<_>>(),
+                        .collect::<BTreeSet<_>>(),
                 )
             })
-            .collect::<HashMap<_, _>>();
+            .collect::<BTreeMap<_, _>>();
 
         let child_names = self
             .elem_model
@@ -223,10 +223,10 @@ impl CodeGenerator {
                         .map(|child_id| {
                             self.elem_model.elements.get(child_id).unwrap().name.clone()
                         })
-                        .collect::<HashSet<_>>(),
+                        .collect::<BTreeSet<_>>(),
                 )
             })
-            .collect::<HashMap<_, _>>();
+            .collect::<BTreeMap<_, _>>();
 
         writer.write_all(
             r#"
