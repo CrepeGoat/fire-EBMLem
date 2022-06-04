@@ -1,4 +1,4 @@
-use iron_ebmlem::parser_gen::SchemaParser;
+use iron_ebmlem::parser_gen::Builder;
 
 fn main() {
     let cargo_path = std::env::var("CARGO_MANIFEST_DIR")
@@ -9,10 +9,10 @@ fn main() {
         std::fs::File::open(cargo_path.join("eg_schema.xml")).expect("couldn't open schema file"),
     );
 
-    SchemaParser::new(schema_file)
+    Builder::new(schema_file)
         .expect("couldn't parse schema file")
-        .generate()
-        .expect("couldn't make parser writer")
+        .make_generator()
+        .expect("invalid EBML element model")
         .write_package(cargo_path.join("parser"))
         .expect("couldn't write parser crate");
 }

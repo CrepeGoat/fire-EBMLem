@@ -9,14 +9,6 @@ use std::path::Path;
 use core::ops::{Bound, RangeBounds};
 use core::str::FromStr;
 
-/**
-The `SchemaParser` object has the following responsibilities:
-
-- validate the schema objects read directly from the schema
-- perform all pre-processing in advance required to write the source routines for parsing
-
-**/
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct GlobalPlaceholder {
     lower_bound: u64,
@@ -120,26 +112,27 @@ pub enum PathAtomsParserError {
     InvalidGlobalPlaceholder(<GlobalPlaceholder as FromStr>::Err),
 }
 
-#[derive(Debug)]
-pub struct SchemaParser {
-    schema: EbmlSchema,
+/**
+The `EbmlElementModel` object has two jobs:
+    1. validate the element model, as defined in the schema
+    2. index the element model for easy element navigation
+**/
+struct EbmlElementModel {
+    // u32's are the element ID's
+    // ID = `None` -> root document
+    elements: HashMap<u32, Element>, // the root doesn't have a schema config
+    parents: HashMap<u32, HashSet<Option<u32>>>, // the root can BE a parent, but will not HAVE a parent
+    children: HashMap<Option<u32>, HashSet<u32>>, // the root can HAVE children, but will not BE a child
 }
 
-impl SchemaParser {
-    pub fn new<R: std::io::Read>(schema: R) -> Result<Self, serde_xml_rs::Error> {
-        Ok(Self {
-            schema: from_reader(schema)?,
-        })
-    }
-
-    pub fn generate(self) -> Result<EbmlElementModel, SchemaParserGenerateError> {
+impl EbmlElementModel {
+    fn new(schema: EbmlSchema) -> Result<Self, EbmlElementModelError> {
         // Validate inputs & configuration
         // ...
-        // Return `EbmlElementModel` object
+        // Return `Self` object
 
         //
-        let elems: HashMap<u32, Element> = self
-            .schema
+        let elems: HashMap<u32, Element> = schema
             .elements
             .unwrap_or_else(Vec::new)
             .into_iter()
@@ -152,7 +145,7 @@ impl SchemaParser {
                 let path_atoms = elem
                     .path
                     .parse::<PathAtoms>()
-                    .map_err(SchemaParserGenerateError::InvalidPath)?
+                    .map_err(EbmlElementModelError::InvalidPath)?
                     .0; // trie should use single path atoms as edges
                 Ok((path_atoms, elem))
             })
@@ -164,12 +157,12 @@ impl SchemaParser {
                 //let expt_first_atom = &[&(Default::default(), "".to_string())];
                 //let path_atoms = path_atoms
                 //    .strip_prefix(expt_first_atom)
-                //    .ok_or_else(|| SchemaParserGenerateError::NonNullPathPrefix(elem.path.clone()))?;
+                //    .ok_or_else(|| EbmlElementModelError::NonNullPathPrefix(elem.path.clone()))?;
                 let ((global_span, name), parent_path_atoms) = path_atoms
                     .split_last()
-                    .ok_or_else(|| SchemaParserGenerateError::EmptyPath(elem.name.clone()))?;
+                    .ok_or_else(|| EbmlElementModelError::EmptyPath(elem.name.clone()))?;
                 if name != &elem.name {
-                    return Err(SchemaParserGenerateError::MismatchedPathName(
+                    return Err(EbmlElementModelError::MismatchedPathName(
                         elem.name.clone(),
                         name.to_string(),
                     ));
@@ -179,7 +172,7 @@ impl SchemaParser {
                     .subtrie(parent_path_atoms.iter().copied())
                     .expect("path of parent must necessarily exist for a given child");
                 if !parent_path_atoms.is_empty() && parent_trie.get([]).is_none() {
-                    return Err(SchemaParserGenerateError::NoDirectParent(elem.name.clone()));
+                    return Err(EbmlElementModelError::NoDirectParent(elem.name.clone()));
                 }
                 let mut parent_ids: HashSet<Option<u32>> = parent_trie
                     .iter_depths()
@@ -216,7 +209,7 @@ impl SchemaParser {
                 .or_insert_with(HashSet::new);
         }
 
-        Ok(EbmlElementModel {
+        Ok(Self {
             elements: elems,
             parents: elem_parents,
             children: elem_children,
@@ -225,7 +218,7 @@ impl SchemaParser {
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum SchemaParserGenerateError {
+pub enum EbmlElementModelError {
     #[error("invalid path: {0}")]
     InvalidPath(<PathAtoms as FromStr>::Err),
     #[error("empty path for element name {0}")]
@@ -239,21 +232,40 @@ pub enum SchemaParserGenerateError {
 }
 
 /**
-The `EbmlElementModel` object has only one job: write valid Rust code as described in the schema.
+The `Builder` object is simply a wrapper to abstract away the schema parsing. It provides
+methods to convert a schema file into a generator object, without having to directly use
+any other parsing functions or manage any other objects.
+**/
+pub struct Builder {
+    schema: EbmlSchema,
+}
+
+impl Builder {
+    pub fn new<R: std::io::Read>(schema: R) -> Result<Self, serde_xml_rs::Error> {
+        Ok(Self {
+            schema: from_reader(schema)?,
+        })
+    }
+
+    pub fn make_generator(self) -> Result<CodeGenerator, EbmlElementModelError> {
+        Ok(CodeGenerator {
+            elem_model: EbmlElementModel::new(self.schema)?,
+        })
+    }
+}
+
+/**
+The `CodeGenerator` object has only one job: write valid Rust code as described in the schema.
 Everything else (reading the schema, validating the element definitions & hierarchy, etc.)
 should be done elsewhere.
 
 **/
 
-pub struct EbmlElementModel {
-    // u32's are the element ID's
-    // ID = `None` -> root document
-    elements: HashMap<u32, Element>, // the root doesn't have a schema config
-    parents: HashMap<u32, HashSet<Option<u32>>>, // the root can BE a parent, but will not HAVE a parent
-    children: HashMap<Option<u32>, HashSet<u32>>, // the root can HAVE children, but will not BE a child
+pub struct CodeGenerator {
+    elem_model: EbmlElementModel,
 }
 
-impl EbmlElementModel {
+impl CodeGenerator {
     pub fn write_element_defs<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_all(
             r#"
@@ -267,7 +279,7 @@ impl EbmlElementModel {
             "#.as_bytes()
         )?;
 
-        for element in self.elements.values() {
+        for element in self.elem_model.elements.values() {
             write!(
                 writer,
                 r#"
@@ -397,22 +409,24 @@ impl EbmlElementModel {
 
     pub fn write_parsers<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         let element_names = self
+            .elem_model
             .elements
             .values()
             .map(|elem| elem.name.clone())
             .chain(core::iter::once("_Document".to_string()))
             .collect::<Vec<_>>();
         let parent_names = self
+            .elem_model
             .parents
             .iter()
             .map(|(id, parent_ids)| {
                 (
-                    self.elements.get(id).unwrap().name.clone(),
+                    self.elem_model.elements.get(id).unwrap().name.clone(),
                     parent_ids
                         .iter()
                         .map(|parent_id| {
                             parent_id.map_or("_Document".to_string(), |pid| {
-                                self.elements.get(&pid).unwrap().name.clone()
+                                self.elem_model.elements.get(&pid).unwrap().name.clone()
                             })
                         })
                         .collect::<HashSet<_>>(),
@@ -421,16 +435,19 @@ impl EbmlElementModel {
             .collect::<HashMap<_, _>>();
 
         let child_names = self
+            .elem_model
             .children
             .iter()
             .map(|(id, child_ids)| {
                 (
                     id.map_or("_Document".to_string(), |pid| {
-                        self.elements.get(&pid).unwrap().name.clone()
+                        self.elem_model.elements.get(&pid).unwrap().name.clone()
                     }),
                     child_ids
                         .iter()
-                        .map(|child_id| self.elements.get(child_id).unwrap().name.clone())
+                        .map(|child_id| {
+                            self.elem_model.elements.get(child_id).unwrap().name.clone()
+                        })
                         .collect::<HashSet<_>>(),
                 )
             })
@@ -971,8 +988,8 @@ mod tests {
     }
 
     #[rstest]
-    fn builder_generate(schema: EbmlSchema) {
-        let result = SchemaParser { schema }.generate();
+    fn ebml_element_model_new(schema: EbmlSchema) {
+        let result = EbmlElementModel::new(schema);
         let result = result.unwrap();
 
         assert_eq!(
