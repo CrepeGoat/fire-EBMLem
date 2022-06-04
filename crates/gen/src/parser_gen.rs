@@ -88,7 +88,7 @@ impl CodeGenerator {
                 pub struct {name}Def;
 
                 impl ElementDef for {name}Def {{
-                    const ID: u32 = {id};
+                    const ID: u32 = {id:#X};
                     const PATH: &'static str = r"{path}";
 
                     const MIN_OCCURS: usize = {min_occurs};
