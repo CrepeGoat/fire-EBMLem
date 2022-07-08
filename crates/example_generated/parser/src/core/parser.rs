@@ -22,11 +22,11 @@
 
             // Top-Level Reader/State Enums #########################################################################
             
-                #[enum_dispatch(FilesNextStates)]
-                #[enum_dispatch(FilesNextReaders<R>)]
-                
                 #[enum_dispatch(FileNextStates)]
                 #[enum_dispatch(FileNextReaders<R>)]
+                
+                #[enum_dispatch(FilesNextStates)]
+                #[enum_dispatch(FilesNextReaders<R>)]
                 
                 #[enum_dispatch(_DocumentNextStates)]
                 #[enum_dispatch(_DocumentNextReaders<R>)]
@@ -40,25 +40,25 @@
             
             #[enum_dispatch]
             pub enum States {
-                Void(VoidState),Files(FilesState),FileName(FileNameState),MimeType(MimeTypeState),ModificationTimestamp(ModificationTimestampState),Data(DataState),File(FileState),_Document(_DocumentState),
+                Void(VoidState),MimeType(MimeTypeState),ModificationTimestamp(ModificationTimestampState),Data(DataState),File(FileState),FileName(FileNameState),Files(FilesState),_Document(_DocumentState),
             }
             
             #[enum_dispatch]
             pub enum Readers<R> {
-                Void(VoidReader<R>),Files(FilesReader<R>),FileName(FileNameReader<R>),MimeType(MimeTypeReader<R>),ModificationTimestamp(ModificationTimestampReader<R>),Data(DataReader<R>),File(FileReader<R>),_Document(_DocumentReader<R>),
+                Void(VoidReader<R>),MimeType(MimeTypeReader<R>),ModificationTimestamp(ModificationTimestampReader<R>),Data(DataReader<R>),File(FileReader<R>),FileName(FileNameReader<R>),Files(FilesReader<R>),_Document(_DocumentReader<R>),
             }
             
             
             impl_into_reader!(
                 States,
                 Readers,
-                [Void, Files, FileName, MimeType, ModificationTimestamp, Data, File, _Document]
+                [Void, MimeType, ModificationTimestamp, Data, File, FileName, Files, _Document]
             );
             
             impl_from_readers_for_states!(
                 Readers,
                 States,
-                [Void, Files, FileName, MimeType, ModificationTimestamp, Data, File, _Document]
+                [Void, MimeType, ModificationTimestamp, Data, File, FileName, Files, _Document]
             );
             
             
@@ -135,12 +135,12 @@
                     #[derive(Debug, Clone, PartialEq)]
                     #[enum_dispatch]
                     pub enum VoidPrevStates {
-                        _Document(_DocumentState),File(FileState),Files(FilesState),
+                        File(FileState),Files(FilesState),_Document(_DocumentState),
                     }
                     #[derive(Debug, PartialEq)]
                     #[enum_dispatch]
                     pub enum VoidPrevReaders<R> {
-                        _Document(_DocumentReader<R>),File(FileReader<R>),Files(FilesReader<R>),
+                        File(FileReader<R>),Files(FilesReader<R>),_Document(_DocumentReader<R>),
                     }
 
                     impl_from_substates_for_states!(VoidPrevStates, States, [_Document, Files, File]);
@@ -150,74 +150,6 @@
                     impl_from_readers_for_states!(VoidPrevReaders, VoidPrevStates, [_Document, Files, File]);
 
                     
-                // Files Objects #########################################################################
-
-                pub type FilesState = ElementState<element_defs::FilesDef, _DocumentState>;
-                pub type FilesReader<R> = ElementReader<R, FilesState>;
-
-                impl FilesState {
-                    pub fn new(bytes_left: usize, parent_state: _DocumentState) -> Self {
-                        Self {
-                            bytes_left,
-                            parent_state,
-                            _phantom: PhantomData::<_>,
-                        }
-                    }
-                }
-
-                impl<R: BufRead> FilesReader<R> {
-                    pub fn new(reader: R, state: FilesState) -> Self {
-                        Self { reader, state }
-                    }
-                }
-
-                impl_skip_state_navigation!(FilesState, _DocumentState);
-                impl_next_state_navigation!(FilesState, FilesNextStates, [(Void, VoidState), (File, FileState)]);
-                
-                    #[derive(Debug, Clone, PartialEq)]
-                    #[enum_dispatch]
-                    pub enum FilesNextStates {
-                        Void(VoidState),File(FileState),
-                        Parent(_DocumentState),
-                    }
-
-                    #[derive(Debug, PartialEq)]
-                    #[enum_dispatch]
-                    pub enum FilesNextReaders<R> {
-                        Void(VoidReader<R>),File(FileReader<R>),
-                        Parent(_DocumentReader<R>),
-                    }
-
-                    impl_from_substates_for_states!(FilesNextStates, States, [Void, File, Parent]);
-                    impl_from_subreaders_for_readers!(FilesNextReaders, Readers, [Void, File, Parent]);
-
-                    impl_into_reader!(FilesNextStates, FilesNextReaders, [Void, File, Parent]);
-                    impl_from_readers_for_states!(FilesNextReaders, FilesNextStates, [Void, File, Parent]);
-                    
-                // FileName Objects #########################################################################
-
-                pub type FileNameState = ElementState<element_defs::FileNameDef, FileState>;
-                pub type FileNameReader<R> = ElementReader<R, FileNameState>;
-
-                impl FileNameState {
-                    pub fn new(bytes_left: usize, parent_state: FileState) -> Self {
-                        Self {
-                            bytes_left,
-                            parent_state,
-                            _phantom: PhantomData::<_>,
-                        }
-                    }
-                }
-
-                impl<R: BufRead> FileNameReader<R> {
-                    pub fn new(reader: R, state: FileNameState) -> Self {
-                        Self { reader, state }
-                    }
-                }
-
-                impl_skip_state_navigation!(FileNameState, FileState);
-                impl_next_state_navigation!(FileNameState, FileState, []);
-                
                 // MimeType Objects #########################################################################
 
                 pub type MimeTypeState = ElementState<element_defs::MimeTypeDef, FileState>;
@@ -312,25 +244,93 @@
                 }
 
                 impl_skip_state_navigation!(FileState, FilesState);
-                impl_next_state_navigation!(FileState, FileNextStates, [(Void, VoidState), (Data, DataState), (FileName, FileNameState), (ModificationTimestamp, ModificationTimestampState), (MimeType, MimeTypeState)]);
+                impl_next_state_navigation!(FileState, FileNextStates, [(Data, DataState), (FileName, FileNameState), (MimeType, MimeTypeState), (ModificationTimestamp, ModificationTimestampState), (Void, VoidState)]);
                 
                     #[derive(Debug, Clone, PartialEq)]
                     #[enum_dispatch]
                     pub enum FileNextStates {
-                        Void(VoidState),Data(DataState),FileName(FileNameState),ModificationTimestamp(ModificationTimestampState),MimeType(MimeTypeState),
+                        Data(DataState),FileName(FileNameState),MimeType(MimeTypeState),ModificationTimestamp(ModificationTimestampState),Void(VoidState),
                         Parent(FilesState),
                     }
 
                     #[derive(Debug, PartialEq)]
                     #[enum_dispatch]
                     pub enum FileNextReaders<R> {
-                        Void(VoidReader<R>),Data(DataReader<R>),FileName(FileNameReader<R>),ModificationTimestamp(ModificationTimestampReader<R>),MimeType(MimeTypeReader<R>),
+                        Data(DataReader<R>),FileName(FileNameReader<R>),MimeType(MimeTypeReader<R>),ModificationTimestamp(ModificationTimestampReader<R>),Void(VoidReader<R>),
                         Parent(FilesReader<R>),
                     }
 
-                    impl_from_substates_for_states!(FileNextStates, States, [Void, Data, FileName, ModificationTimestamp, MimeType, Parent]);
-                    impl_from_subreaders_for_readers!(FileNextReaders, Readers, [Void, Data, FileName, ModificationTimestamp, MimeType, Parent]);
+                    impl_from_substates_for_states!(FileNextStates, States, [Data, FileName, MimeType, ModificationTimestamp, Void, Parent]);
+                    impl_from_subreaders_for_readers!(FileNextReaders, Readers, [Data, FileName, MimeType, ModificationTimestamp, Void, Parent]);
 
-                    impl_into_reader!(FileNextStates, FileNextReaders, [Void, Data, FileName, ModificationTimestamp, MimeType, Parent]);
-                    impl_from_readers_for_states!(FileNextReaders, FileNextStates, [Void, Data, FileName, ModificationTimestamp, MimeType, Parent]);
+                    impl_into_reader!(FileNextStates, FileNextReaders, [Data, FileName, MimeType, ModificationTimestamp, Void, Parent]);
+                    impl_from_readers_for_states!(FileNextReaders, FileNextStates, [Data, FileName, MimeType, ModificationTimestamp, Void, Parent]);
+                    
+                // FileName Objects #########################################################################
+
+                pub type FileNameState = ElementState<element_defs::FileNameDef, FileState>;
+                pub type FileNameReader<R> = ElementReader<R, FileNameState>;
+
+                impl FileNameState {
+                    pub fn new(bytes_left: usize, parent_state: FileState) -> Self {
+                        Self {
+                            bytes_left,
+                            parent_state,
+                            _phantom: PhantomData::<_>,
+                        }
+                    }
+                }
+
+                impl<R: BufRead> FileNameReader<R> {
+                    pub fn new(reader: R, state: FileNameState) -> Self {
+                        Self { reader, state }
+                    }
+                }
+
+                impl_skip_state_navigation!(FileNameState, FileState);
+                impl_next_state_navigation!(FileNameState, FileState, []);
+                
+                // Files Objects #########################################################################
+
+                pub type FilesState = ElementState<element_defs::FilesDef, _DocumentState>;
+                pub type FilesReader<R> = ElementReader<R, FilesState>;
+
+                impl FilesState {
+                    pub fn new(bytes_left: usize, parent_state: _DocumentState) -> Self {
+                        Self {
+                            bytes_left,
+                            parent_state,
+                            _phantom: PhantomData::<_>,
+                        }
+                    }
+                }
+
+                impl<R: BufRead> FilesReader<R> {
+                    pub fn new(reader: R, state: FilesState) -> Self {
+                        Self { reader, state }
+                    }
+                }
+
+                impl_skip_state_navigation!(FilesState, _DocumentState);
+                impl_next_state_navigation!(FilesState, FilesNextStates, [(File, FileState), (Void, VoidState)]);
+                
+                    #[derive(Debug, Clone, PartialEq)]
+                    #[enum_dispatch]
+                    pub enum FilesNextStates {
+                        File(FileState),Void(VoidState),
+                        Parent(_DocumentState),
+                    }
+
+                    #[derive(Debug, PartialEq)]
+                    #[enum_dispatch]
+                    pub enum FilesNextReaders<R> {
+                        File(FileReader<R>),Void(VoidReader<R>),
+                        Parent(_DocumentReader<R>),
+                    }
+
+                    impl_from_substates_for_states!(FilesNextStates, States, [File, Void, Parent]);
+                    impl_from_subreaders_for_readers!(FilesNextReaders, Readers, [File, Void, Parent]);
+
+                    impl_into_reader!(FilesNextStates, FilesNextReaders, [File, Void, Parent]);
+                    impl_from_readers_for_states!(FilesNextReaders, FilesNextStates, [File, Void, Parent]);
                     
