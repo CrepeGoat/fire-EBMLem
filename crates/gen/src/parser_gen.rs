@@ -976,55 +976,46 @@ mod tests {
         let result = result.unwrap();
 
         assert_eq!(
-            result
-                .elements
-                .keys()
-                .collect::<std::collections::HashSet<_>>(),
-            vec![0x1A45DFA3, 0x4286, 0x4282, 0xEC]
-                .iter()
-                .collect::<std::collections::HashSet<_>>()
+            result.elements.keys().collect::<Vec<_>>(),
+            vec![&0xEC, &0x4282, &0x4286, &0x1A45DFA3]
         );
         assert_eq!(
-            result.parents,
+            result.parents.into_iter().collect::<Vec<_>>(),
             vec![
-                (0x1A45DFA3, vec![None].into_iter().collect::<HashSet<_>>()),
-                (
-                    0x4286,
-                    vec![Some(0x1A45DFA3)].into_iter().collect::<HashSet<_>>()
-                ),
-                (
-                    0x4282,
-                    vec![Some(0x1A45DFA3)].into_iter().collect::<HashSet<_>>()
-                ),
                 (
                     0xEC,
                     vec![None, Some(0x1A45DFA3)]
                         .into_iter()
                         .collect::<HashSet<_>>()
                 ),
+                (
+                    0x4282,
+                    vec![Some(0x1A45DFA3)].into_iter().collect::<HashSet<_>>()
+                ),
+                (
+                    0x4286,
+                    vec![Some(0x1A45DFA3)].into_iter().collect::<HashSet<_>>()
+                ),
+                (0x1A45DFA3, vec![None].into_iter().collect::<HashSet<_>>()),
             ]
-            .into_iter()
-            .collect::<HashMap<_, _>>()
         );
         assert_eq!(
-            result.children,
+            result.children.into_iter().collect::<Vec<_>>(),
             vec![
                 (
                     None,
                     vec![0x1A45DFA3, 0xEC].into_iter().collect::<HashSet<_>>()
                 ),
+                (Some(0xEC), HashSet::new()),
+                (Some(0x4282), HashSet::new()),
+                (Some(0x4286), HashSet::new()),
                 (
                     Some(0x1A45DFA3),
                     vec![0x4286, 0x4282, 0xEC]
                         .into_iter()
                         .collect::<HashSet<_>>()
                 ),
-                (Some(0x4286), HashSet::new()),
-                (Some(0x4282), HashSet::new()),
-                (Some(0xEC), HashSet::new()),
             ]
-            .into_iter()
-            .collect::<HashMap<_, _>>()
         );
     }
 }
