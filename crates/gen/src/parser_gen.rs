@@ -3,7 +3,7 @@
 use crate::serde_schema::{from_reader, EbmlSchema, Element, ElementType};
 use crate::trie::Trie;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use core::ops::{Bound, RangeBounds};
@@ -138,7 +138,7 @@ impl Builder {
         // Return `Parsers` object
 
         //
-        let elems: HashMap<u32, Element> = self
+        let elems: BTreeMap<u32, Element> = self
             .schema
             .elements
             .unwrap_or_else(Vec::new)
@@ -158,7 +158,7 @@ impl Builder {
             })
             .collect::<Result<_, _>>()?;
 
-        let elem_parents: HashMap<u32, HashSet<Option<u32>>> = pathed_elems
+        let elem_parents: BTreeMap<u32, BTreeSet<Option<u32>>> = pathed_elems
             .iter()
             .map(|(path_atoms, elem)| {
                 //let expt_first_atom = &[&(Default::default(), "".to_string())];
@@ -181,7 +181,7 @@ impl Builder {
                 if !parent_path_atoms.is_empty() && parent_trie.get([]).is_none() {
                     return Err(BuilderGenerateError::NoDirectParent(elem.name.clone()));
                 }
-                let mut parent_ids: HashSet<Option<u32>> = parent_trie
+                let mut parent_ids: BTreeSet<Option<u32>> = parent_trie
                     .iter_depths()
                     .skip_while(|(depth, _elem)| depth < &(global_span.lower_bound as usize))
                     .take_while(|(depth, _elem)| {
@@ -192,7 +192,7 @@ impl Builder {
                     .filter(|(_depth, elem)| elem.r#type == ElementType::Master)
                     // v the root trie will have *no* leaf -> treat this as id = None
                     .map(|(_depth, &elem)| Some(elem.id))
-                    .collect::<HashSet<_>>();
+                    .collect::<BTreeSet<_>>();
                 if parent_path_atoms.is_empty() && global_span.contains(&0) {
                     parent_ids.insert(None);
                 }
@@ -201,19 +201,19 @@ impl Builder {
             })
             .collect::<Result<_, _>>()?;
 
-        let mut elem_children = HashMap::new();
+        let mut elem_children = BTreeMap::new();
         for (elem_id, parent_ids) in elem_parents.iter() {
             for parent_id in parent_ids.iter() {
                 elem_children
                     .entry(*parent_id)
-                    .or_insert_with(HashSet::new)
+                    .or_insert_with(BTreeSet::new)
                     .insert(*elem_id);
             }
         }
         for elem_id in elems.keys() {
             elem_children
                 .entry(Some(*elem_id))
-                .or_insert_with(HashSet::new);
+                .or_insert_with(BTreeSet::new);
         }
 
         Ok(Parsers {
@@ -248,9 +248,9 @@ should be done elsewhere.
 pub struct Parsers {
     // u32's are the element ID's
     // ID = `None` -> root document
-    elements: HashMap<u32, Element>, // the root doesn't have a schema config
-    parents: HashMap<u32, HashSet<Option<u32>>>, // the root can BE a parent, but will not HAVE a parent
-    children: HashMap<Option<u32>, HashSet<u32>>, // the root can HAVE children, but will not BE a child
+    elements: BTreeMap<u32, Element>, // the root doesn't have a schema config
+    parents: BTreeMap<u32, BTreeSet<Option<u32>>>, // the root can BE a parent, but will not HAVE a parent
+    children: BTreeMap<Option<u32>, BTreeSet<u32>>, // the root can HAVE children, but will not BE a child
 }
 
 impl Parsers {
@@ -415,10 +415,10 @@ impl Parsers {
                                 self.elements.get(&pid).unwrap().name.clone()
                             })
                         })
-                        .collect::<HashSet<_>>(),
+                        .collect::<BTreeSet<_>>(),
                 )
             })
-            .collect::<HashMap<_, _>>();
+            .collect::<BTreeMap<_, _>>();
 
         let child_names = self
             .children
@@ -431,10 +431,10 @@ impl Parsers {
                     child_ids
                         .iter()
                         .map(|child_id| self.elements.get(child_id).unwrap().name.clone())
-                        .collect::<HashSet<_>>(),
+                        .collect::<BTreeSet<_>>(),
                 )
             })
-            .collect::<HashMap<_, _>>();
+            .collect::<BTreeMap<_, _>>();
 
         writer.write_all(
             r#"
@@ -976,55 +976,46 @@ mod tests {
         let result = result.unwrap();
 
         assert_eq!(
-            result
-                .elements
-                .keys()
-                .collect::<std::collections::HashSet<_>>(),
-            vec![0x1A45DFA3, 0x4286, 0x4282, 0xEC]
-                .iter()
-                .collect::<std::collections::HashSet<_>>()
+            result.elements.keys().collect::<Vec<_>>(),
+            vec![&0xEC, &0x4282, &0x4286, &0x1A45DFA3]
         );
         assert_eq!(
-            result.parents,
+            result.parents.into_iter().collect::<Vec<_>>(),
             vec![
-                (0x1A45DFA3, vec![None].into_iter().collect::<HashSet<_>>()),
-                (
-                    0x4286,
-                    vec![Some(0x1A45DFA3)].into_iter().collect::<HashSet<_>>()
-                ),
-                (
-                    0x4282,
-                    vec![Some(0x1A45DFA3)].into_iter().collect::<HashSet<_>>()
-                ),
                 (
                     0xEC,
                     vec![None, Some(0x1A45DFA3)]
                         .into_iter()
-                        .collect::<HashSet<_>>()
+                        .collect::<BTreeSet<_>>()
                 ),
+                (
+                    0x4282,
+                    vec![Some(0x1A45DFA3)].into_iter().collect::<BTreeSet<_>>()
+                ),
+                (
+                    0x4286,
+                    vec![Some(0x1A45DFA3)].into_iter().collect::<BTreeSet<_>>()
+                ),
+                (0x1A45DFA3, vec![None].into_iter().collect::<BTreeSet<_>>()),
             ]
-            .into_iter()
-            .collect::<HashMap<_, _>>()
         );
         assert_eq!(
-            result.children,
+            result.children.into_iter().collect::<Vec<_>>(),
             vec![
                 (
                     None,
-                    vec![0x1A45DFA3, 0xEC].into_iter().collect::<HashSet<_>>()
+                    vec![0x1A45DFA3, 0xEC].into_iter().collect::<BTreeSet<_>>()
                 ),
+                (Some(0xEC), BTreeSet::new()),
+                (Some(0x4282), BTreeSet::new()),
+                (Some(0x4286), BTreeSet::new()),
                 (
                     Some(0x1A45DFA3),
                     vec![0x4286, 0x4282, 0xEC]
                         .into_iter()
-                        .collect::<HashSet<_>>()
+                        .collect::<BTreeSet<_>>()
                 ),
-                (Some(0x4286), HashSet::new()),
-                (Some(0x4282), HashSet::new()),
-                (Some(0xEC), HashSet::new()),
             ]
-            .into_iter()
-            .collect::<HashMap<_, _>>()
         );
     }
 }

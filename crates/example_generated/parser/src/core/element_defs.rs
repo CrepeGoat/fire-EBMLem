@@ -27,45 +27,6 @@
                     }
                     
                 #[derive(Debug, Clone, PartialEq)]
-                pub struct FilesDef;
-
-                impl ElementDef for FilesDef {
-                    const ID: u32 = 424044908;
-                    const PATH: &'static str = r"\Files";
-
-                    const MIN_OCCURS: usize = 0;
-                    const MAX_OCCURS: Option<usize> = None;
-                    const LENGTH: Range<usize> = Range::IsWithin(Bound::Unbounded, Bound::Unbounded);
-                    const RECURRING: bool = false;
-                    const MIN_VERSION: u64 = 1;
-                    const MAX_VERSION: Option<u64> = None;
-                }
-                
-                    impl MasterElementDef for FilesDef {
-                        const UNKNOWN_SIZE_ALLOWED: bool = false;
-                        const RECURSIVE: bool = false;
-                    }
-                    
-                #[derive(Debug, Clone, PartialEq)]
-                pub struct FileNameDef;
-
-                impl ElementDef for FileNameDef {
-                    const ID: u32 = 24910;
-                    const PATH: &'static str = r"\Files\File\FileName";
-
-                    const MIN_OCCURS: usize = 1;
-                    const MAX_OCCURS: Option<usize> = None;
-                    const LENGTH: Range<usize> = Range::IsWithin(Bound::Unbounded, Bound::Unbounded);
-                    const RECURRING: bool = false;
-                    const MIN_VERSION: u64 = 1;
-                    const MAX_VERSION: Option<u64> = None;
-                }
-                
-                    impl Utf8ElementDef for FileNameDef {
-                        const DEFAULT: Option<&'static str> = None;
-                    }
-                    
-                #[derive(Debug, Clone, PartialEq)]
                 pub struct MimeTypeDef;
 
                 impl ElementDef for MimeTypeDef {
@@ -139,6 +100,45 @@
                 }
                 
                     impl MasterElementDef for FileDef {
+                        const UNKNOWN_SIZE_ALLOWED: bool = false;
+                        const RECURSIVE: bool = false;
+                    }
+                    
+                #[derive(Debug, Clone, PartialEq)]
+                pub struct FileNameDef;
+
+                impl ElementDef for FileNameDef {
+                    const ID: u32 = 24910;
+                    const PATH: &'static str = r"\Files\File\FileName";
+
+                    const MIN_OCCURS: usize = 1;
+                    const MAX_OCCURS: Option<usize> = None;
+                    const LENGTH: Range<usize> = Range::IsWithin(Bound::Unbounded, Bound::Unbounded);
+                    const RECURRING: bool = false;
+                    const MIN_VERSION: u64 = 1;
+                    const MAX_VERSION: Option<u64> = None;
+                }
+                
+                    impl Utf8ElementDef for FileNameDef {
+                        const DEFAULT: Option<&'static str> = None;
+                    }
+                    
+                #[derive(Debug, Clone, PartialEq)]
+                pub struct FilesDef;
+
+                impl ElementDef for FilesDef {
+                    const ID: u32 = 424044908;
+                    const PATH: &'static str = r"\Files";
+
+                    const MIN_OCCURS: usize = 0;
+                    const MAX_OCCURS: Option<usize> = None;
+                    const LENGTH: Range<usize> = Range::IsWithin(Bound::Unbounded, Bound::Unbounded);
+                    const RECURRING: bool = false;
+                    const MIN_VERSION: u64 = 1;
+                    const MAX_VERSION: Option<u64> = None;
+                }
+                
+                    impl MasterElementDef for FilesDef {
                         const UNKNOWN_SIZE_ALLOWED: bool = false;
                         const RECURSIVE: bool = false;
                     }
