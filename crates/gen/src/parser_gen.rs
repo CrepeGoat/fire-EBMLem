@@ -257,34 +257,35 @@ impl Parsers {
     pub fn write_element_defs<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_all(
             r#"
-            #[allow(unused_imports)]
-            use crate::base::element_defs::{
-                BinaryElementDef, DateElementDef, ElementDef, FloatElementDef, IntElementDef, MasterElementDef,
-                Range, StringElementDef, UIntElementDef, Utf8ElementDef,
-            };
+#[allow(unused_imports)]
+use crate::base::element_defs::{
+    BinaryElementDef, DateElementDef, ElementDef, FloatElementDef, IntElementDef, MasterElementDef,
+    Range, StringElementDef, UIntElementDef, Utf8ElementDef,
+};
 
-            use core::ops::Bound;
-            "#.as_bytes()
+use core::ops::Bound;
+            "#
+            .as_bytes(),
         )?;
 
         for element in self.elements.values() {
             write!(
                 writer,
                 r#"
-                #[derive(Debug, Clone, PartialEq)]
-                pub struct {name}Def;
+#[derive(Debug, Clone, PartialEq)]
+pub struct {name}Def;
 
-                impl ElementDef for {name}Def {{
-                    const ID: u32 = {id};
-                    const PATH: &'static str = r"{path}";
+impl ElementDef for {name}Def {{
+    const ID: u32 = {id};
+    const PATH: &'static str = r"{path}";
 
-                    const MIN_OCCURS: usize = {min_occurs};
-                    const MAX_OCCURS: Option<usize> = {max_occurs};
-                    const LENGTH: Range<usize> = Range::IsWithin(Bound::Unbounded, Bound::Unbounded);
-                    const RECURRING: bool = {recurring};
-                    const MIN_VERSION: u64 = {minver};
-                    const MAX_VERSION: Option<u64> = {maxver};
-                }}
+    const MIN_OCCURS: usize = {min_occurs};
+    const MAX_OCCURS: Option<usize> = {max_occurs};
+    const LENGTH: Range<usize> = Range::IsWithin(Bound::Unbounded, Bound::Unbounded);
+    const RECURRING: bool = {recurring};
+    const MIN_VERSION: u64 = {minver};
+    const MAX_VERSION: Option<u64> = {maxver};
+}}
                 "#,
                 name = element.name,
                 id = element.id,
@@ -306,10 +307,10 @@ impl Parsers {
                 ElementType::Master => write!(
                     writer,
                     r#"
-                    impl MasterElementDef for {name}Def {{
-                        const UNKNOWN_SIZE_ALLOWED: bool = {unknown_size_allowed};
-                        const RECURSIVE: bool = {recursive};
-                    }}
+impl MasterElementDef for {name}Def {{
+    const UNKNOWN_SIZE_ALLOWED: bool = {unknown_size_allowed};
+    const RECURSIVE: bool = {recursive};
+}}
                     "#,
                     name = element.name,
                     unknown_size_allowed = element.unknownsizeallowed.unwrap_or(false),
@@ -318,10 +319,10 @@ impl Parsers {
                 ElementType::SignedInteger => write!(
                     writer,
                     r#"
-                    impl IntElementDef for {name}Def {{
-                        const RANGE: Range<i64> = Range::IsWithin(Bound::Unbounded, Bound::Unbounded);
-                        const DEFAULT: Option<i64> = {default};
-                    }}
+impl IntElementDef for {name}Def {{
+    const RANGE: Range<i64> = Range::IsWithin(Bound::Unbounded, Bound::Unbounded);
+    const DEFAULT: Option<i64> = {default};
+}}
                     "#,
                     name = element.name,
                     default = "None"
@@ -329,10 +330,10 @@ impl Parsers {
                 ElementType::UnsignedInteger => write!(
                     writer,
                     r#"
-                    impl UIntElementDef for {name}Def {{
-                        const RANGE: Range<u64> = Range::IsWithin(Bound::Unbounded, Bound::Unbounded);
-                        const DEFAULT: Option<u64> = {default};
-                    }}
+impl UIntElementDef for {name}Def {{
+    const RANGE: Range<u64> = Range::IsWithin(Bound::Unbounded, Bound::Unbounded);
+    const DEFAULT: Option<u64> = {default};
+}}
                     "#,
                     name = element.name,
                     default = "None"
@@ -340,10 +341,10 @@ impl Parsers {
                 ElementType::Float => write!(
                     writer,
                     r#"
-                    impl FloatElementDef for {name}Def {{
-                        const RANGE: Range<f64> = Range::IsWithin(Bound::Unbounded, Bound::Unbounded);
-                        const DEFAULT: Option<f64> = {default};
-                    }}
+impl FloatElementDef for {name}Def {{
+    const RANGE: Range<f64> = Range::IsWithin(Bound::Unbounded, Bound::Unbounded);
+    const DEFAULT: Option<f64> = {default};
+}}
                     "#,
                     name = element.name,
                     default = "None"
@@ -351,10 +352,10 @@ impl Parsers {
                 ElementType::Date => write!(
                     writer,
                     r#"
-                    impl DateElementDef for {name}Def {{
-                        const RANGE: Range<i64> = Range::IsWithin(Bound::Unbounded, Bound::Unbounded);
-                        const DEFAULT: Option<i64> = {default};
-                    }}
+impl DateElementDef for {name}Def {{
+    const RANGE: Range<i64> = Range::IsWithin(Bound::Unbounded, Bound::Unbounded);
+    const DEFAULT: Option<i64> = {default};
+}}
                     "#,
                     name = element.name,
                     default = "None"
@@ -362,9 +363,9 @@ impl Parsers {
                 ElementType::String => write!(
                     writer,
                     r#"
-                    impl StringElementDef for {name}Def {{
-                        const DEFAULT: Option<&'static str> = {default};
-                    }}
+impl StringElementDef for {name}Def {{
+    const DEFAULT: Option<&'static str> = {default};
+}}
                     "#,
                     name = element.name,
                     default = "None"
@@ -372,9 +373,9 @@ impl Parsers {
                 ElementType::Utf8 => write!(
                     writer,
                     r#"
-                    impl Utf8ElementDef for {name}Def {{
-                        const DEFAULT: Option<&'static str> = {default};
-                    }}
+impl Utf8ElementDef for {name}Def {{
+    const DEFAULT: Option<&'static str> = {default};
+}}
                     "#,
                     name = element.name,
                     default = "None"
@@ -382,9 +383,9 @@ impl Parsers {
                 ElementType::Binary => write!(
                     writer,
                     r#"
-                    impl BinaryElementDef for {name}Def {{
-                        const DEFAULT: Option<&'static [u8]> = {default};
-                    }}
+impl BinaryElementDef for {name}Def {{
+    const DEFAULT: Option<&'static [u8]> = {default};
+}}
                     "#,
                     name = element.name,
                     default = "None"
@@ -438,28 +439,28 @@ impl Parsers {
 
         writer.write_all(
             r#"
-            use crate::base::element_defs::ElementDef;
-            #[allow(unused_imports)]
-            use crate::base::parser::{
-                BoundTo, ElementReader, ElementState, IntoReader, NextStateNavigation, ReaderError,
-                SkipStateNavigation, StateDataParser, StateError,
-            };
-            #[allow(unused_imports)]
-            use crate::base::stream::{parse, serialize, stream_diff};
-            use crate::core::element_defs;
-            #[allow(unused_imports)]
-            use crate::{
-                impl_from_readers_for_states, impl_from_subreaders_for_readers, impl_from_substates_for_states,
-                impl_into_reader, impl_next_state_navigation, impl_skip_state_navigation,
-            };
+use crate::base::element_defs::ElementDef;
+#[allow(unused_imports)]
+use crate::base::parser::{
+    BoundTo, ElementReader, ElementState, IntoReader, NextStateNavigation, ReaderError,
+    SkipStateNavigation, StateDataParser, StateError,
+};
+#[allow(unused_imports)]
+use crate::base::stream::{parse, serialize, stream_diff};
+use crate::core::element_defs;
+#[allow(unused_imports)]
+use crate::{
+    impl_from_readers_for_states, impl_from_subreaders_for_readers, impl_from_substates_for_states,
+    impl_into_reader, impl_next_state_navigation, impl_skip_state_navigation,
+};
 
-            use enum_dispatch::enum_dispatch;
+use enum_dispatch::enum_dispatch;
 
-            use core::convert::{From, TryInto};
-            use core::marker::PhantomData;
-            use std::io::BufRead;
+use core::convert::{From, TryInto};
+use core::marker::PhantomData;
+use std::io::BufRead;
 
-            // Top-Level Reader/State Enums #########################################################################
+// Top-Level Reader/State Enums #########################################################################
             "#.as_bytes()
         )?;
 
@@ -470,8 +471,8 @@ impl Parsers {
             write!(
                 writer,
                 r#"
-                #[enum_dispatch({name}NextStates)]
-                #[enum_dispatch({name}NextReaders<R>)]
+#[enum_dispatch({name}NextStates)]
+#[enum_dispatch({name}NextReaders<R>)]
                 "#,
                 name = element_name,
             )?;
@@ -483,8 +484,8 @@ impl Parsers {
             write!(
                 writer,
                 r#"
-                #[enum_dispatch({name}PrevStates)]
-                #[enum_dispatch({name}PrevReaders<R>)]
+#[enum_dispatch({name}PrevStates)]
+#[enum_dispatch({name}PrevReaders<R>)]
                 "#,
                 name = element_name,
             )?;
@@ -492,9 +493,9 @@ impl Parsers {
 
         writer.write_all(
             r#"
-            #[enum_dispatch(States)]
-            #[enum_dispatch(Readers<R>)]
-            trait BlankTrait {}
+#[enum_dispatch(States)]
+#[enum_dispatch(Readers<R>)]
+trait BlankTrait {}
             "#
             .as_bytes(),
         )?;
@@ -502,24 +503,23 @@ impl Parsers {
         write!(
             writer,
             r#"
-            #[enum_dispatch]
-            pub enum States {{
-                {elements}
-            }}
+#[enum_dispatch]
+pub enum States {{
+    {elements}
+}}
             "#,
             elements = element_names
                 .iter()
-                .map(|elem_name| format!("{0}({0}State),", elem_name))
+                .map(|elem_name| format!("{0}({0}State), ", elem_name))
                 .collect::<String>()
         )?;
         write!(
             writer,
             r#"
-            #[enum_dispatch]
-            pub enum Readers<R> {{
-                {elements}
-            }}
-            
+#[enum_dispatch]
+pub enum Readers<R> {{
+    {elements}
+}}
             "#,
             elements = element_names
                 .iter()
@@ -530,18 +530,17 @@ impl Parsers {
         write!(
             writer,
             r#"
-            impl_into_reader!(
-                States,
-                Readers,
-                [{elements}]
-            );
-            
-            impl_from_readers_for_states!(
-                Readers,
-                States,
-                [{elements}]
-            );
-            
+impl_into_reader!(
+    States,
+    Readers,
+    [{elements}]
+);
+
+impl_from_readers_for_states!(
+    Readers,
+    States,
+    [{elements}]
+);
             "#,
             elements = itertools::intersperse(element_names.iter().map(String::as_str), ", ")
                 .collect::<String>()
@@ -550,33 +549,33 @@ impl Parsers {
         write!(
             writer,
             r#"
-            // _Document Objects #########################################################################
+// _Document Objects #########################################################################
 
-            #[derive(Debug, Clone, PartialEq)]
-            pub struct _DocumentState;
-            pub type _DocumentReader<R> = ElementReader<R, _DocumentState>;
+#[derive(Debug, Clone, PartialEq)]
+pub struct _DocumentState;
+pub type _DocumentReader<R> = ElementReader<R, _DocumentState>;
 
-            impl<R: BufRead> _DocumentReader<R> {{
-                pub fn new(reader: R) -> Self {{
-                    Self {{
-                        reader,
-                        state: _DocumentState,
-                    }}
-                }}
-            }}
+impl<R: BufRead> _DocumentReader<R> {{
+    pub fn new(reader: R) -> Self {{
+        Self {{
+            reader,
+            state: _DocumentState,
+        }}
+    }}
+}}
 
-            impl<R: BufRead> IntoReader<R> for _DocumentState {{
-                type Reader = _DocumentReader<R>;
-                fn into_reader(self, reader: R) -> _DocumentReader<R> {{
-                    _DocumentReader::new(reader)
-                }}
-            }}
+impl<R: BufRead> IntoReader<R> for _DocumentState {{
+    type Reader = _DocumentReader<R>;
+    fn into_reader(self, reader: R) -> _DocumentReader<R> {{
+        _DocumentReader::new(reader)
+    }}
+}}
 
-            impl_next_state_navigation!(
-                _DocumentState,
-                _DocumentNextStates,
-                [{child_pairs}]
-            );
+impl_next_state_navigation!(
+    _DocumentState,
+    _DocumentNextStates,
+    [{child_pairs}]
+);
             "#,
             child_pairs = itertools::intersperse(
                 child_names
@@ -592,35 +591,35 @@ impl Parsers {
         write!(
             writer,
             r#"
-            #[derive(Debug, Clone, PartialEq)]
-            #[enum_dispatch]
-            pub enum _DocumentNextStates {{
-                {child_states}
-            }}
+#[derive(Debug, Clone, PartialEq)]
+#[enum_dispatch]
+pub enum _DocumentNextStates {{
+    {child_states}
+}}
 
-            #[derive(Debug, PartialEq)]
-            #[enum_dispatch]
-            pub enum _DocumentNextReaders<R> {{
-                {child_readers}
-            }}
+#[derive(Debug, PartialEq)]
+#[enum_dispatch]
+pub enum _DocumentNextReaders<R> {{
+    {child_readers}
+}}
 
-            impl_from_substates_for_states!(_DocumentNextStates, States, [{children}]);
-            impl_from_subreaders_for_readers!(_DocumentNextReaders, Readers, [{children}]);
+impl_from_substates_for_states!(_DocumentNextStates, States, [{children}]);
+impl_from_subreaders_for_readers!(_DocumentNextReaders, Readers, [{children}]);
 
-            impl_into_reader!(_DocumentNextStates, _DocumentNextReaders, [{children}]);
-            impl_from_readers_for_states!(_DocumentNextReaders, _DocumentNextStates, [{children}]);
+impl_into_reader!(_DocumentNextStates, _DocumentNextReaders, [{children}]);
+impl_from_readers_for_states!(_DocumentNextReaders, _DocumentNextStates, [{children}]);
             "#,
             child_states = child_names
                 .get("_Document")
                 .unwrap()
                 .iter()
-                .map(|name| format!("{name}({name}State),"))
+                .map(|name| format!("{name}({name}State), "))
                 .collect::<String>(),
             child_readers = child_names
                 .get("_Document")
                 .unwrap()
                 .iter()
-                .map(|name| format!("{name}({name}Reader<R>),"))
+                .map(|name| format!("{name}({name}Reader<R>), "))
                 .collect::<String>(),
             children = itertools::intersperse(
                 child_names
@@ -672,29 +671,29 @@ impl Parsers {
             write!(
                 writer,
                 r#"
-                // {name} Objects #########################################################################
+// {name} Objects #########################################################################
 
-                pub type {name}State = ElementState<element_defs::{name}Def, {parent_state}>;
-                pub type {name}Reader<R> = ElementReader<R, {name}State>;
+pub type {name}State = ElementState<element_defs::{name}Def, {parent_state}>;
+pub type {name}Reader<R> = ElementReader<R, {name}State>;
 
-                impl {name}State {{
-                    pub fn new(bytes_left: usize, parent_state: {parent_state}) -> Self {{
-                        Self {{
-                            bytes_left,
-                            parent_state,
-                            _phantom: PhantomData::<_>,
-                        }}
-                    }}
-                }}
+impl {name}State {{
+    pub fn new(bytes_left: usize, parent_state: {parent_state}) -> Self {{
+        Self {{
+            bytes_left,
+            parent_state,
+            _phantom: PhantomData::<_>,
+        }}
+    }}
+}}
 
-                impl<R: BufRead> {name}Reader<R> {{
-                    pub fn new(reader: R, state: {name}State) -> Self {{
-                        Self {{ reader, state }}
-                    }}
-                }}
+impl<R: BufRead> {name}Reader<R> {{
+    pub fn new(reader: R, state: {name}State) -> Self {{
+        Self {{ reader, state }}
+    }}
+}}
 
-                impl_skip_state_navigation!({name}State, {parent_state});
-                impl_next_state_navigation!({name}State, {child_state}, [{child_pairs}]);
+impl_skip_state_navigation!({name}State, {parent_state});
+impl_next_state_navigation!({name}State, {child_state}, [{child_pairs}]);
                 "#,
                 name = element_name,
                 parent_state = parent_state_name.as_str(),
@@ -712,36 +711,36 @@ impl Parsers {
                 write!(
                     writer,
                     r#"
-                    #[derive(Debug, Clone, PartialEq)]
-                    #[enum_dispatch]
-                    pub enum {name}NextStates {{
-                        {child_states}
-                        Parent({parent_state}),
-                    }}
+#[derive(Debug, Clone, PartialEq)]
+#[enum_dispatch]
+pub enum {name}NextStates {{
+    {child_states}
+    Parent({parent_state}),
+}}
 
-                    #[derive(Debug, PartialEq)]
-                    #[enum_dispatch]
-                    pub enum {name}NextReaders<R> {{
-                        {child_readers}
-                        Parent({parent_reader}<R>),
-                    }}
+#[derive(Debug, PartialEq)]
+#[enum_dispatch]
+pub enum {name}NextReaders<R> {{
+    {child_readers}
+    Parent({parent_reader}<R>),
+}}
 
-                    impl_from_substates_for_states!({name}NextStates, States, [{children}]);
-                    impl_from_subreaders_for_readers!({name}NextReaders, Readers, [{children}]);
+impl_from_substates_for_states!({name}NextStates, States, [{children}]);
+impl_from_subreaders_for_readers!({name}NextReaders, Readers, [{children}]);
 
-                    impl_into_reader!({name}NextStates, {name}NextReaders, [{children}]);
-                    impl_from_readers_for_states!({name}NextReaders, {name}NextStates, [{children}]);
+impl_into_reader!({name}NextStates, {name}NextReaders, [{children}]);
+impl_from_readers_for_states!({name}NextReaders, {name}NextStates, [{children}]);
                     "#,
                     name = element_name,
                     parent_state = parent_state_name,
                     parent_reader = parent_reader_name,
                     child_states = elem_child_names
                         .iter()
-                        .map(|name| format!("{name}({name}State),"))
+                        .map(|name| format!("{name}({name}State), "))
                         .collect::<String>(),
                     child_readers = elem_child_names
                         .iter()
-                        .map(|name| format!("{name}({name}Reader<R>),"))
+                        .map(|name| format!("{name}({name}Reader<R>), "))
                         .collect::<String>(),
                     children = itertools::intersperse(
                         elem_child_names
@@ -758,23 +757,22 @@ impl Parsers {
                 write!(
                     writer,
                     r#"
-                    #[derive(Debug, Clone, PartialEq)]
-                    #[enum_dispatch]
-                    pub enum {name}PrevStates {{
-                        {parent_states}
-                    }}
-                    #[derive(Debug, PartialEq)]
-                    #[enum_dispatch]
-                    pub enum {name}PrevReaders<R> {{
-                        {parent_readers}
-                    }}
+#[derive(Debug, Clone, PartialEq)]
+#[enum_dispatch]
+pub enum {name}PrevStates {{
+    {parent_states}
+}}
+#[derive(Debug, PartialEq)]
+#[enum_dispatch]
+pub enum {name}PrevReaders<R> {{
+    {parent_readers}
+}}
 
-                    impl_from_substates_for_states!({name}PrevStates, States, [_Document, Files, File]);
-                    impl_from_subreaders_for_readers!({name}PrevReaders, Readers, [_Document, Files, File]);
+impl_from_substates_for_states!({name}PrevStates, States, [_Document, Files, File]);
+impl_from_subreaders_for_readers!({name}PrevReaders, Readers, [_Document, Files, File]);
 
-                    impl_into_reader!({name}PrevStates, {name}PrevReaders, [_Document, Files, File]);
-                    impl_from_readers_for_states!({name}PrevReaders, {name}PrevStates, [_Document, Files, File]);
-
+impl_into_reader!({name}PrevStates, {name}PrevReaders, [_Document, Files, File]);
+impl_from_readers_for_states!({name}PrevReaders, {name}PrevStates, [_Document, Files, File]);
                     "#,
                     name = element_name,
                     parent_states = elem_parent_names
