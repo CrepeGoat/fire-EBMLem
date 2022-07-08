@@ -344,7 +344,7 @@ impl UIntElementDef for {name}Def {{
 impl FloatElementDef for {name}Def {{
     const RANGE: Range<f64> = Range::IsWithin(Bound::Unbounded, Bound::Unbounded);
     const DEFAULT: Option<f64> = {default};
-                    }}
+}}
                     "#,
                     name = element.name,
                     default = "None"
@@ -355,7 +355,7 @@ impl FloatElementDef for {name}Def {{
 impl DateElementDef for {name}Def {{
     const RANGE: Range<i64> = Range::IsWithin(Bound::Unbounded, Bound::Unbounded);
     const DEFAULT: Option<i64> = {default};
-                    }}
+}}
                     "#,
                     name = element.name,
                     default = "None"

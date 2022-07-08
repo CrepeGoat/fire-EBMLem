@@ -63,7 +63,7 @@ impl ElementDef for ModificationTimestampDef {
 impl DateElementDef for ModificationTimestampDef {
     const RANGE: Range<i64> = Range::IsWithin(Bound::Unbounded, Bound::Unbounded);
     const DEFAULT: Option<i64> = None;
-                    }
+}
                     
 #[derive(Debug, Clone, PartialEq)]
 pub struct DataDef;
